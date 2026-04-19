@@ -185,3 +185,15 @@ CREATE TABLE IF NOT EXISTS `dossier_avocats` (
   KEY `idx_da_avocat` (`avocat_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- CORRECTIF : Ajouter jugement_id dans detenus (si absent)
+-- ═══════════════════════════════════════════════════════════════════════════
+ALTER TABLE `detenus`
+  ADD COLUMN IF NOT EXISTS `jugement_id` int(11) DEFAULT NULL AFTER `dossier_id`;
+
+ALTER TABLE `detenus`
+  ADD INDEX IF NOT EXISTS `idx_detenus_jugement` (`jugement_id`);
+
+-- Ajout de la clé étrangère (optionnel, peut échouer si jugements n'existe pas encore)
+-- ALTER TABLE `detenus` ADD CONSTRAINT `fk_detenus_jugement` FOREIGN KEY (`jugement_id`) REFERENCES `jugements`(`id`) ON DELETE SET NULL;

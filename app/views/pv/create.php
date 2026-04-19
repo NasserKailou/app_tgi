@@ -4,7 +4,9 @@
         <li class="breadcrumb-item"><a href="<?= BASE_URL ?>/pv">PV</a></li>
         <li class="breadcrumb-item active">Nouveau PV</li>
     </ol></nav>
-    <h4 class="fw-bold"><i class="bi bi-file-plus me-2 text-primary"></i>Enregistrer un nouveau PV</h4>
+    <h4 class="fw-bold py-2 px-3 rounded text-white" style="background-color:#c0392b;">
+        <i class="bi bi-file-plus me-2"></i>Enregistrer un nouveau PV
+    </h4>
 </div>
 
 <form method="POST" action="<?= BASE_URL ?>/pv/store" novalidate>

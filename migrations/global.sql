@@ -1,23 +1,13 @@
--- ============================================================
--- TRIBUNAL TGI-NY — BASE DE DONNÉES COMPLÈTE
--- Version 2.0 — Branche nasser — Avril 2026
--- 
--- INSTRUCTIONS :
---   1. Créer une base vierge :
---      CREATE DATABASE tribunal_tgi_ny CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
---   2. Restaurer ce fichier :
---      mysql -u root -p tribunal_tgi_ny < migrations/global.sql
---
--- Ce fichier inclut :
---   - Schéma complet (tribunal_tgi_ny_maj.sql)
---   - Migration 002 : mises_en_cause, plaintes, types PV, RP/RI manuels, avocat fix
--- ============================================================
+-- =============================================================================
+-- global.sql — Restauration complète de la base tribunal_tgi_ny
+-- Généré automatiquement : 2026-04-19
+-- Inclut : schema de base (tribunal_tgi_ny_maj.sql) + migration 002
+-- Usage  : mysql -u root -p tribunal_tgi_ny < global.sql
+-- =============================================================================
 
-SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
-START TRANSACTION;
-SET time_zone = "+00:00";
+SET FOREIGN_KEY_CHECKS=0;
+SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO';
 SET NAMES utf8mb4;
-SET foreign_key_checks = 0;
 
 -- phpMyAdmin SQL Dump
 -- version 5.2.1
@@ -28,6 +18,9 @@ SET foreign_key_checks = 0;
 -- Version du serveur : 10.4.32-MariaDB
 -- Version de PHP : 8.2.12
 
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+00:00";
 
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
@@ -2456,15 +2449,14 @@ ALTER TABLE `voies_recours`
   ADD CONSTRAINT `fk_vr_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `fk_vr_dossier` FOREIGN KEY (`dossier_id`) REFERENCES `dossiers` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_vr_jugement` FOREIGN KEY (`jugement_id`) REFERENCES `jugements` (`id`) ON DELETE SET NULL;
+COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 
--- ============================================================
--- MIGRATION 002
--- ============================================================
 
+-- ═══ MIGRATION 002 ═══
 -- ============================================================
 -- Migration 002 — Mises en cause, Plaintes, Améliorations PV
 -- Branche : nasser — Avril 2026
@@ -2653,6 +2645,20 @@ CREATE TABLE IF NOT EXISTS `dossier_avocats` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
--- ============================================================
-SET foreign_key_checks = 1;
-COMMIT;
+-- ═══════════════════════════════════════════════════════════════════════════
+-- CORRECTIF : Ajouter jugement_id dans detenus (si absent)
+-- ═══════════════════════════════════════════════════════════════════════════
+ALTER TABLE `detenus`
+  ADD COLUMN IF NOT EXISTS `jugement_id` int(11) DEFAULT NULL AFTER `dossier_id`;
+
+ALTER TABLE `detenus`
+  ADD INDEX IF NOT EXISTS `idx_detenus_jugement` (`jugement_id`);
+
+-- Ajout de la clé étrangère (optionnel, peut échouer si jugements n'existe pas encore)
+-- ALTER TABLE `detenus` ADD CONSTRAINT `fk_detenus_jugement` FOREIGN KEY (`jugement_id`) REFERENCES `jugements`(`id`) ON DELETE SET NULL;
+
+
+-- =============================================================================
+-- Fin du script global.sql
+-- =============================================================================
+SET FOREIGN_KEY_CHECKS=1;

@@ -127,8 +127,12 @@ class PlainteController extends Controller
             ':padr'   => $this->sanitize($_POST['plaignant_adresse'] ?? ''),
             ':pemail' => strtolower(trim($_POST['plaignant_email'] ?? '')),
             ':pqual'  => $_POST['plaignant_qualite'] ?? 'personne_physique',
-            ':mecnom' => $this->sanitize($_POST['mis_en_cause_nom'] ?? ''),
-            ':mecadr' => $this->sanitize($_POST['mis_en_cause_adresse'] ?? ''),
+            ':mecnom' => $this->sanitize(
+                !empty($_POST['mec'][0]['nom']) ? $_POST['mec'][0]['nom'] : ($_POST['mis_en_cause_nom'] ?? '')
+            ),
+            ':mecadr' => $this->sanitize(
+                !empty($_POST['mec'][0]['adresse']) ? $_POST['mec'][0]['adresse'] : ($_POST['mis_en_cause_adresse'] ?? '')
+            ),
             ':nature' => $this->sanitize($_POST['nature_plainte'] ?? ''),
             ':desc'   => $this->sanitize($_POST['description_faits'] ?? ''),
             ':lieu'   => $this->sanitize($_POST['lieu_faits'] ?? ''),

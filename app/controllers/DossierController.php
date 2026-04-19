@@ -127,13 +127,30 @@ class DossierController extends Controller {
         $detStmt->execute([(int)$id]);
         $detenus = $detStmt->fetchAll();
 
+        // Mises en cause liées au PV du dossier
+        $misesEnCause = [];
+        if (!empty($dossier['pv_id'])) {
+            try {
+                $mecStmt = $this->db->prepare(
+                    "SELECT m.*, p.numero_rg FROM mises_en_cause m
+                     JOIN pv p ON p.id = m.pv_id
+                     WHERE m.pv_id = ?
+                     ORDER BY m.nom, m.prenom"
+                );
+                $mecStmt->execute([$dossier['pv_id']]);
+                $misesEnCause = $mecStmt->fetchAll();
+            } catch (\Exception $e) {
+                $misesEnCause = [];
+            }
+        }
+
         $cabinets  = $this->db->query("SELECT * FROM cabinets_instruction WHERE actif=1")->fetchAll();
         $salles    = $this->db->query("SELECT * FROM salles_audience WHERE actif=1")->fetchAll();
         $jugesStmt = $this->db->query("SELECT u.* FROM users u JOIN roles r ON u.role_id=r.id WHERE r.code IN ('president','juge_siege','vice_president') AND u.actif=1");
         $juges     = $jugesStmt->fetchAll();
         $greffiers = $this->db->query("SELECT u.* FROM users u JOIN roles r ON u.role_id=r.id WHERE r.code='greffier' AND u.actif=1")->fetchAll();
 
-        $this->view('dossiers/show', compact('dossier','parties','audiences','jugements','mouvements','detenus','cabinets','salles','juges','greffiers','flash','user'));
+        $this->view('dossiers/show', compact('dossier','parties','audiences','jugements','mouvements','detenus','misesEnCause','cabinets','salles','juges','greffiers','flash','user'));
     }
 
     public function edit(string $id): void {
