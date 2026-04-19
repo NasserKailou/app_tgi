@@ -68,7 +68,46 @@ class PVController extends Controller {
         $infractions= $this->db->query("SELECT id, code, libelle, categorie FROM infractions ORDER BY libelle")->fetchAll();
         $num        = new Numerotation($this->db);
         $suggestRG  = $num->genererRG();
-        $this->view('pv/create', compact('unites','regions','primos','infractions','suggestRG','user'));
+
+        // Construire les données géographiques complètes pour la cascade JS
+        $geoDataForJs = [];
+        foreach ($regions as $r) {
+            $depts = $this->db->prepare("SELECT id, nom FROM departements WHERE region_id=? ORDER BY nom");
+            $depts->execute([$r['id']]);
+            $deptsData = [];
+            foreach ($depts->fetchAll(PDO::FETCH_ASSOC) as $d) {
+                $comms = $this->db->prepare("SELECT id, nom FROM communes WHERE departement_id=? ORDER BY nom");
+                $comms->execute([$d['id']]);
+                $deptsData[] = [
+                    'id'       => (int)$d['id'],
+                    'nom'      => $d['nom'],
+                    'communes' => array_map(function($c){ return ['id'=>(int)$c['id'],'nom'=>$c['nom']]; },
+                                           $comms->fetchAll(PDO::FETCH_ASSOC))
+                ];
+            }
+            $geoDataForJs[$r['id']] = ['id' => (int)$r['id'], 'nom' => $r['nom'], 'departements' => $deptsData];
+        }
+        // Fallback si la base ne contient pas encore les données géo
+        if (empty($geoDataForJs)) {
+            require_once ROOT_PATH . '/app/config/niger_geo.php';
+            $fid = 100;
+            foreach ($departements_par_region as $rNom => $deps) {
+                $rid = $fid++;
+                $dd = [];
+                foreach ($deps as $dNom) {
+                    $did = $fid++;
+                    $comms = [];
+                    foreach (($communes_par_departement[$dNom] ?? []) as $cNom) {
+                        $comms[] = ['id' => $fid++, 'nom' => $cNom];
+                    }
+                    $dd[] = ['id'=>$did,'nom'=>$dNom,'communes'=>$comms];
+                }
+                $geoDataForJs[$rid] = ['id'=>$rid,'nom'=>$rNom,'departements'=>$dd];
+            }
+        }
+        $geoJson = json_encode($geoDataForJs, JSON_UNESCAPED_UNICODE);
+
+        $this->view('pv/create', compact('unites','regions','primos','infractions','suggestRG','user','geoJson'));
     }
 
     public function store(): void {

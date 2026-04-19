@@ -60,7 +60,7 @@ $departements_par_region = [
         'Ville De Maradi',
     ],
     'Niamey' => [
-        'Niamey Ville',
+        'Niamey',
     ],
     'Tahoua' => [
         'Abalak',
@@ -71,10 +71,10 @@ $departements_par_region = [
         'Keita',
         'Madaoua',
         'Malbaza',
-        'Tahoua Departement',
-        'Takeita',
+        'Tahoua',
+        'Takanamatt',
         'Tillia',
-        'Ville De Tahoua',
+        'Ville de Tahoua',
     ],
     'Tillaberi' => [
         'Abala',
@@ -148,21 +148,21 @@ $communes_par_departement = [
     'Ville De Maradi'    => ['Maradi 1', 'Maradi 2', 'Maradi 3'],
 
     // NIAMEY
-    'Niamey Ville'       => ['Niamey I', 'Niamey II', 'Niamey III', 'Niamey IV', 'Niamey V'],
+    'Niamey'             => ['Niamey 1', 'Niamey 2', 'Niamey 3', 'Niamey 4', 'Niamey 5'],
 
     // TAHOUA
-    'Abalak'             => ['Abalak', 'Akoubounou', 'Azeye', 'Tabalak', 'Tamaya'],
+    'Abalak'             => ['Abalak', 'Akoubounou', 'Azèye', 'Tabalak', 'Tamaya'],
     'Bagaroua'           => ['Bagaroua'],
     "Birni N'Konni"      => ['Allela', 'Bazaga', "Birni N'Konni", 'Tsernaoua'],
-    'Bouza'              => ['Allakeye', 'Baban Katami', 'Bouza', 'Deoule', 'Karofane', 'Tabotaki', 'Tama'],
-    'Illéla'             => ['Badaguichiri', 'Illela', 'Tajae'],
-    'Keita'              => ['Garhanga', 'Ibohamane', 'Keita', 'Tamaske'],
-    'Madaoua'            => ['Azarori', 'Bangui', 'Galma Koudawatche', 'Madaoua', 'Ourno', 'Sabon Guida'],
+    'Bouza'              => ['Allakeye', 'Baban Katami', 'Bouza', 'Déoulé', 'Karofane', 'Tabotaki', 'Tama'],
+    'Illéla'             => ['Badaguichiri', 'Illéla', 'Tajaé'],
+    'Keita'              => ['Garhanga', 'Ibohamane', 'Keita', 'Tamaské'],
+    'Madaoua'            => ['Azarori', 'Bangui', 'Galma Koudawatché', 'Madaoua', 'Ourno', 'Sabon Guida'],
     'Malbaza'            => ['Dogueraoua', 'Malbaza'],
-    'Tahoua Departement' => ['Afala', 'Bambeye', 'Barmou', 'Kalfou', 'Takanamatt', 'Tebaram'],
-    'Takeita'            => ['Dakoussa', 'Garagoumsa', 'Tirmini'],
+    'Tahoua'             => ['Afala', 'Bambeye', 'Barmou', 'Kalfou', 'Takanamatt', 'Tébaram'],
+    'Takanamatt'         => ['Dakoussa', 'Garagoumsa', 'Tirmini'],
     'Tillia'             => ['Tillia'],
-    'Ville De Tahoua'    => ['Tahoua Commune 1', 'Tahoua Commune 2'],
+    'Ville de Tahoua'    => ['Tahoua Commune 1', 'Tahoua Commune 2'],
 
     // TILLABERI
     'Abala'              => ['Abala', 'Sanam'],
@@ -206,56 +206,56 @@ $region_centers = [
 ];
 
 // ─── Codes officiels INS des régions ─────────────────────────────────────────
-// Format INS : code 1 chiffre (ex. 1=Agadez, 2=Diffa, …, 8=Zinder)
+// Format INS : code 1 chiffre (source RENALOC : 1=Agadez, 2=Diffa, …, 8=Niamey)
 $region_codes = [
     '1' => 'Agadez',
     '2' => 'Diffa',
     '3' => 'Dosso',
     '4' => 'Maradi',
-    '5' => 'Niamey',
-    '6' => 'Tahoua',
-    '7' => 'Tillaberi',
-    '8' => 'Zinder',
+    '5' => 'Tahoua',
+    '6' => 'Tillaberi',
+    '7' => 'Zinder',
+    '8' => 'Niamey',
 ];
 // Inverse : nom → code
 $region_codes_inv = array_flip($region_codes);
 
-// ─── Codes officiels INS des départements (2 chiffres) ───────────────────────
-// Premier chiffre = code région, deuxième = numéro dans la région
+// ─── Codes officiels INS des départements (3 chiffres, source RENALOC) ───────
+// Premier chiffre = code région
 $departement_codes = [
-    // Agadez (1x)
-    '11' => 'Aderbisanat',       '12' => 'Agadez Ville',    '13' => 'Arlit',
-    '14' => 'Bilma',             '15' => 'Iferouane',       '16' => 'Ingall',
-    '17' => 'Tassara',           '18' => 'Tchintabaraden',  '19' => 'Tchirozerine',
-    // Diffa (2x)
-    '21' => 'Bosso',             '22' => 'Diffa',           '23' => 'Goudoumaria',
-    '24' => 'Maine Soroa',       '25' => "N'Gourti",        '26' => "N'Guigmi",
-    // Dosso (3x)
-    '31' => 'Boboye',            '32' => 'Dioundiou',       '33' => 'Dogondoutchi',
-    '34' => 'Dosso',             '35' => 'Falmey',          '36' => 'Gaya',
-    '37' => 'Loga',              '38' => 'Tibiri',
-    // Maradi (4x)
-    '41' => 'Aguie',             '42' => 'Dakoro',          '43' => 'Gazaoua',
-    '44' => 'Guidan-Roumdji',    '45' => 'Madarounfa',      '46' => 'Mayahi',
-    '47' => 'Tessaoua',          '48' => 'Ville De Maradi',
-    // Niamey (5x)
-    '51' => 'Niamey Ville',
-    // Tahoua (6x)
-    '61' => 'Abalak',            '62' => 'Bagaroua',        '63' => "Birni N'Konni",
-    '64' => 'Bouza',             '65' => 'Illéla',          '66' => 'Keita',
-    '67' => 'Madaoua',           '68' => 'Malbaza',         '69' => 'Tahoua Departement',
-    '610'=> 'Takeita',           '611'=> 'Tillia',          '612'=> 'Ville De Tahoua',
-    // Tillaberi (7x)
-    '71' => 'Abala',             '72' => 'Ayorou',          '73' => 'Balleyara',
-    '74' => 'Banibangou',        '75' => 'Bankilare',       '76' => 'Filingue',
-    '77' => 'Gotheye',           '78' => 'Kollo',           '79' => 'Ouallam',
-    '710'=> 'Say',               '711'=> 'Tera',            '712'=> 'Tillaberi',
-    '713'=> 'Torodi',
-    // Zinder (8x)
-    '81' => 'Belbedji',          '82' => 'Bermo',           '83' => 'Damagaram Takaya',
-    '84' => 'Dungass',           '85' => 'Goure',           '86' => 'Kantche',
-    '87' => 'Magaria',           '88' => 'Mirriah',         '89' => 'Tanout',
-    '810'=> 'Tesker',            '811'=> 'Ville De Zinder',
+    // Agadez (1xx)
+    '101' => 'Aderbissinat',     '102' => 'Agadez',         '103' => 'Arlit',
+    '104' => 'Bilma',            '105' => 'Iferouane',      '106' => 'Ingall',
+    '107' => 'Tassara',          '108' => 'Tchintabaraden', '109' => 'Tchirozerine',
+    // Diffa (2xx)
+    '201' => 'Bosso',            '202' => 'Diffa',          '203' => 'Goudoumaria',
+    '204' => "Maïné Soroa",      '205' => "N'Gourti",       '206' => "N'Guigmi",
+    // Dosso (3xx)
+    '301' => 'Boboye',           '302' => 'Dioundiou',      '303' => 'Dogondoutchi',
+    '304' => 'Dosso',            '305' => 'Falmey',         '306' => 'Gaya',
+    '307' => 'Loga',             '308' => 'Tibiri',
+    // Maradi (4xx)
+    '401' => 'Aguié',            '402' => 'Dakoro',         '403' => 'Gazaoua',
+    '404' => 'Guidan Roumdji',   '405' => 'Madarounfa',     '406' => 'Mayahi',
+    '407' => 'Tessaoua',         '408' => 'Maradi',
+    // Tahoua (5xx)
+    '501' => 'Abalak',           '502' => 'Bagaroua',       '503' => "Birni N'Konni",
+    '504' => 'Bouza',            '505' => 'Illéla',         '506' => 'Keita',
+    '507' => 'Madaoua',          '508' => 'Malbaza',        '509' => 'Tahoua',
+    '510' => 'Takanamatt',       '511' => 'Tillia',         '512' => 'Ville de Tahoua',
+    // Tillabéri (6xx)
+    '601' => 'Abala',            '602' => 'Ayorou',         '603' => 'Balleyara',
+    '604' => 'Banibangou',       '605' => 'Bankilaré',      '606' => 'Filingué',
+    '607' => 'Gothèye',          '608' => 'Kollo',          '609' => 'Ouallam',
+    '610' => 'Say',              '611' => 'Téra',           '612' => 'Tillabéri',
+    '613' => 'Torodi',
+    // Zinder (7xx)
+    '701' => 'Belbédji',         '702' => 'Bermo',          '703' => 'Damagaram Takaya',
+    '704' => 'Dungass',          '705' => 'Gouré',          '706' => 'Kantché',
+    '707' => 'Magaria',          '708' => 'Mirriah',        '709' => 'Tanout',
+    '710' => 'Tesker',           '711' => 'Zinder',
+    // Niamey (8xx)
+    '801' => 'Niamey',
 ];
 $departement_codes_inv = array_flip($departement_codes);
 

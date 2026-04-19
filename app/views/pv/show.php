@@ -577,22 +577,20 @@ function suggererSubstitut(){
         <div class="modal-content">
             <div class="modal-header bg-danger text-white">
                 <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>Ajouter une mise en cause</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form method="POST" action="<?= BASE_URL ?>/pv/mise-en-cause/store/<?= $pv['id'] ?>"
-                  enctype="multipart/form-data" novalidate>
-                <?= CSRF::field() ?>
-                <div class="modal-body">
-                    <?php
-                    $formAction = BASE_URL . '/pv/mise-en-cause/store/' . $pv['id'];
-                    $pvId       = $pv['id'];
-                    $btnLabel   = 'Enregistrer la mise en cause';
-                    $mec        = null;
-                    // Inclusion du formulaire partagé
-                    include __DIR__ . '/../mises_en_cause/_form.php';
-                    ?>
-                </div>
-            </form>
+            <div class="modal-body p-3 overflow-auto" style="flex:1 1 auto;">
+                <?php
+                $formAction = BASE_URL . '/pv/mise-en-cause/store/' . $pv['id'];
+                $pvId       = $pv['id'];
+                $btnLabel   = 'Enregistrer la mise en cause';
+                $mec        = null;
+                $inModal    = true;
+                // Inclusion du formulaire partagé (_form.php contient sa propre balise <form>)
+                include __DIR__ . '/../mises_en_cause/_form.php';
+                $inModal = false;
+                ?>
+            </div>
         </div>
     </div>
 </div>
