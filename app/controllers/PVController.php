@@ -77,26 +77,40 @@ class PVController extends Controller {
         $num = new Numerotation($this->db);
         $numeroRG = $num->genererRG();
 
+        // Vérification unicité du numéro RP (Registre du Parquet)
+        $numeroRP = trim($this->sanitize($_POST['numero_rp'] ?? ''));
+        if ($numeroRP) {
+            $chkRP = $this->db->prepare("SELECT COUNT(*) FROM pv WHERE numero_rp = ?");
+            $chkRP->execute([$numeroRP]);
+            if ((int)$chkRP->fetchColumn() > 0) {
+                $this->flash('error', "Le numéro de Registre du Parquet (RP) {$numeroRP} existe déjà dans le système.");
+                $this->redirect('/pv/create');
+                return;
+            }
+        }
+
         $stmt = $this->db->prepare(
-            "INSERT INTO pv (numero_pv, numero_rg, unite_enquete_id, date_pv, date_reception,
+            "INSERT INTO pv (numero_pv, numero_rg, numero_rp, numero_ordre, unite_enquete_id, date_pv, date_reception,
               type_affaire, infraction_id, est_antiterroriste, region_id, departement_id, commune_id,
               description_faits, statut, created_by)
-             VALUES (:pv,:rg,:ue,:dpv,:drec,:type,:infr,:anti,:reg,:dep,:com,:desc,'recu',:by)"
+             VALUES (:pv,:rg,:rp,:nordre,:ue,:dpv,:drec,:type,:infr,:anti,:reg,:dep,:com,:desc,'recu',:by)"
         );
         $stmt->execute([
-            'pv'   => $this->sanitize($_POST['numero_pv'] ?? ''),
-            'rg'   => $numeroRG,
-            'ue'   => $_POST['unite_enquete_id'] ?: null,
-            'dpv'  => $_POST['date_pv'],
-            'drec' => $_POST['date_reception'],
-            'type' => $_POST['type_affaire'],
-            'infr' => !empty($_POST['infraction_id']) ? (int)$_POST['infraction_id'] : null,
-            'anti' => isset($_POST['est_antiterroriste']) ? 1 : 0,
-            'reg'  => $_POST['region_id'] ?: null,
-            'dep'  => $_POST['departement_id'] ?: null,
-            'com'  => $_POST['commune_id'] ?: null,
-            'desc' => $this->sanitize($_POST['description_faits'] ?? ''),
-            'by'   => Auth::userId(),
+            'pv'     => $this->sanitize($_POST['numero_pv'] ?? ''),
+            'rg'     => $numeroRG,
+            'rp'     => $numeroRP ?: null,
+            'nordre' => $this->sanitize($_POST['numero_ordre'] ?? '') ?: null,
+            'ue'     => $_POST['unite_enquete_id'] ?: null,
+            'dpv'    => $_POST['date_pv'],
+            'drec'   => $_POST['date_reception'],
+            'type'   => $_POST['type_affaire'],
+            'infr'   => !empty($_POST['infraction_id']) ? (int)$_POST['infraction_id'] : null,
+            'anti'   => isset($_POST['est_antiterroriste']) ? 1 : 0,
+            'reg'    => $_POST['region_id'] ?: null,
+            'dep'    => $_POST['departement_id'] ?: null,
+            'com'    => $_POST['commune_id'] ?: null,
+            'desc'   => $this->sanitize($_POST['description_faits'] ?? ''),
+            'by'     => Auth::userId(),
         ]);
         $pvId = (int)$this->db->lastInsertId();
 
@@ -108,7 +122,7 @@ class PVController extends Controller {
             }
         }
 
-        $this->flash('success', "PV enregistré avec le numéro {$numeroRG}.");
+        $this->flash('success', "PV enregistré avec le numéro {$numeroRG}" . ($numeroRP ? " / RP {$numeroRP}" : '') . ".");
         $this->redirect('/pv/show/' . $pvId);
     }
 
@@ -130,7 +144,14 @@ class PVController extends Controller {
             $dossier = $dossierStmt->fetch() ?: null;
         }
 
-        $this->view('pv/show', compact('pv','flash','user','substituts','cabinets','infractions','dossier'));
+        // Mises en cause liées à ce PV
+        $mecStmt = $this->db->prepare(
+            "SELECT * FROM mises_en_cause WHERE pv_id=? ORDER BY nom, prenom"
+        );
+        $mecStmt->execute([(int)$id]);
+        $misesEnCause = $mecStmt->fetchAll();
+
+        $this->view('pv/show', compact('pv','flash','user','substituts','cabinets','infractions','dossier','misesEnCause'));
     }
 
     public function edit(string $id): void {
@@ -243,31 +264,54 @@ class PVController extends Controller {
         CSRF::check();
         Auth::requireRole(['admin','procureur','substitut_procureur']);
 
-        $destination = $_POST['destination'] ?? '';
         $stmtPV = $this->db->prepare("SELECT * FROM pv WHERE id=?");
         $stmtPV->execute([(int)$id]);
         $pvData = $stmtPV->fetch();
         if (!$pvData) { $this->redirect('/pv'); }
 
-        $num  = new Numerotation($this->db);
-        $annee = date('Y');
+        $num    = new Numerotation($this->db);
+        $annee  = date('Y');
 
-        // Mode de poursuite (uniquement pour instruction)
-        $modePoursuite = 'aucun';
-        if ($destination === 'instruction') {
-            $mp = $_POST['mode_poursuite'] ?? 'aucun';
-            $modePoursuite = in_array($mp, ['aucun','CD','FD','CRCP','RI']) ? $mp : 'aucun';
+        // Mode de poursuite décidé par le substitut
+        $modePoursuite = $_POST['mode_poursuite'] ?? 'RI';
+        if (!in_array($modePoursuite, ['RI','CD','FD','CRPC','autre'])) {
+            $modePoursuite = 'RI';
         }
 
-        // Créer le dossier
-        $numeroRG = $num->genererRG($annee);
-        $numeroRP = $num->genererRP($annee);
-        $numeroRI = ($destination === 'instruction') ? $num->genererRI($annee) : null;
+        // RÈGLE : seul RI peut aller au cabinet d'instruction
+        // CD, FD, CRPC, autre → audience directe
+        $destination = ($modePoursuite === 'RI') ? 'instruction' : 'audience';
 
-        $statut   = ($destination === 'instruction') ? 'en_instruction' : 'en_audience';
-        $cabinetId = ($destination === 'instruction') ? ($_POST['cabinet_id'] ?: null) : null;
+        // Numéro RP auto-généré (depuis le PV si déjà renseigné, sinon générer)
+        $numeroRP = $pvData['numero_rp'] ?? null;
+        if (!$numeroRP) {
+            $numeroRP = $num->genererRP($annee);
+        }
+
+        // RI : saisi manuellement par la greffière lors du transfert
+        $numeroRI  = null;
+        $cabinetId = null;
+        if ($destination === 'instruction') {
+            $numeroRI = trim($this->sanitize($_POST['numero_ri'] ?? ''));
+            if ($numeroRI) {
+                // Vérifier unicité du RI
+                $chkRI = $this->db->prepare("SELECT COUNT(*) FROM dossiers WHERE numero_ri = ?");
+                $chkRI->execute([$numeroRI]);
+                if ((int)$chkRI->fetchColumn() > 0) {
+                    $this->flash('error', "Le numéro RI {$numeroRI} existe déjà dans le système.");
+                    $this->redirect('/pv/show/' . $id);
+                    return;
+                }
+            } else {
+                $numeroRI = $num->genererRI($annee);
+            }
+            $cabinetId = $_POST['cabinet_id'] ? (int)$_POST['cabinet_id'] : null;
+        }
+
+        $numeroRG    = $num->genererRG($annee);
+        $statut      = ($destination === 'instruction') ? 'en_instruction' : 'en_audience';
         $dateInstDeb = ($destination === 'instruction') ? date('Y-m-d') : null;
-        $dateLimite  = ($destination === 'instruction') 
+        $dateLimite  = ($destination === 'instruction')
             ? date('Y-m-d', strtotime('+' . DELAI_INSTRUCTION_MOIS . ' months'))
             : date('Y-m-d', strtotime('+30 days'));
 
@@ -295,22 +339,24 @@ class PVController extends Controller {
         $dossierId = (int)$this->db->lastInsertId();
 
         // Historique
-        $modePoursuiteLabel = [
-            'aucun' => 'Aucun', 'CD' => 'Citation Directe', 'FD' => 'Flagrant Délit',
-            'CRCP'  => 'CRCP', 'RI' => 'Réquisitoire Introductif'
-        ][$modePoursuite] ?? $modePoursuite;
-        $histDesc = "Dossier créé depuis PV {$pvData['numero_rg']}";
-        if ($destination === 'instruction') {
-            $histDesc .= " — Mode de poursuite : {$modePoursuiteLabel}";
-        }
+        $mpLabels = [
+            'RI'    => 'Réquisitoire Introductif (→ Cabinet instruction)',
+            'CD'    => 'Citation Directe (→ Audience directe)',
+            'FD'    => 'Flagrant Délit (→ Audience directe)',
+            'CRPC'  => 'CRPC (→ Audience directe)',
+            'autre' => 'Autre',
+        ];
+        $histDesc = "Dossier créé depuis PV {$pvData['numero_rg']} — Mode : " . ($mpLabels[$modePoursuite] ?? $modePoursuite);
         $this->db->prepare("INSERT INTO mouvements_dossier (dossier_id, user_id, type_mouvement, nouveau_statut, description) VALUES (?,?,?,?,?)")
             ->execute([$dossierId, Auth::userId(), 'creation', $statut, $histDesc]);
 
         // Mettre à jour le PV
         $pvStatut = ($destination === 'instruction') ? 'transfere_instruction' : 'transfere_jugement_direct';
-        $this->db->prepare("UPDATE pv SET statut=? WHERE id=?")->execute([$pvStatut, (int)$id]);
+        $this->db->prepare("UPDATE pv SET statut=:s, mode_poursuite=:mp WHERE id=:id")
+            ->execute([':s' => $pvStatut, ':mp' => $modePoursuite, ':id' => (int)$id]);
 
-        $this->flash('success', "Dossier créé : {$numeroRG}" . ($numeroRI ? " / {$numeroRI}" : '') . ".");
+        $label = $destination === 'instruction' ? "Cabinet d'instruction" : 'Audience directe';
+        $this->flash('success', "Dossier créé : {$numeroRG}" . ($numeroRI ? " / RI {$numeroRI}" : '') . " → {$label}.");
         $this->redirect('/dossiers/show/' . $dossierId);
     }
 
