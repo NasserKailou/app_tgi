@@ -3,22 +3,10 @@
 -- https://www.phpmyadmin.net/
 --
 -- Hôte : 127.0.0.1
--- Généré le : sam. 18 avr. 2026 à 00:50
+-- Généré le : dim. 19 avr. 2026 à 08:41
 -- Version du serveur : 10.4.32-MariaDB
 -- Version de PHP : 8.2.12
 
---
--- ============================================================================
--- TGI-NY | Tribunal de Grande Instance Hors Classe de Niamey
--- Base de données complète — Sauvegarde globale v3.6
--- Généré le : 2026-04-17 — Migrations 001 à 013 intégrées
--- ============================================================================
--- RESTAURATION : mysql -u root -p tribunal_tgi_ny < global.sql
--- Ou via phpMyAdmin : Importer ce fichier
--- Mot de passe par défaut de tous les comptes : Admin@2026
--- Hash bcrypt : $2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym
--- ============================================================================
---
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
 SET time_zone = "+00:00";
@@ -30,7 +18,7 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Base de données : `tribunal_tgi_ny`
+-- Base de données : `tribunal_tgi_ny_maj`
 --
 
 -- --------------------------------------------------------
@@ -77,6 +65,52 @@ CREATE TABLE `audiences` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- Déchargement des données de la table `audiences`
+--
+
+INSERT INTO `audiences` (`id`, `dossier_id`, `salle_id`, `numero_audience`, `date_audience`, `type_audience`, `statut`, `president_id`, `greffier_id`, `notes`, `motif_renvoi`, `date_renvoi`, `created_by`, `created_at`, `updated_at`) VALUES
+(1, 3, 2, 'AUD N°001/2026/TGI-NY', '2026-04-18 10:00:00', 'correctionnelle', 'planifiee', 10, 11, '', NULL, NULL, 1, '2026-04-18 05:43:41', '2026-04-18 05:43:41');
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `avocats`
+--
+
+CREATE TABLE `avocats` (
+  `id` int(11) NOT NULL,
+  `matricule` varchar(30) NOT NULL,
+  `nom` varchar(100) NOT NULL,
+  `prenom` varchar(100) NOT NULL,
+  `barreau` varchar(100) NOT NULL DEFAULT 'Barreau de Niamey',
+  `numero_ordre` varchar(50) DEFAULT NULL,
+  `telephone` varchar(30) DEFAULT NULL,
+  `email` varchar(150) DEFAULT NULL,
+  `adresse` text DEFAULT NULL,
+  `date_inscription` date DEFAULT NULL,
+  `statut` enum('actif','suspendu','radié','honoraire') NOT NULL DEFAULT 'actif',
+  `observations` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `avocat_dossier`
+--
+
+CREATE TABLE `avocat_dossier` (
+  `id` int(11) NOT NULL,
+  `avocat_id` int(11) NOT NULL,
+  `dossier_id` int(11) NOT NULL,
+  `role_avocat` enum('defense','partie_civile','expert','autre') NOT NULL DEFAULT 'defense',
+  `date_mandat` date DEFAULT NULL,
+  `observations` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- --------------------------------------------------------
 
 --
@@ -105,6 +139,70 @@ INSERT INTO `cabinets_instruction` (`id`, `numero`, `libelle`, `juge_id`, `actif
 (7, 'CAB-07', 'Cabinet Pôle Économique et Financier N°2', NULL, 1),
 (8, 'CAB-08', 'Cabinet Pôle Antiterroriste', NULL, 1),
 (9, 'VVVV', 'VVVV', 2, 1);
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `casier_judiciaire_condamnations`
+--
+
+CREATE TABLE `casier_judiciaire_condamnations` (
+  `id` int(11) NOT NULL,
+  `personne_id` int(11) NOT NULL,
+  `dossier_id` int(11) DEFAULT NULL,
+  `jugement_id` int(11) DEFAULT NULL,
+  `date_condamnation` date NOT NULL,
+  `juridiction` varchar(200) DEFAULT 'TGI-HC Niamey',
+  `infraction` text NOT NULL,
+  `peine` text NOT NULL,
+  `date_fin_peine` date DEFAULT NULL,
+  `gracie` tinyint(1) NOT NULL DEFAULT 0,
+  `date_grace` date DEFAULT NULL,
+  `observations` text DEFAULT NULL,
+  `created_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `casier_judiciaire_personnes`
+--
+
+CREATE TABLE `casier_judiciaire_personnes` (
+  `id` int(11) NOT NULL,
+  `nin` varchar(30) DEFAULT NULL COMMENT 'Numéro d''Identification National',
+  `nom` varchar(100) NOT NULL,
+  `prenom` varchar(100) DEFAULT NULL,
+  `date_naissance` date DEFAULT NULL,
+  `lieu_naissance` varchar(200) DEFAULT NULL,
+  `nationalite` varchar(100) DEFAULT 'Nigérienne',
+  `sexe` enum('M','F') DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `commissions_rogatoires`
+--
+
+CREATE TABLE `commissions_rogatoires` (
+  `id` int(11) NOT NULL,
+  `numero_cr` varchar(50) NOT NULL,
+  `dossier_id` int(11) NOT NULL,
+  `type_cr` enum('nationale','internationale') NOT NULL DEFAULT 'nationale',
+  `autorite_destinataire` varchar(250) NOT NULL,
+  `date_envoi` date NOT NULL,
+  `objet` text NOT NULL,
+  `date_retour` date DEFAULT NULL,
+  `resultats` text DEFAULT NULL,
+  `statut` enum('envoyee','executee','retour','classee') NOT NULL DEFAULT 'envoyee',
+  `created_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -441,6 +539,32 @@ INSERT INTO `communes_geo` (`id`, `nom`, `departement_nom`, `region_nom`, `longi
 -- --------------------------------------------------------
 
 --
+-- Structure de la table `controles_judiciaires`
+--
+
+CREATE TABLE `controles_judiciaires` (
+  `id` int(11) NOT NULL,
+  `dossier_id` int(11) NOT NULL,
+  `ordonnance_id` int(11) DEFAULT NULL,
+  `type_controle` enum('controle_judiciaire','liberte_provisoire','liberte_sous_caution') NOT NULL DEFAULT 'controle_judiciaire',
+  `personne_nom` varchar(100) NOT NULL,
+  `personne_prenom` varchar(100) DEFAULT NULL,
+  `date_debut` date NOT NULL,
+  `date_fin` date DEFAULT NULL,
+  `obligations` text NOT NULL,
+  `observations` text DEFAULT NULL,
+  `statut` enum('actif','leve','viole','expire') NOT NULL DEFAULT 'actif',
+  `date_levee` datetime DEFAULT NULL,
+  `motif_levee` text DEFAULT NULL,
+  `violations` text DEFAULT NULL,
+  `created_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Structure de la table `departements`
 --
 
@@ -552,6 +676,13 @@ CREATE TABLE `detenus` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- Déchargement des données de la table `detenus`
+--
+
+INSERT INTO `detenus` (`id`, `numero_ecrou`, `nom`, `prenom`, `surnom_alias`, `nom_mere`, `statut_matrimonial`, `nombre_enfants`, `sexe`, `photo_identite`, `maison_arret_id`, `date_naissance`, `lieu_naissance`, `nationalite`, `profession`, `adresse`, `dossier_id`, `type_detention`, `date_incarceration`, `date_liberation_prevue`, `date_liberation_effective`, `cellule`, `etablissement`, `statut`, `infractions_retenues`, `notes`, `created_by`, `created_at`, `updated_at`) VALUES
+(1, 'ECR0001/2026', 'Ali', 'ARZIKA', 'KOUDIZE', 'MINTOU SINKA', 'marie', 5, 'M', 'uploads/photos_detenus/det_dae062d59f963628_1776491861.jpg', 1, '1990-04-18', 'SOKORBE', 'Nigérienne', 'REVENDEUR', NULL, 3, 'prevenu', '2026-04-18', '2026-12-18', NULL, '', 'Maison d&#039;Arrêt de Niamey', 'incarcere', NULL, '', NULL, '2026-04-18 05:57:41', '2026-04-18 05:57:41');
+
 -- --------------------------------------------------------
 
 --
@@ -583,7 +714,9 @@ INSERT INTO `documents` (`id`, `dossier_id`, `pv_id`, `audience_id`, `jugement_i
 (1, 1, NULL, NULL, NULL, 'MANDAT D\'ARRÊT — MAND N°001_2026_TGI-NY.pdf', '677c960acb6a72df_MANDAT_D_ARR__T_____MAND_N__001_2026_TGI-NY.pdf', 'uploads/documents/dossier_1/677c960acb6a72df_MANDAT_D_ARR__T_____MAND_N__001_2026_TGI-NY.pdf', 'piece_jointe', 'application/pdf', 234142, 'test', 1, '2026-04-17 17:01:17'),
 (2, 2, NULL, NULL, NULL, 'MANDAT D\'ARRÊT — MAND N°001_2026_TGI-NY.pdf', '677c960acb6a72df_MANDAT_D_ARR__T_____MAND_N__001_2026_TGI-NY.pdf', 'uploads/documents/dossier_2/677c960acb6a72df_MANDAT_D_ARR__T_____MAND_N__001_2026_TGI-NY.pdf', 'piece_jointe', 'application/pdf', 234142, 'TEST', 1, '2026-04-17 20:54:09'),
 (3, 3, NULL, NULL, NULL, 'MANDAT D\'ARRÊT — MAND N°001_2026_TGI-NY.pdf', '677c960acb6a72df_MANDAT_D_ARR__T_____MAND_N__001_2026_TGI-NY.pdf', 'uploads/documents/dossier_3/677c960acb6a72df_MANDAT_D_ARR__T_____MAND_N__001_2026_TGI-NY.pdf', 'piece_jointe', 'application/pdf', 234142, 'TEST', 1, '2026-04-17 21:01:43'),
-(4, 3, NULL, NULL, NULL, 'whatsapp_image_2025-11-25_at_17.20_40.jpg', 'b83d439bf4ec2e05_whatsapp_image_2025-11-25_at_17.20_40.jpg', 'uploads/documents/dossier_3/b83d439bf4ec2e05_whatsapp_image_2025-11-25_at_17.20_40.jpg', 'piece_jointe', 'image/jpeg', 153485, 'gg', 1, '2026-04-17 21:25:27');
+(4, 3, NULL, NULL, NULL, 'whatsapp_image_2025-11-25_at_17.20_40.jpg', 'b83d439bf4ec2e05_whatsapp_image_2025-11-25_at_17.20_40.jpg', 'uploads/documents/dossier_3/b83d439bf4ec2e05_whatsapp_image_2025-11-25_at_17.20_40.jpg', 'piece_jointe', 'image/jpeg', 153485, 'gg', 1, '2026-04-17 21:25:27'),
+(5, 3, NULL, NULL, NULL, 'whatsapp_image_2025-11-25_at_17.20_40.jpg', 'b83d439bf4ec2e05_whatsapp_image_2025-11-25_at_17.20_40.jpg', 'uploads/documents/dossier_3/b83d439bf4ec2e05_whatsapp_image_2025-11-25_at_17.20_40.jpg', 'piece_jointe', 'image/jpeg', 153485, NULL, 1, '2026-04-17 23:11:17'),
+(6, 3, NULL, NULL, NULL, 'WhatsApp Image 2026-04-14 at 16.51.49.jpeg', '0e827f44df1fa653_WhatsApp_Image_2026-04-14_at_16.51.49.jpeg', 'uploads/documents/dossier_3/0e827f44df1fa653_WhatsApp_Image_2026-04-14_at_16.51.49.jpeg', 'piece_jointe', 'image/jpeg', 260836, NULL, 1, '2026-04-18 06:05:03');
 
 -- --------------------------------------------------------
 
@@ -632,7 +765,7 @@ CREATE TABLE `dossiers` (
 INSERT INTO `dossiers` (`id`, `numero_rg`, `numero_rp`, `numero_ri`, `pv_id`, `substitut_id`, `cabinet_id`, `mode_poursuite`, `intitule`, `objet`, `motif_classement`, `date_classement`, `motif_declassement`, `date_declassement`, `declasse_par`, `statut_avant_classement`, `type_affaire`, `nature`, `statut`, `date_enregistrement`, `date_limite_traitement`, `date_instruction_debut`, `date_instruction_fin`, `est_antiterroriste`, `region_id`, `departement_id`, `commune_id`, `juge_siege_id`, `created_by`, `created_at`, `updated_at`) VALUES
 (1, 'RG N°002/2026/TGI-NY', 'RP N°001/2026/PARQUET', 'RI N°001/2026/INSTR', 1, 5, 1, 'aucun', '', 'examen', NULL, NULL, NULL, NULL, NULL, NULL, 'penale', 'correctionnel', 'en_instruction', '2026-04-17', '2026-10-17', '2026-04-17', NULL, 0, NULL, NULL, NULL, NULL, 1, '2026-04-17 16:09:56', '2026-04-17 20:02:34'),
 (2, 'RG N°004/2026/TGI-NY', 'RP N°002/2026/PARQUET', 'RI N°002/2026/INSTR', 2, 6, 2, 'RI', '', 'test', NULL, NULL, NULL, NULL, NULL, NULL, 'penale', 'correctionnel', 'en_instruction', '2026-04-17', '2026-10-17', '2026-04-17', NULL, 0, NULL, NULL, NULL, NULL, 1, '2026-04-17 20:53:43', '2026-04-17 20:53:43'),
-(3, 'RG N°006/2026/TGI-NY', 'RP N°003/2026/PARQUET', 'RI N°003/2026/INSTR', 3, 7, 3, 'FD', '', 'TESTT', NULL, NULL, NULL, NULL, NULL, NULL, 'penale', 'correctionnel', 'en_instruction', '2026-04-17', '2026-10-17', '2026-04-17', NULL, 0, NULL, NULL, NULL, NULL, 1, '2026-04-17 21:01:24', '2026-04-17 21:01:24');
+(3, 'RG N°006/2026/TGI-NY', 'RP N°003/2026/PARQUET', 'RI N°003/2026/INSTR', 3, 7, 3, 'FD', '', 'TESTT', NULL, NULL, NULL, NULL, NULL, NULL, 'penale', 'correctionnel', 'en_audience', '2026-04-17', '2026-10-17', '2026-04-17', NULL, 0, NULL, NULL, NULL, NULL, 1, '2026-04-17 21:01:24', '2026-04-18 05:43:41');
 
 -- --------------------------------------------------------
 
@@ -687,7 +820,41 @@ INSERT INTO `droits_utilisateurs` (`id`, `user_id`, `menu_id`, `fonctionnalite_i
 (30, 1, NULL, 17, 1, 1, '2026-04-17 17:37:52'),
 (31, 1, NULL, 20, 1, 1, '2026-04-17 17:37:52'),
 (32, 1, NULL, 21, 1, 1, '2026-04-17 17:37:52'),
-(33, 1, NULL, 22, 1, 1, '2026-04-17 17:37:52');
+(33, 1, NULL, 22, 1, 1, '2026-04-17 17:37:52'),
+(34, 11, 2, NULL, 1, 1, '2026-04-19 07:26:34'),
+(35, 11, NULL, 1, 1, 1, '2026-04-19 07:26:34'),
+(36, 11, NULL, 2, 1, 1, '2026-04-19 07:26:34');
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `expertises_judiciaires`
+--
+
+CREATE TABLE `expertises_judiciaires` (
+  `id` int(11) NOT NULL,
+  `dossier_id` int(11) NOT NULL,
+  `ordonnance_id` int(11) DEFAULT NULL,
+  `type_expertise` enum('medico_legale','psychiatrique','comptable','technique','balistique','graphologique','informatique','autre') NOT NULL,
+  `expert_nom` varchar(150) NOT NULL,
+  `expert_qualification` varchar(200) DEFAULT NULL,
+  `date_mission` date NOT NULL,
+  `delai_depot` date DEFAULT NULL,
+  `objet_expertise` text NOT NULL,
+  `date_depot_rapport` date DEFAULT NULL,
+  `conclusions` text DEFAULT NULL,
+  `statut` enum('ordonnee','en_cours','deposee','validee','contestee') NOT NULL DEFAULT 'ordonnee',
+  `created_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Déchargement des données de la table `expertises_judiciaires`
+--
+
+INSERT INTO `expertises_judiciaires` (`id`, `dossier_id`, `ordonnance_id`, `type_expertise`, `expert_nom`, `expert_qualification`, `date_mission`, `delai_depot`, `objet_expertise`, `date_depot_rapport`, `conclusions`, `statut`, `created_by`, `created_at`, `updated_at`) VALUES
+(1, 1, NULL, 'psychiatrique', 'uuu', '', '2026-04-18', NULL, 'hjhj', NULL, NULL, 'ordonnee', 1, '2026-04-17 23:08:02', '2026-04-17 23:08:02');
 
 -- --------------------------------------------------------
 
@@ -962,6 +1129,17 @@ CREATE TABLE `membres_audience` (
   `observations` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- Déchargement des données de la table `membres_audience`
+--
+
+INSERT INTO `membres_audience` (`id`, `audience_id`, `user_id`, `nom_externe`, `role_audience`, `observations`) VALUES
+(1, 1, 2, NULL, 'assesseur_1', NULL),
+(2, 1, 3, NULL, 'assesseur_2', NULL),
+(3, 1, NULL, 'AAAAA', 'jure_1', NULL),
+(4, 1, NULL, 'BBBBBB', 'jure_2', NULL),
+(5, 1, 7, NULL, 'procureur', NULL);
+
 -- --------------------------------------------------------
 
 --
@@ -1023,7 +1201,38 @@ INSERT INTO `mouvements_dossier` (`id`, `dossier_id`, `user_id`, `type_mouvement
 (3, 1, 1, 'declassement', 'Déclassé : ssss', 'classe', 'parquet', '2026-04-17 16:34:00'),
 (4, 1, 1, 'affectation_instruction', 'Affecté au cabinet d\'instruction', 'parquet', 'en_instruction', '2026-04-17 20:02:34'),
 (5, 2, 1, 'creation', 'Dossier créé depuis PV RG N°003/2026/TGI-NY — Mode de poursuite : Réquisitoire Introductif', NULL, 'en_instruction', '2026-04-17 20:53:43'),
-(6, 3, 1, 'creation', 'Dossier créé depuis PV RG N°005/2026/TGI-NY — Mode de poursuite : Flagrant Délit', NULL, 'en_instruction', '2026-04-17 21:01:24');
+(6, 3, 1, 'creation', 'Dossier créé depuis PV RG N°005/2026/TGI-NY — Mode de poursuite : Flagrant Délit', NULL, 'en_instruction', '2026-04-17 21:01:24'),
+(7, 1, 1, 'ordonnance', 'Ordonnance ORD-2026-0001 créée', NULL, NULL, '2026-04-18 06:02:15');
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `ordonnances`
+--
+
+CREATE TABLE `ordonnances` (
+  `id` int(11) NOT NULL,
+  `numero_ordonnance` varchar(50) NOT NULL,
+  `dossier_id` int(11) NOT NULL,
+  `juge_id` int(11) DEFAULT NULL,
+  `type_ordonnance` enum('renvoi','non_lieu','detention','liberation','saisie','perquisition','commission_rogatoire','autre') NOT NULL,
+  `date_ordonnance` date NOT NULL,
+  `contenu` text NOT NULL,
+  `observations` text DEFAULT NULL,
+  `statut` enum('projet','signee','notifiee','executee') NOT NULL DEFAULT 'projet',
+  `date_signature` datetime DEFAULT NULL,
+  `date_notification` datetime DEFAULT NULL,
+  `created_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Déchargement des données de la table `ordonnances`
+--
+
+INSERT INTO `ordonnances` (`id`, `numero_ordonnance`, `dossier_id`, `juge_id`, `type_ordonnance`, `date_ordonnance`, `contenu`, `observations`, `statut`, `date_signature`, `date_notification`, `created_by`, `created_at`, `updated_at`) VALUES
+(1, 'ORD-2026-0001', 1, 8, 'detention', '2026-04-18', 'jughhhhhhh', 'chghgffghhjfgfgtyj', 'signee', '2026-04-18 07:02:27', NULL, 1, '2026-04-18 06:02:15', '2026-04-18 06:02:27');
 
 -- --------------------------------------------------------
 
@@ -1098,6 +1307,13 @@ CREATE TABLE `parties` (
   `notes` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Déchargement des données de la table `parties`
+--
+
+INSERT INTO `parties` (`id`, `dossier_id`, `type_partie`, `nom`, `prenom`, `date_naissance`, `nationalite`, `profession`, `adresse`, `telephone`, `notes`, `created_at`) VALUES
+(1, 3, '', 'SCP', 'ARZIKA', NULL, 'Nigérienne', '', '', 'KIMBA', NULL, '2026-04-18 05:41:55');
 
 -- --------------------------------------------------------
 
@@ -1266,6 +1482,40 @@ INSERT INTO `salles_audience` (`id`, `nom`, `capacite`, `description`, `actif`) 
 -- --------------------------------------------------------
 
 --
+-- Structure de la table `scelles`
+--
+
+CREATE TABLE `scelles` (
+  `id` int(11) NOT NULL,
+  `numero_scelle` varchar(50) NOT NULL,
+  `dossier_id` int(11) NOT NULL,
+  `categorie` enum('arme','drogue','document','argent','electronique','vehicule','autre') NOT NULL,
+  `description` text NOT NULL,
+  `date_depot` date NOT NULL,
+  `lieu_conservation` varchar(200) DEFAULT 'Greffe du TGI-NY',
+  `observations` text DEFAULT NULL,
+  `statut` enum('depose','inventorie','restitue','detruit','confisque') NOT NULL DEFAULT 'depose',
+  `date_restitution` date DEFAULT NULL,
+  `beneficiaire_restitution` varchar(200) DEFAULT NULL,
+  `date_destruction` date DEFAULT NULL,
+  `motif_destruction` text DEFAULT NULL,
+  `pv_destruction` varchar(100) DEFAULT NULL,
+  `created_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Déchargement des données de la table `scelles`
+--
+
+INSERT INTO `scelles` (`id`, `numero_scelle`, `dossier_id`, `categorie`, `description`, `date_depot`, `lieu_conservation`, `observations`, `statut`, `date_restitution`, `beneficiaire_restitution`, `date_destruction`, `motif_destruction`, `pv_destruction`, `created_by`, `created_at`, `updated_at`) VALUES
+(1, 'SCL-2026-0001', 2, 'drogue', 'uuuuuuu', '2026-04-18', '', '', 'depose', NULL, NULL, NULL, NULL, NULL, 1, '2026-04-17 23:07:23', '2026-04-17 23:07:23'),
+(3, 'SCL-2026-0002', 2, 'drogue', 'ggggg', '2026-04-19', '', '', 'detruit', NULL, NULL, '2026-04-19', 'dddd', NULL, 1, '2026-04-19 06:21:35', '2026-04-19 06:22:32');
+
+-- --------------------------------------------------------
+
+--
 -- Structure de la table `unites_enquete`
 --
 
@@ -1328,8 +1578,39 @@ INSERT INTO `users` (`id`, `role_id`, `fonction_parquet_id`, `nom`, `prenom`, `e
 (8, 6, NULL, 'SAIDOU', 'Aïssatou', 'juge.instr1@tgi-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'JI-001', 1, '2026-04-17 16:04:24', '2026-04-17 16:04:24'),
 (9, 6, NULL, 'HAMIDOU', 'Mariama', 'juge.instr2@tgi-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'JI-002', 1, '2026-04-17 16:04:24', '2026-04-17 16:04:24'),
 (10, 7, NULL, 'YACOUBA', 'Hassane', 'juge.siege@tgi-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'JS-001', 1, '2026-04-17 16:04:24', '2026-04-17 16:04:24'),
-(11, 8, NULL, 'ISSA', 'Rahila', 'greffier@tgi-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'GRF-001', 1, '2026-04-17 16:04:24', '2026-04-17 16:04:24'),
+(11, 8, NULL, 'ISSA', 'Rahila', 'greffier@tgi-niamey.ne', '$2y$12$rZsYuSsaEp5vuBXThvHv2e5Y47YFcMo0Lvhm7yRb6BmfmH2UXXtSe', '', 'GRF-001', 1, '2026-04-17 16:04:24', '2026-04-19 06:27:01'),
 (12, 9, NULL, 'MAHAMANE', 'Alio', 'avocat@barreau-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'AVO-001', 1, '2026-04-17 16:04:24', '2026-04-17 16:04:24');
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `voies_recours`
+--
+
+CREATE TABLE `voies_recours` (
+  `id` int(11) NOT NULL,
+  `dossier_id` int(11) NOT NULL,
+  `jugement_id` int(11) DEFAULT NULL,
+  `type_recours` enum('appel','cassation','opposition','revision') NOT NULL,
+  `demandeur_nom` varchar(200) NOT NULL,
+  `demandeur_qualite` enum('prevenu','partie_civile','ministere_public','avocat') DEFAULT NULL,
+  `date_declaration` date NOT NULL,
+  `juridiction_saisie` varchar(200) DEFAULT NULL,
+  `motifs` text DEFAULT NULL,
+  `decision_rendue` text DEFAULT NULL,
+  `date_decision` date DEFAULT NULL,
+  `statut` enum('declare','instruit','juge','irrecevable','desiste') NOT NULL DEFAULT 'declare',
+  `created_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Déchargement des données de la table `voies_recours`
+--
+
+INSERT INTO `voies_recours` (`id`, `dossier_id`, `jugement_id`, `type_recours`, `demandeur_nom`, `demandeur_qualite`, `date_declaration`, `juridiction_saisie`, `motifs`, `decision_rendue`, `date_decision`, `statut`, `created_by`, `created_at`, `updated_at`) VALUES
+(1, 3, NULL, 'opposition', 'SANI MOUSSA', 'prevenu', '2026-04-18', 'APPEL NY', '', '', '2026-04-18', 'irrecevable', 1, '2026-04-18 05:46:00', '2026-04-18 05:46:25');
 
 --
 -- Index pour les tables déchargées
@@ -1359,11 +1640,53 @@ ALTER TABLE `audiences`
   ADD KEY `idx_audiences_date` (`date_audience`);
 
 --
+-- Index pour la table `avocats`
+--
+ALTER TABLE `avocats`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uk_avocat_matricule` (`matricule`);
+
+--
+-- Index pour la table `avocat_dossier`
+--
+ALTER TABLE `avocat_dossier`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uk_avocat_dossier` (`avocat_id`,`dossier_id`),
+  ADD KEY `fk_avdoss_dossier` (`dossier_id`);
+
+--
 -- Index pour la table `cabinets_instruction`
 --
 ALTER TABLE `cabinets_instruction`
   ADD PRIMARY KEY (`id`),
   ADD KEY `juge_id` (`juge_id`);
+
+--
+-- Index pour la table `casier_judiciaire_condamnations`
+--
+ALTER TABLE `casier_judiciaire_condamnations`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_cjc_personne` (`personne_id`),
+  ADD KEY `fk_cjc_dossier` (`dossier_id`),
+  ADD KEY `fk_cjc_jugement` (`jugement_id`),
+  ADD KEY `fk_cjc_created_by` (`created_by`);
+
+--
+-- Index pour la table `casier_judiciaire_personnes`
+--
+ALTER TABLE `casier_judiciaire_personnes`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uk_nin` (`nin`),
+  ADD KEY `idx_nom` (`nom`);
+
+--
+-- Index pour la table `commissions_rogatoires`
+--
+ALTER TABLE `commissions_rogatoires`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uk_numero_cr` (`numero_cr`),
+  ADD KEY `fk_cr_dossier` (`dossier_id`),
+  ADD KEY `fk_cr_created_by` (`created_by`);
 
 --
 -- Index pour la table `communes`
@@ -1378,6 +1701,15 @@ ALTER TABLE `communes`
 ALTER TABLE `communes_geo`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `uk_nom_dept` (`nom`,`departement_nom`);
+
+--
+-- Index pour la table `controles_judiciaires`
+--
+ALTER TABLE `controles_judiciaires`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_cj_dossier` (`dossier_id`),
+  ADD KEY `fk_cj_ordonnance` (`ordonnance_id`),
+  ADD KEY `fk_cj_created_by` (`created_by`);
 
 --
 -- Index pour la table `departements`
@@ -1425,7 +1757,8 @@ ALTER TABLE `dossiers`
   ADD KEY `idx_dossiers_statut` (`statut`),
   ADD KEY `idx_dossiers_cabinet` (`cabinet_id`),
   ADD KEY `idx_dossiers_substitut` (`substitut_id`),
-  ADD KEY `idx_dossiers_pv` (`pv_id`);
+  ADD KEY `idx_dossiers_pv` (`pv_id`),
+  ADD KEY `idx_type_affaire` (`type_affaire`);
 
 --
 -- Index pour la table `droits_utilisateurs`
@@ -1437,6 +1770,15 @@ ALTER TABLE `droits_utilisateurs`
   ADD KEY `menu_id` (`menu_id`),
   ADD KEY `fonctionnalite_id` (`fonctionnalite_id`),
   ADD KEY `accorde_par` (`accorde_par`);
+
+--
+-- Index pour la table `expertises_judiciaires`
+--
+ALTER TABLE `expertises_judiciaires`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_exp_dossier` (`dossier_id`),
+  ADD KEY `fk_exp_ordonnance` (`ordonnance_id`),
+  ADD KEY `fk_exp_created_by` (`created_by`);
 
 --
 -- Index pour la table `fonctionnalites`
@@ -1518,6 +1860,16 @@ ALTER TABLE `mouvements_dossier`
   ADD KEY `user_id` (`user_id`);
 
 --
+-- Index pour la table `ordonnances`
+--
+ALTER TABLE `ordonnances`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uk_numero_ordonnance` (`numero_ordonnance`),
+  ADD KEY `fk_ord_dossier` (`dossier_id`),
+  ADD KEY `fk_ord_juge` (`juge_id`),
+  ADD KEY `fk_ord_created_by` (`created_by`);
+
+--
 -- Index pour la table `parametres_tribunal`
 --
 ALTER TABLE `parametres_tribunal`
@@ -1581,6 +1933,15 @@ ALTER TABLE `salles_audience`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Index pour la table `scelles`
+--
+ALTER TABLE `scelles`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uk_numero_scelle` (`numero_scelle`),
+  ADD KEY `fk_sc_dossier` (`dossier_id`),
+  ADD KEY `fk_sc_created_by` (`created_by`);
+
+--
 -- Index pour la table `unites_enquete`
 --
 ALTER TABLE `unites_enquete`
@@ -1597,6 +1958,15 @@ ALTER TABLE `users`
   ADD KEY `fonction_parquet_id` (`fonction_parquet_id`);
 
 --
+-- Index pour la table `voies_recours`
+--
+ALTER TABLE `voies_recours`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_vr_dossier` (`dossier_id`),
+  ADD KEY `fk_vr_jugement` (`jugement_id`),
+  ADD KEY `fk_vr_created_by` (`created_by`);
+
+--
 -- AUTO_INCREMENT pour les tables déchargées
 --
 
@@ -1610,6 +1980,18 @@ ALTER TABLE `alertes`
 -- AUTO_INCREMENT pour la table `audiences`
 --
 ALTER TABLE `audiences`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT pour la table `avocats`
+--
+ALTER TABLE `avocats`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT pour la table `avocat_dossier`
+--
+ALTER TABLE `avocat_dossier`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -1617,6 +1999,24 @@ ALTER TABLE `audiences`
 --
 ALTER TABLE `cabinets_instruction`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+
+--
+-- AUTO_INCREMENT pour la table `casier_judiciaire_condamnations`
+--
+ALTER TABLE `casier_judiciaire_condamnations`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT pour la table `casier_judiciaire_personnes`
+--
+ALTER TABLE `casier_judiciaire_personnes`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT pour la table `commissions_rogatoires`
+--
+ALTER TABLE `commissions_rogatoires`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT pour la table `communes`
@@ -1631,6 +2031,12 @@ ALTER TABLE `communes_geo`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=267;
 
 --
+-- AUTO_INCREMENT pour la table `controles_judiciaires`
+--
+ALTER TABLE `controles_judiciaires`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT pour la table `departements`
 --
 ALTER TABLE `departements`
@@ -1640,13 +2046,13 @@ ALTER TABLE `departements`
 -- AUTO_INCREMENT pour la table `detenus`
 --
 ALTER TABLE `detenus`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT pour la table `documents`
 --
 ALTER TABLE `documents`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT pour la table `dossiers`
@@ -1658,7 +2064,13 @@ ALTER TABLE `dossiers`
 -- AUTO_INCREMENT pour la table `droits_utilisateurs`
 --
 ALTER TABLE `droits_utilisateurs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=34;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
+
+--
+-- AUTO_INCREMENT pour la table `expertises_judiciaires`
+--
+ALTER TABLE `expertises_judiciaires`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT pour la table `fonctionnalites`
@@ -1700,7 +2112,7 @@ ALTER TABLE `mandats`
 -- AUTO_INCREMENT pour la table `membres_audience`
 --
 ALTER TABLE `membres_audience`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT pour la table `menus`
@@ -1712,7 +2124,13 @@ ALTER TABLE `menus`
 -- AUTO_INCREMENT pour la table `mouvements_dossier`
 --
 ALTER TABLE `mouvements_dossier`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+
+--
+-- AUTO_INCREMENT pour la table `ordonnances`
+--
+ALTER TABLE `ordonnances`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT pour la table `parametres_tribunal`
@@ -1724,7 +2142,7 @@ ALTER TABLE `parametres_tribunal`
 -- AUTO_INCREMENT pour la table `parties`
 --
 ALTER TABLE `parties`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT pour la table `primo_intervenants`
@@ -1757,6 +2175,12 @@ ALTER TABLE `salles_audience`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
+-- AUTO_INCREMENT pour la table `scelles`
+--
+ALTER TABLE `scelles`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
 -- AUTO_INCREMENT pour la table `unites_enquete`
 --
 ALTER TABLE `unites_enquete`
@@ -1767,6 +2191,12 @@ ALTER TABLE `unites_enquete`
 --
 ALTER TABLE `users`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+
+--
+-- AUTO_INCREMENT pour la table `voies_recours`
+--
+ALTER TABLE `voies_recours`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- Contraintes pour les tables déchargées
@@ -1792,16 +2222,47 @@ ALTER TABLE `audiences`
   ADD CONSTRAINT `audiences_ibfk_5` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 --
+-- Contraintes pour la table `avocat_dossier`
+--
+ALTER TABLE `avocat_dossier`
+  ADD CONSTRAINT `fk_avdoss_avocat` FOREIGN KEY (`avocat_id`) REFERENCES `avocats` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_avdoss_dossier` FOREIGN KEY (`dossier_id`) REFERENCES `dossiers` (`id`) ON DELETE CASCADE;
+
+--
 -- Contraintes pour la table `cabinets_instruction`
 --
 ALTER TABLE `cabinets_instruction`
   ADD CONSTRAINT `cabinets_instruction_ibfk_1` FOREIGN KEY (`juge_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 --
+-- Contraintes pour la table `casier_judiciaire_condamnations`
+--
+ALTER TABLE `casier_judiciaire_condamnations`
+  ADD CONSTRAINT `fk_cjc_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_cjc_dossier` FOREIGN KEY (`dossier_id`) REFERENCES `dossiers` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_cjc_jugement` FOREIGN KEY (`jugement_id`) REFERENCES `jugements` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_cjc_personne` FOREIGN KEY (`personne_id`) REFERENCES `casier_judiciaire_personnes` (`id`) ON DELETE CASCADE;
+
+--
+-- Contraintes pour la table `commissions_rogatoires`
+--
+ALTER TABLE `commissions_rogatoires`
+  ADD CONSTRAINT `fk_cr_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_cr_dossier` FOREIGN KEY (`dossier_id`) REFERENCES `dossiers` (`id`) ON DELETE CASCADE;
+
+--
 -- Contraintes pour la table `communes`
 --
 ALTER TABLE `communes`
   ADD CONSTRAINT `communes_ibfk_1` FOREIGN KEY (`departement_id`) REFERENCES `departements` (`id`) ON DELETE CASCADE;
+
+--
+-- Contraintes pour la table `controles_judiciaires`
+--
+ALTER TABLE `controles_judiciaires`
+  ADD CONSTRAINT `fk_cj_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_cj_dossier` FOREIGN KEY (`dossier_id`) REFERENCES `dossiers` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_cj_ordonnance` FOREIGN KEY (`ordonnance_id`) REFERENCES `ordonnances` (`id`) ON DELETE SET NULL;
 
 --
 -- Contraintes pour la table `departements`
@@ -1849,6 +2310,14 @@ ALTER TABLE `droits_utilisateurs`
   ADD CONSTRAINT `droits_utilisateurs_ibfk_2` FOREIGN KEY (`menu_id`) REFERENCES `menus` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `droits_utilisateurs_ibfk_3` FOREIGN KEY (`fonctionnalite_id`) REFERENCES `fonctionnalites` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `droits_utilisateurs_ibfk_4` FOREIGN KEY (`accorde_par`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Contraintes pour la table `expertises_judiciaires`
+--
+ALTER TABLE `expertises_judiciaires`
+  ADD CONSTRAINT `fk_exp_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_exp_dossier` FOREIGN KEY (`dossier_id`) REFERENCES `dossiers` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_exp_ordonnance` FOREIGN KEY (`ordonnance_id`) REFERENCES `ordonnances` (`id`) ON DELETE SET NULL;
 
 --
 -- Contraintes pour la table `fonctionnalites`
@@ -1904,6 +2373,14 @@ ALTER TABLE `mouvements_dossier`
   ADD CONSTRAINT `mouvements_dossier_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 --
+-- Contraintes pour la table `ordonnances`
+--
+ALTER TABLE `ordonnances`
+  ADD CONSTRAINT `fk_ord_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_ord_dossier` FOREIGN KEY (`dossier_id`) REFERENCES `dossiers` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_ord_juge` FOREIGN KEY (`juge_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
 -- Contraintes pour la table `parametres_tribunal`
 --
 ALTER TABLE `parametres_tribunal`
@@ -1935,6 +2412,13 @@ ALTER TABLE `pv_primo_intervenants`
   ADD CONSTRAINT `pv_primo_intervenants_ibfk_2` FOREIGN KEY (`primo_intervenant_id`) REFERENCES `primo_intervenants` (`id`) ON DELETE CASCADE;
 
 --
+-- Contraintes pour la table `scelles`
+--
+ALTER TABLE `scelles`
+  ADD CONSTRAINT `fk_sc_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_sc_dossier` FOREIGN KEY (`dossier_id`) REFERENCES `dossiers` (`id`);
+
+--
 -- Contraintes pour la table `unites_enquete`
 --
 ALTER TABLE `unites_enquete`
@@ -1947,347 +2431,13 @@ ALTER TABLE `users`
   ADD CONSTRAINT `users_ibfk_1` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`),
   ADD CONSTRAINT `users_ibfk_2` FOREIGN KEY (`fonction_parquet_id`) REFERENCES `fonctions_parquet` (`id`) ON DELETE SET NULL;
 
--- ============================================================================
--- ============================================================================
--- SECTION : Migration 013 — Modules complets TGI-NY (v3.6)
--- Avocats / Barreau, Ordonnances JI, Voies de recours, Contrôle judiciaire,
--- Expertises judiciaires, Commissions rogatoires, Scellés, Casier judiciaire
--- Intégré dans global.sql — Sauvegarde complète v3.6
--- ============================================================================
--- ============================================================================
-
---
--- Structure de la table `avocats`
---
-
-CREATE TABLE IF NOT EXISTS `avocats` (
-  `id`              int(11)      NOT NULL AUTO_INCREMENT,
-  `matricule`       varchar(30)  NOT NULL,
-  `nom`             varchar(100) NOT NULL,
-  `prenom`          varchar(100) NOT NULL,
-  `barreau`         varchar(100) NOT NULL DEFAULT 'Barreau de Niamey',
-  `numero_ordre`    varchar(50)  DEFAULT NULL,
-  `telephone`       varchar(30)  DEFAULT NULL,
-  `email`           varchar(150) DEFAULT NULL,
-  `adresse`         text         DEFAULT NULL,
-  `date_inscription` date        DEFAULT NULL,
-  `statut`          enum('actif','suspendu','radié','honoraire') NOT NULL DEFAULT 'actif',
-  `observations`    text         DEFAULT NULL,
-  `created_at`      timestamp    NOT NULL DEFAULT current_timestamp(),
-  `updated_at`      timestamp    NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_avocat_matricule` (`matricule`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Structure de la table `avocat_dossier`
---
-
-CREATE TABLE IF NOT EXISTS `avocat_dossier` (
-  `id`          int(11)      NOT NULL AUTO_INCREMENT,
-  `avocat_id`   int(11)      NOT NULL,
-  `dossier_id`  int(11)      NOT NULL,
-  `role_avocat` enum('defense','partie_civile','expert','autre') NOT NULL DEFAULT 'defense',
-  `date_mandat` date         DEFAULT NULL,
-  `observations` text        DEFAULT NULL,
-  `created_at`  timestamp    NOT NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_avocat_dossier` (`avocat_id`,`dossier_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Structure de la table `ordonnances`
---
-
-CREATE TABLE IF NOT EXISTS `ordonnances` (
-  `id`                int(11)      NOT NULL AUTO_INCREMENT,
-  `numero_ordonnance` varchar(50)  NOT NULL,
-  `dossier_id`        int(11)      NOT NULL,
-  `juge_id`           int(11)      DEFAULT NULL,
-  `type_ordonnance`   enum('renvoi','non_lieu','detention','liberation','saisie','perquisition','commission_rogatoire','autre') NOT NULL,
-  `date_ordonnance`   date         NOT NULL,
-  `contenu`           text         NOT NULL,
-  `observations`      text         DEFAULT NULL,
-  `statut`            enum('projet','signee','notifiee','executee') NOT NULL DEFAULT 'projet',
-  `date_signature`    datetime     DEFAULT NULL,
-  `date_notification` datetime     DEFAULT NULL,
-  `created_by`        int(11)      DEFAULT NULL,
-  `created_at`        timestamp    NOT NULL DEFAULT current_timestamp(),
-  `updated_at`        timestamp    NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_numero_ordonnance` (`numero_ordonnance`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Structure de la table `voies_recours`
---
-
-CREATE TABLE IF NOT EXISTS `voies_recours` (
-  `id`                   int(11)      NOT NULL AUTO_INCREMENT,
-  `dossier_id`           int(11)      NOT NULL,
-  `jugement_id`          int(11)      DEFAULT NULL,
-  `type_recours`         enum('appel','cassation','opposition','revision') NOT NULL,
-  `demandeur_nom`        varchar(200) NOT NULL,
-  `demandeur_qualite`    enum('prevenu','partie_civile','ministere_public','avocat') DEFAULT NULL,
-  `date_declaration`     date         NOT NULL,
-  `juridiction_saisie`   varchar(200) DEFAULT NULL,
-  `motifs`               text         DEFAULT NULL,
-  `decision_rendue`      text         DEFAULT NULL,
-  `date_decision`        date         DEFAULT NULL,
-  `statut`               enum('declare','instruit','juge','irrecevable','desiste') NOT NULL DEFAULT 'declare',
-  `created_by`           int(11)      DEFAULT NULL,
-  `created_at`           timestamp    NOT NULL DEFAULT current_timestamp(),
-  `updated_at`           timestamp    NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Structure de la table `controles_judiciaires`
---
-
-CREATE TABLE IF NOT EXISTS `controles_judiciaires` (
-  `id`              int(11)      NOT NULL AUTO_INCREMENT,
-  `dossier_id`      int(11)      NOT NULL,
-  `ordonnance_id`   int(11)      DEFAULT NULL,
-  `type_controle`   enum('controle_judiciaire','liberte_provisoire','liberte_sous_caution') NOT NULL DEFAULT 'controle_judiciaire',
-  `personne_nom`    varchar(100) NOT NULL,
-  `personne_prenom` varchar(100) DEFAULT NULL,
-  `date_debut`      date         NOT NULL,
-  `date_fin`        date         DEFAULT NULL,
-  `obligations`     text         NOT NULL,
-  `observations`    text         DEFAULT NULL,
-  `statut`          enum('actif','leve','viole','expire') NOT NULL DEFAULT 'actif',
-  `date_levee`      datetime     DEFAULT NULL,
-  `motif_levee`     text         DEFAULT NULL,
-  `violations`      text         DEFAULT NULL,
-  `created_by`      int(11)      DEFAULT NULL,
-  `created_at`      timestamp    NOT NULL DEFAULT current_timestamp(),
-  `updated_at`      timestamp    NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Structure de la table `expertises_judiciaires`
---
-
-CREATE TABLE IF NOT EXISTS `expertises_judiciaires` (
-  `id`                   int(11)      NOT NULL AUTO_INCREMENT,
-  `dossier_id`           int(11)      NOT NULL,
-  `ordonnance_id`        int(11)      DEFAULT NULL,
-  `type_expertise`       enum('medico_legale','psychiatrique','comptable','technique','balistique','graphologique','informatique','autre') NOT NULL,
-  `expert_nom`           varchar(150) NOT NULL,
-  `expert_qualification` varchar(200) DEFAULT NULL,
-  `date_mission`         date         NOT NULL,
-  `delai_depot`          date         DEFAULT NULL,
-  `objet_expertise`      text         NOT NULL,
-  `date_depot_rapport`   date         DEFAULT NULL,
-  `conclusions`          text         DEFAULT NULL,
-  `statut`               enum('ordonnee','en_cours','deposee','validee','contestee') NOT NULL DEFAULT 'ordonnee',
-  `created_by`           int(11)      DEFAULT NULL,
-  `created_at`           timestamp    NOT NULL DEFAULT current_timestamp(),
-  `updated_at`           timestamp    NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Structure de la table `commissions_rogatoires`
---
-
-CREATE TABLE IF NOT EXISTS `commissions_rogatoires` (
-  `id`                    int(11)      NOT NULL AUTO_INCREMENT,
-  `numero_cr`             varchar(50)  NOT NULL,
-  `dossier_id`            int(11)      NOT NULL,
-  `type_cr`               enum('nationale','internationale') NOT NULL DEFAULT 'nationale',
-  `autorite_destinataire` varchar(250) NOT NULL,
-  `date_envoi`            date         NOT NULL,
-  `objet`                 text         NOT NULL,
-  `date_retour`           date         DEFAULT NULL,
-  `resultats`             text         DEFAULT NULL,
-  `statut`                enum('envoyee','executee','retour','classee') NOT NULL DEFAULT 'envoyee',
-  `created_by`            int(11)      DEFAULT NULL,
-  `created_at`            timestamp    NOT NULL DEFAULT current_timestamp(),
-  `updated_at`            timestamp    NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_numero_cr` (`numero_cr`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Structure de la table `scelles`
---
-
-CREATE TABLE IF NOT EXISTS `scelles` (
-  `id`                      int(11)      NOT NULL AUTO_INCREMENT,
-  `numero_scelle`           varchar(50)  NOT NULL,
-  `dossier_id`              int(11)      NOT NULL,
-  `categorie`               enum('arme','drogue','document','argent','electronique','vehicule','autre') NOT NULL,
-  `description`             text         NOT NULL,
-  `date_depot`              date         NOT NULL,
-  `lieu_conservation`       varchar(200) DEFAULT 'Greffe du TGI-NY',
-  `observations`            text         DEFAULT NULL,
-  `statut`                  enum('depose','inventorie','restitue','detruit','confisque') NOT NULL DEFAULT 'depose',
-  `date_restitution`        date         DEFAULT NULL,
-  `beneficiaire_restitution` varchar(200) DEFAULT NULL,
-  `date_destruction`        date         DEFAULT NULL,
-  `motif_destruction`       text         DEFAULT NULL,
-  `pv_destruction`          varchar(100) DEFAULT NULL,
-  `created_by`              int(11)      DEFAULT NULL,
-  `created_at`              timestamp    NOT NULL DEFAULT current_timestamp(),
-  `updated_at`              timestamp    NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_numero_scelle` (`numero_scelle`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Structure de la table `casier_judiciaire_personnes`
---
-
-CREATE TABLE IF NOT EXISTS `casier_judiciaire_personnes` (
-  `id`             int(11)      NOT NULL AUTO_INCREMENT,
-  `nin`            varchar(30)  DEFAULT NULL COMMENT 'Numéro d''Identification National',
-  `nom`            varchar(100) NOT NULL,
-  `prenom`         varchar(100) DEFAULT NULL,
-  `date_naissance` date         DEFAULT NULL,
-  `lieu_naissance` varchar(200) DEFAULT NULL,
-  `nationalite`    varchar(100) DEFAULT 'Nigérienne',
-  `sexe`           enum('M','F') DEFAULT NULL,
-  `created_at`     timestamp    NOT NULL DEFAULT current_timestamp(),
-  `updated_at`     timestamp    NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_nin` (`nin`),
-  KEY `idx_nom` (`nom`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Structure de la table `casier_judiciaire_condamnations`
---
-
-CREATE TABLE IF NOT EXISTS `casier_judiciaire_condamnations` (
-  `id`                int(11)      NOT NULL AUTO_INCREMENT,
-  `personne_id`       int(11)      NOT NULL,
-  `dossier_id`        int(11)      DEFAULT NULL,
-  `jugement_id`       int(11)      DEFAULT NULL,
-  `date_condamnation` date         NOT NULL,
-  `juridiction`       varchar(200) DEFAULT 'TGI-HC Niamey',
-  `infraction`        text         NOT NULL,
-  `peine`             text         NOT NULL,
-  `date_fin_peine`    date         DEFAULT NULL,
-  `gracie`            tinyint(1)   NOT NULL DEFAULT 0,
-  `date_grace`        date         DEFAULT NULL,
-  `observations`      text         DEFAULT NULL,
-  `created_by`        int(11)      DEFAULT NULL,
-  `created_at`        timestamp    NOT NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ============================================================================
--- AUTO_INCREMENT declarations for new tables
--- ============================================================================
-
-ALTER TABLE `avocats`                       MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-ALTER TABLE `avocat_dossier`                MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-ALTER TABLE `ordonnances`                   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-ALTER TABLE `voies_recours`                 MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-ALTER TABLE `controles_judiciaires`         MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-ALTER TABLE `expertises_judiciaires`        MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-ALTER TABLE `commissions_rogatoires`        MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-ALTER TABLE `scelles`                       MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-ALTER TABLE `casier_judiciaire_personnes`   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-ALTER TABLE `casier_judiciaire_condamnations` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
--- ============================================================================
--- Foreign key constraints for new tables
--- ============================================================================
-
---
--- Contraintes pour la table `avocat_dossier`
---
-ALTER TABLE `avocat_dossier`
-  ADD CONSTRAINT `fk_avdoss_avocat`   FOREIGN KEY (`avocat_id`)  REFERENCES `avocats`  (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_avdoss_dossier`  FOREIGN KEY (`dossier_id`) REFERENCES `dossiers` (`id`) ON DELETE CASCADE;
-
---
--- Contraintes pour la table `ordonnances`
---
-ALTER TABLE `ordonnances`
-  ADD CONSTRAINT `fk_ord_dossier`     FOREIGN KEY (`dossier_id`) REFERENCES `dossiers` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_ord_juge`        FOREIGN KEY (`juge_id`)    REFERENCES `users`    (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `fk_ord_created_by`  FOREIGN KEY (`created_by`) REFERENCES `users`    (`id`) ON DELETE SET NULL;
-
 --
 -- Contraintes pour la table `voies_recours`
 --
 ALTER TABLE `voies_recours`
-  ADD CONSTRAINT `fk_vr_dossier`      FOREIGN KEY (`dossier_id`)  REFERENCES `dossiers`  (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_vr_jugement`     FOREIGN KEY (`jugement_id`) REFERENCES `jugements` (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `fk_vr_created_by`   FOREIGN KEY (`created_by`)  REFERENCES `users`     (`id`) ON DELETE SET NULL;
-
---
--- Contraintes pour la table `controles_judiciaires`
---
-ALTER TABLE `controles_judiciaires`
-  ADD CONSTRAINT `fk_cj_dossier`      FOREIGN KEY (`dossier_id`)    REFERENCES `dossiers`    (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_cj_ordonnance`   FOREIGN KEY (`ordonnance_id`) REFERENCES `ordonnances` (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `fk_cj_created_by`   FOREIGN KEY (`created_by`)    REFERENCES `users`       (`id`) ON DELETE SET NULL;
-
---
--- Contraintes pour la table `expertises_judiciaires`
---
-ALTER TABLE `expertises_judiciaires`
-  ADD CONSTRAINT `fk_exp_dossier`     FOREIGN KEY (`dossier_id`)    REFERENCES `dossiers`    (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_exp_ordonnance`  FOREIGN KEY (`ordonnance_id`) REFERENCES `ordonnances` (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `fk_exp_created_by`  FOREIGN KEY (`created_by`)    REFERENCES `users`       (`id`) ON DELETE SET NULL;
-
---
--- Contraintes pour la table `commissions_rogatoires`
---
-ALTER TABLE `commissions_rogatoires`
-  ADD CONSTRAINT `fk_cr_dossier`      FOREIGN KEY (`dossier_id`) REFERENCES `dossiers` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_cr_created_by`   FOREIGN KEY (`created_by`) REFERENCES `users`    (`id`) ON DELETE SET NULL;
-
---
--- Contraintes pour la table `scelles`
---
-ALTER TABLE `scelles`
-  ADD CONSTRAINT `fk_sc_dossier`      FOREIGN KEY (`dossier_id`) REFERENCES `dossiers` (`id`) ON DELETE RESTRICT,
-  ADD CONSTRAINT `fk_sc_created_by`   FOREIGN KEY (`created_by`) REFERENCES `users`    (`id`) ON DELETE SET NULL;
-
---
--- Contraintes pour la table `casier_judiciaire_condamnations`
---
-ALTER TABLE `casier_judiciaire_condamnations`
-  ADD CONSTRAINT `fk_cjc_personne`    FOREIGN KEY (`personne_id`) REFERENCES `casier_judiciaire_personnes` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_cjc_dossier`     FOREIGN KEY (`dossier_id`)  REFERENCES `dossiers`  (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `fk_cjc_jugement`    FOREIGN KEY (`jugement_id`) REFERENCES `jugements` (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `fk_cjc_created_by`  FOREIGN KEY (`created_by`)  REFERENCES `users`     (`id`) ON DELETE SET NULL;
-
--- ============================================================================
--- Index idx_type_affaire sur dossiers (idx_dossiers_statut déjà présent dans le backup)
--- ============================================================================
-
-ALTER TABLE `dossiers` ADD KEY `idx_type_affaire` (`type_affaire`);
-
--- ============================================================================
--- FIN — Migration 013 intégrée — TGI-NY global.sql v3.6
--- ============================================================================
-
+  ADD CONSTRAINT `fk_vr_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_vr_dossier` FOREIGN KEY (`dossier_id`) REFERENCES `dossiers` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_vr_jugement` FOREIGN KEY (`jugement_id`) REFERENCES `jugements` (`id`) ON DELETE SET NULL;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
