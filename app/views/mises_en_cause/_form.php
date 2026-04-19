@@ -2,11 +2,15 @@
 /**
  * Formulaire partagé de saisie/édition d'une mise en cause
  * Variables attendues : $mec (optionnel pour édition), $pvId, $formAction, $btnLabel
+ * Utilisé en standalone (edit.php) ET embarqué dans un modal (pv/show.php)
  */
 $d = $mec ?? [];
 $isEdit = !empty($d['id']);
+// Détecter si on est dans un modal (la variable $inModal peut être définie par le parent)
+$_inModal = isset($inModal) ? (bool)$inModal : false;
 ?>
-<form method="POST" action="<?= $formAction ?>" enctype="multipart/form-data" novalidate>
+<form method="POST" action="<?= $formAction ?>" enctype="multipart/form-data" novalidate
+      style="display:flex;flex-direction:column;<?= $_inModal ? 'height:100%;' : '' ?>">
   <?= CSRF::field() ?>
 
   <!-- ── Section Identité ─────────────────────────────────────────────── -->
@@ -210,14 +214,23 @@ $isEdit = !empty($d['id']);
     </div>
   </div>
 
-  <div class="d-flex gap-2 justify-content-end mt-3">
-    <a href="<?= BASE_URL ?>/pv/show/<?= htmlspecialchars($pvId ?? ($d['pv_id'] ?? '')) ?>#mises-en-cause"
-       class="btn btn-outline-secondary">
-      <i class="bi bi-x-lg me-1"></i>Annuler
-    </a>
-    <button type="submit" class="btn btn-warning px-4">
-      <i class="bi bi-person-exclamation me-2"></i><?= $btnLabel ?? 'Enregistrer' ?>
-    </button>
+  <!-- Boutons — sticky en bas du modal, sinon alignés normalement -->
+  <div class="<?= $_inModal ? 'sticky-bottom bg-white border-top p-3 mt-auto' : 'd-flex gap-2 justify-content-end mt-3' ?>">
+    <div class="d-flex gap-2 justify-content-end flex-wrap">
+      <?php if (!$_inModal): ?>
+      <a href="<?= BASE_URL ?>/pv/show/<?= htmlspecialchars($pvId ?? ($d['pv_id'] ?? '')) ?>#mises-en-cause"
+         class="btn btn-outline-secondary">
+        <i class="bi bi-x-lg me-1"></i>Annuler
+      </a>
+      <?php else: ?>
+      <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+        <i class="bi bi-x-lg me-1"></i>Annuler
+      </button>
+      <?php endif; ?>
+      <button type="submit" class="btn btn-warning px-4">
+        <i class="bi bi-person-exclamation me-2"></i><?= $btnLabel ?? 'Enregistrer' ?>
+      </button>
+    </div>
   </div>
 </form>
 

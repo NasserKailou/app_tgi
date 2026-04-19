@@ -1018,19 +1018,17 @@
                 <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>Ajouter une mise en cause</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form method="POST" action="<?=BASE_URL?>/pv/mise-en-cause/store/<?=$dossier['pv_id']?>"
-                  enctype="multipart/form-data" novalidate>
-                <?=CSRF::field()?>
-                <div class="modal-body">
-                    <?php
-                    $formAction = BASE_URL . '/pv/mise-en-cause/store/' . $dossier['pv_id'];
-                    $pvId2      = $dossier['pv_id'];
-                    $btnLabel   = 'Enregistrer la mise en cause';
-                    $mec        = null;
-                    include __DIR__ . '/../mises_en_cause/_form.php';
-                    ?>
-                </div>
-            </form>
+            <div class="modal-body p-3 overflow-auto" style="flex:1 1 auto;">
+                <?php
+                $formAction = BASE_URL . '/pv/mise-en-cause/store/' . ($dossier['pv_id'] ?? '');
+                $pvId       = $dossier['pv_id'] ?? '';
+                $btnLabel   = 'Enregistrer la mise en cause';
+                $mec        = null;
+                $inModal    = true;
+                include __DIR__ . '/../mises_en_cause/_form.php';
+                $inModal = false;
+                ?>
+            </div>
         </div>
     </div>
 </div>

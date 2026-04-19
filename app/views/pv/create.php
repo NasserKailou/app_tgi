@@ -171,24 +171,61 @@
 </form>
 
 <script>
+/* ================================================================
+   Cascade Région → Département → Commune
+   Données géographiques injectées depuis le contrôleur (base + fallback niger_geo.php)
+================================================================ */
+var GEO_DATA = <?= $geoJson ?? '{}' ?>;
+
 function toggleAntiterro(){
-    document.getElementById('antiterroSection').style.display=document.getElementById('switchAntiterro').checked?'block':'none';
+    document.getElementById('antiterroSection').style.display =
+        document.getElementById('switchAntiterro').checked ? 'block' : 'none';
 }
-function loadDepartements(regionId){
-    if(!regionId){document.getElementById('deptSelect').innerHTML='<option value="">— Département —</option>';document.getElementById('communeSelect').innerHTML='<option value="">— Commune —</option>';return;}
-    fetch(`<?= BASE_URL ?>/api/departements/${regionId}`).then(r=>r.json()).then(data=>{
-        let html='<option value="">— Département —</option>';
-        data.forEach(d=>html+=`<option value="${d.id}">${d.nom}</option>`);
-        document.getElementById('deptSelect').innerHTML=html;
-        document.getElementById('communeSelect').innerHTML='<option value="">— Commune —</option>';
+
+function loadDepartements(regionId) {
+    var deptSel   = document.getElementById('deptSelect');
+    var commSel   = document.getElementById('communeSelect');
+    deptSel.innerHTML   = '<option value="">— Département —</option>';
+    commSel.innerHTML   = '<option value="">— Commune —</option>';
+    if (!regionId || !GEO_DATA[regionId]) return;
+    var depts = GEO_DATA[regionId].departements;
+    depts.forEach(function(d) {
+        var opt = document.createElement('option');
+        opt.value       = d.id;
+        opt.textContent = d.nom;
+        deptSel.appendChild(opt);
     });
+    // Restaurer la sélection POST si présente
+    var savedDept = '<?= htmlspecialchars($_POST['departement_id'] ?? '') ?>';
+    if (savedDept) { deptSel.value = savedDept; loadCommunes(savedDept); }
 }
-function loadCommunes(deptId){
-    if(!deptId){document.getElementById('communeSelect').innerHTML='<option value="">— Commune —</option>';return;}
-    fetch(`<?= BASE_URL ?>/api/communes/${deptId}`).then(r=>r.json()).then(data=>{
-        let html='<option value="">— Commune —</option>';
-        data.forEach(c=>html+=`<option value="${c.id}">${c.nom}</option>`);
-        document.getElementById('communeSelect').innerHTML=html;
+
+function loadCommunes(deptId) {
+    var commSel = document.getElementById('communeSelect');
+    commSel.innerHTML = '<option value="">— Commune —</option>';
+    if (!deptId) return;
+    // Trouver le département dans GEO_DATA
+    var regionId = document.getElementById('regionSelect').value;
+    if (!regionId || !GEO_DATA[regionId]) return;
+    var dept = GEO_DATA[regionId].departements.find(function(d){ return String(d.id) === String(deptId); });
+    if (!dept) return;
+    dept.communes.forEach(function(c) {
+        var opt = document.createElement('option');
+        opt.value       = c.id;
+        opt.textContent = c.nom;
+        commSel.appendChild(opt);
     });
+    // Restaurer la sélection POST si présente
+    var savedComm = '<?= htmlspecialchars($_POST['commune_id'] ?? '') ?>';
+    if (savedComm) commSel.value = savedComm;
 }
+
+// Initialisation au chargement de la page (restauration après soumission avec erreurs)
+(function(){
+    var savedRegion = '<?= htmlspecialchars($_POST['region_id'] ?? '') ?>';
+    if (savedRegion) {
+        document.getElementById('regionSelect').value = savedRegion;
+        loadDepartements(savedRegion);
+    }
+})();
 </script>
