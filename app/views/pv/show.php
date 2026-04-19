@@ -84,10 +84,196 @@
             </div>
         </div>
         <?php endif; ?>
+
+        <!-- ══════════ MISES EN CAUSE ══════════ -->
+        <div class="card border-0 shadow-sm mb-4" id="mises-en-cause">
+            <div class="card-header bg-white d-flex align-items-center justify-content-between fw-semibold">
+                <span>
+                    <i class="bi bi-person-exclamation me-2 text-warning"></i>
+                    Mises en cause
+                    <span class="badge bg-warning text-dark ms-2"><?= count($misesEnCause) ?></span>
+                </span>
+                <?php if (in_array($pv['statut'], ['recu','en_traitement']) && DroitsController::hasFuncAccess((int)($user['id']??0), 'mec_creer')): ?>
+                <div class="d-flex gap-2">
+                    <!-- Reconduire -->
+                    <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalReconduire">
+                        <i class="bi bi-arrow-repeat me-1"></i>Reconduire
+                    </button>
+                    <!-- Ajouter -->
+                    <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#modalAddMEC">
+                        <i class="bi bi-person-plus me-1"></i>Ajouter
+                    </button>
+                </div>
+                <?php endif; ?>
+            </div>
+            <div class="card-body p-0">
+                <?php if (empty($misesEnCause)): ?>
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-person-dash display-5 d-block mb-2 opacity-25"></i>
+                    Aucune mise en cause enregistrée pour ce PV.
+                </div>
+                <?php else: ?>
+                <!-- Onglets Poursuivi / Non poursuivi / En attente -->
+                <?php
+                $mec_poursuivi   = array_filter($misesEnCause, fn($m) => $m['decision_substitut'] === 'poursuivi');
+                $mec_non_poursui = array_filter($misesEnCause, fn($m) => $m['decision_substitut'] === 'non_poursuivi');
+                $mec_attente     = array_filter($misesEnCause, fn($m) => $m['decision_substitut'] === 'en_attente');
+                ?>
+                <ul class="nav nav-tabs nav-fill px-3 pt-2 border-0" id="mecTabs">
+                    <li class="nav-item">
+                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#mecAll">
+                            <i class="bi bi-people me-1"></i>Tous (<?= count($misesEnCause) ?>)
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link text-success" data-bs-toggle="tab" data-bs-target="#mecPoursuivi">
+                            <i class="bi bi-check-circle me-1"></i>Poursuivi(s) (<?= count($mec_poursuivi) ?>)
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link text-danger" data-bs-toggle="tab" data-bs-target="#mecNonPoursuivi">
+                            <i class="bi bi-x-circle me-1"></i>Non poursuivi(s) (<?= count($mec_non_poursui) ?>)
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link text-secondary" data-bs-toggle="tab" data-bs-target="#mecAttente">
+                            <i class="bi bi-hourglass me-1"></i>En attente (<?= count($mec_attente) ?>)
+                        </button>
+                    </li>
+                </ul>
+                <div class="tab-content p-3">
+                    <?php
+                    $renderMecList = function(array $list, bool $active = false) use ($pv, $user): void {
+                        $tabClass = $active ? 'show active' : '';
+                        $tabId    = ''; // set by caller
+                    ?>
+                    <div class="list-group list-group-flush">
+                    <?php foreach ($list as $mec): ?>
+                    <?php
+                    $decBadge = ['poursuivi'=>'bg-success','non_poursuivi'=>'bg-danger','en_attente'=>'bg-secondary'];
+                    $decLabel = ['poursuivi'=>'Poursuivi','non_poursuivi'=>'Non poursuivi','en_attente'=>'En attente'];
+                    $db = $decBadge[$mec['decision_substitut']] ?? 'bg-secondary';
+                    $dl = $decLabel[$mec['decision_substitut']] ?? '—';
+                    ?>
+                    <div class="list-group-item border-0 px-0 py-2">
+                        <div class="d-flex align-items-start gap-3">
+                            <?php if ($mec['photo']): ?>
+                            <img src="<?= BASE_URL ?>/<?= htmlspecialchars($mec['photo']) ?>"
+                                 alt="" class="rounded" style="width:44px;height:55px;object-fit:cover;flex-shrink:0;">
+                            <?php else: ?>
+                            <div class="bg-light rounded d-flex align-items-center justify-content-center"
+                                 style="width:44px;height:55px;flex-shrink:0;">
+                                <i class="bi bi-person-fill text-muted fs-4"></i>
+                            </div>
+                            <?php endif; ?>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <strong class="text-uppercase"><?= htmlspecialchars($mec['nom']) ?></strong>
+                                        <?= htmlspecialchars($mec['prenom']) ?>
+                                        <?php if ($mec['alias']): ?><em class="text-muted small">(<?= htmlspecialchars($mec['alias']) ?>)</em><?php endif; ?>
+                                        <span class="badge bg-light text-dark border ms-1 small"><?= ucfirst(str_replace('_', ' ', $mec['statut'])) ?></span>
+                                        <?php if ($mec['est_connu_archives']): ?>
+                                        <span class="badge bg-danger ms-1 small" title="Connu des archives"><i class="bi bi-exclamation-triangle-fill"></i> Récidiviste</span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <span class="badge <?= $db ?> ms-2"><?= $dl ?></span>
+                                </div>
+                                <div class="text-muted small mt-1">
+                                    <?php if ($mec['date_naissance']): ?><?= date('d/m/Y', strtotime($mec['date_naissance'])) ?><?php endif; ?>
+                                    <?php if ($mec['lieu_naissance']): ?> — <?= htmlspecialchars($mec['lieu_naissance']) ?><?php endif; ?>
+                                    <?php if ($mec['profession']): ?> | <?= htmlspecialchars($mec['profession']) ?><?php endif; ?>
+                                </div>
+                            </div>
+                            <!-- Actions sur MEC -->
+                            <?php if (DroitsController::hasFuncAccess((int)($user['id']??0), 'mec_decision') && Auth::hasRole(['admin','procureur','substitut_procureur','president'])): ?>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                                    <i class="bi bi-three-dots-vertical"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow">
+                                    <li>
+                                        <a class="dropdown-item text-success" href="#"
+                                           onclick="setDecision(<?= $mec['id'] ?>, 'poursuivi'); return false;">
+                                            <i class="bi bi-check-circle me-2"></i>Marquer Poursuivi
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item text-danger" href="#"
+                                           data-id="<?= $mec['id'] ?>"
+                                           onclick="openNonPoursuite(this); return false;">
+                                            <i class="bi bi-x-circle me-2"></i>Marquer Non poursuivi
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item" href="<?= BASE_URL ?>/pv/mise-en-cause/edit/<?= $mec['id'] ?>">
+                                            <i class="bi bi-pencil me-2"></i>Modifier
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <form method="POST" action="<?= BASE_URL ?>/pv/mise-en-cause/delete/<?= $mec['id'] ?>"
+                                              onsubmit="return confirm('Supprimer cette mise en cause ?')">
+                                            <?= CSRF::field() ?>
+                                            <button type="submit" class="dropdown-item text-danger">
+                                                <i class="bi bi-trash me-2"></i>Supprimer
+                                            </button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                    </div>
+                    <?php };
+                    ?>
+
+                    <div class="tab-pane fade show active" id="mecAll">
+                        <?php $renderMecList($misesEnCause); ?>
+                    </div>
+                    <div class="tab-pane fade" id="mecPoursuivi">
+                        <?php if (empty($mec_poursuivi)): ?><p class="text-muted text-center py-3">Aucun mis en cause marqué comme poursuivi.</p><?php else: $renderMecList($mec_poursuivi); endif; ?>
+                    </div>
+                    <div class="tab-pane fade" id="mecNonPoursuivi">
+                        <?php if (empty($mec_non_poursui)): ?><p class="text-muted text-center py-3">Aucun mis en cause non poursuivi.</p><?php else: $renderMecList($mec_non_poursui); endif; ?>
+                    </div>
+                    <div class="tab-pane fade" id="mecAttente">
+                        <?php if (empty($mec_attente)): ?><p class="text-muted text-center py-3">Aucun en attente de décision.</p><?php else: $renderMecList($mec_attente); endif; ?>
+                    </div>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
     </div>
 
     <!-- Colonne droite : workflow -->
     <div class="col-lg-4">
+        <!-- Numéros officiels -->
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header bg-white fw-semibold"><i class="bi bi-hash me-2 text-primary"></i>Numéros officiels</div>
+            <div class="card-body">
+                <dl class="row mb-0 small">
+                    <dt class="col-5">N° PV</dt>
+                    <dd class="col-7 font-monospace"><?= htmlspecialchars($pv['numero_pv'] ?? '—') ?></dd>
+                    <dt class="col-5">N° RG</dt>
+                    <dd class="col-7 font-monospace fw-bold text-primary"><?= htmlspecialchars($pv['numero_rg'] ?? '—') ?></dd>
+                    <dt class="col-5">N° Ordre</dt>
+                    <dd class="col-7 font-monospace"><?= htmlspecialchars($pv['numero_ordre'] ?? '—') ?></dd>
+                    <dt class="col-5">N° RP</dt>
+                    <dd class="col-7 font-monospace text-success fw-semibold"><?= htmlspecialchars($pv['numero_rp'] ?? '—') ?></dd>
+                    <?php if (!empty($pv['mode_poursuite'])): ?>
+                    <dt class="col-5">Mode</dt>
+                    <dd class="col-7">
+                        <?php $mpLabels=['RI'=>'Réquisitoire Introductif','CD'=>'Citation Directe','FD'=>'Flagrant Délit','CRPC'=>'CRPC','autre'=>'Autre']; ?>
+                        <span class="badge bg-info text-dark"><?= $mpLabels[$pv['mode_poursuite']] ?? $pv['mode_poursuite'] ?></span>
+                    </dd>
+                    <?php endif; ?>
+                </dl>
+            </div>
+        </div>
+
         <!-- Statut -->
         <div class="card border-0 shadow-sm mb-3">
             <div class="card-header bg-white fw-semibold"><i class="bi bi-diagram-3 me-2"></i>Statut & Workflow</div>
@@ -204,29 +390,40 @@
     </div>
 </div>
 
-<!-- Modal Transférer -->
+<!-- Modal Transférer (nouveau workflow basé sur le mode de poursuite) -->
 <div class="modal fade" id="modalTransferer" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title">Transférer le PV</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-send me-2"></i>Transférer le PV — Décision du substitut</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
             <form method="POST" action="<?= BASE_URL ?>/pv/transferer/<?= $pv['id'] ?>">
                 <?= CSRF::field() ?>
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Destination <span class="text-danger">*</span></label>
-                        <div class="d-grid gap-2">
-                            <div class="form-check border rounded p-3">
-                                <input class="form-check-input" type="radio" name="destination" value="instruction" id="destInstr" required onchange="toggleCabinet(true)">
-                                <label class="form-check-label" for="destInstr"><strong>Cabinet d'instruction</strong> — Ouvre une instruction judiciaire (génère RP + RI)</label>
-                            </div>
-                            <div class="form-check border rounded p-3">
-                                <input class="form-check-input" type="radio" name="destination" value="audience_directe" id="destAud" onchange="toggleCabinet(false)">
-                                <label class="form-check-label" for="destAud"><strong>Audience directe</strong> — Renvoie directement en audience de jugement (génère RP)</label>
-                            </div>
-                        </div>
+                    <div class="alert alert-info small mb-3">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Règle :</strong> Seul le mode <strong>RI (Réquisitoire Introductif)</strong> envoie le dossier au cabinet d'instruction.
+                        Les modes CD, FD, CRPC passent directement en audience.
                     </div>
-                    <div id="cabinetBlock" style="display:none" class="mb-3">
-                        <label class="form-label">Cabinet d'instruction</label>
+
+                    <!-- Mode de poursuite -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Mode de poursuite <span class="text-danger">*</span></label>
+                        <select name="mode_poursuite" class="form-select" id="selectModePoursuite"
+                                onchange="onModeChange(this.value)" required>
+                            <option value="">— Sélectionner —</option>
+                            <option value="RI">RI — Réquisitoire Introductif → Cabinet d'instruction</option>
+                            <option value="CD">CD — Citation Directe → Audience directe</option>
+                            <option value="FD">FD — Flagrant Délit → Audience directe</option>
+                            <option value="CRPC">CRPC → Audience directe</option>
+                            <option value="autre">Autre → Audience directe</option>
+                        </select>
+                    </div>
+
+                    <!-- Cabinet d'instruction (visible seulement si RI) -->
+                    <div id="cabinetBlock" style="display:none" class="mb-3 border rounded p-3 bg-light">
+                        <label class="form-label fw-semibold"><i class="bi bi-building me-1 text-info"></i>Cabinet d'instruction <span class="text-danger">*</span></label>
                         <select name="cabinet_id" class="form-select" id="selectCabinet">
                             <option value="">— Sélectionner —</option>
                             <?php foreach ($cabinets as $c): ?>
@@ -237,36 +434,47 @@
                         <button type="button" class="btn btn-outline-success btn-sm mt-1" onclick="suggererCabinet()">
                             <i class="bi bi-magic me-1"></i>Suggérer le moins chargé
                         </button>
-                    </div>
-                    <!-- Mode de poursuite (visible uniquement si instruction) -->
-                    <div id="modePoursuiteBlock" style="display:none" class="mb-3">
-                        <label class="form-label fw-semibold">Mode de poursuite <span class="text-danger">*</span></label>
-                        <select name="mode_poursuite" class="form-select" id="selectModePoursuite">
-                            <option value="aucun">— AUCUN —</option>
-                            <option value="CD">CD — Citation Directe</option>
-                            <option value="FD">FD — Flagrant Délit</option>
-                            <option value="CRCP">CRCP — Comparution sur Reconnaissance Préalable de Culpabilité</option>
-                            <option value="RI">RI — Réquisitoire Introductif</option>
-                        </select>
-                        <div class="form-text text-muted">
-                            <i class="bi bi-info-circle me-1"></i>
-                            Choisissez le mode de poursuite pour le dossier d'instruction.
+
+                        <!-- Numéro RI : saisi manuellement par la greffière -->
+                        <div class="mt-3">
+                            <label class="form-label fw-semibold">
+                                N° RI (Registre d'Instruction)
+                                <span class="badge bg-warning text-dark ms-1">Saisi par la greffière</span>
+                            </label>
+                            <input type="text" name="numero_ri" class="form-control font-monospace"
+                                   placeholder="ex: RI N°001/2026/INSTR (auto si vide)">
+                            <div class="form-text">Laissez vide pour auto-génération. Le système vérifie l'unicité.</div>
                         </div>
                     </div>
+
+                    <div id="audienceDirecteInfo" style="display:none" class="alert alert-success small mb-3">
+                        <i class="bi bi-check-circle me-2"></i>
+                        Ce dossier sera envoyé directement en audience (sans cabinet d'instruction).
+                    </div>
+
                     <div class="mb-3">
-                        <label class="form-label">Objet du dossier <span class="text-danger">*</span></label>
+                        <label class="form-label fw-semibold">Objet du dossier <span class="text-danger">*</span></label>
                         <textarea name="objet" class="form-control" rows="3" required><?= htmlspecialchars($pv['description_faits']??'') ?></textarea>
                     </div>
                 </div>
-                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button><button type="submit" class="btn btn-success">Transférer</button></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-send me-2"></i>Transférer
+                    </button>
+                </div>
             </form>
         </div>
     </div>
 </div>
 <script>
+function onModeChange(val) {
+    var isRI   = (val === 'RI');
+    document.getElementById('cabinetBlock').style.display       = isRI ? 'block' : 'none';
+    document.getElementById('audienceDirecteInfo').style.display= (val && !isRI) ? 'block' : 'none';
+}
 function toggleCabinet(show){
-    document.getElementById('cabinetBlock').style.display=show?'block':'none';
-    document.getElementById('modePoursuiteBlock').style.display=show?'block':'none';
+    // legacy compat
 }
 function suggererCabinet(){
     fetch('<?= BASE_URL ?>/api/cabinets/charge')
@@ -304,6 +512,106 @@ function suggererSubstitut(){
 }
 </script>
 
+<!-- ══ Modal Ajouter Mise en cause ══ -->
+<div class="modal fade" id="modalAddMEC" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>Ajouter une mise en cause</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="<?= BASE_URL ?>/pv/mise-en-cause/store/<?= $pv['id'] ?>"
+                  enctype="multipart/form-data" novalidate>
+                <?= CSRF::field() ?>
+                <div class="modal-body">
+                    <?php
+                    $formAction = BASE_URL . '/pv/mise-en-cause/store/' . $pv['id'];
+                    $pvId       = $pv['id'];
+                    $btnLabel   = 'Enregistrer la mise en cause';
+                    $mec        = null;
+                    // Inclusion du formulaire partagé
+                    include __DIR__ . '/../mises_en_cause/_form.php';
+                    ?>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ══ Modal Reconduire mise en cause ══ -->
+<div class="modal fade" id="modalReconduire" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-arrow-repeat me-2"></i>Reconduire une mise en cause</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="<?= BASE_URL ?>/pv/mise-en-cause/reconduire/<?= $pv['id'] ?>">
+                <?= CSRF::field() ?>
+                <div class="modal-body">
+                    <p class="text-muted small">
+                        Recherchez une mise en cause d'un ancien PV pour la rattacher à ce dossier.
+                        Elle sera copiée avec ses informations et son compteur d'affaires sera incrémenté.
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Rechercher par nom / prénom / alias</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" id="mecSearchInput" class="form-control"
+                                   placeholder="Saisir au moins 2 caractères..."
+                                   oninput="searchMEC(this.value)">
+                        </div>
+                    </div>
+                    <div id="mecSearchResults" class="list-group"></div>
+                    <input type="hidden" name="mec_source_id" id="mecSourceId" required>
+                    <div id="mecSelectedInfo" class="alert alert-success mt-2" style="display:none">
+                        <i class="bi bi-check-circle me-2"></i>
+                        <span id="mecSelectedText"></span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-arrow-repeat me-1"></i>Reconduire
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ══ Forms décision substitut (cachés) ══ -->
+<form id="formDecisionMEC" method="POST" style="display:none">
+    <?= CSRF::field() ?>
+    <input type="hidden" name="decision_substitut" id="decisionValue">
+    <input type="hidden" name="motif_non_poursuite" id="motifValue">
+</form>
+
+<!-- ══ Modal Non-poursuite motif ══ -->
+<div class="modal fade" id="modalNonPoursuite" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bi bi-x-circle me-2"></i>Motif de non-poursuite</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" id="formNonPoursuite">
+                <?= CSRF::field() ?>
+                <input type="hidden" name="decision_substitut" value="non_poursuivi">
+                <div class="modal-body">
+                    <label class="form-label fw-semibold">Motif de non-poursuite</label>
+                    <textarea name="motif_non_poursuite" class="form-control" rows="3"
+                              placeholder="Indiquer le motif..."></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-danger">Confirmer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Modal Déclasser PV -->
 <div class="modal fade" id="modalDeclasser" tabindex="-1">
     <div class="modal-dialog">
@@ -339,3 +647,57 @@ function suggererSubstitut(){
         </div>
     </div>
 </div>
+
+<script>
+// ── Décision substitut sur mise en cause ──────────────────────────────
+function setDecision(mecId, decision) {
+    if (!confirm('Marquer cette mise en cause comme "' + (decision === 'poursuivi' ? 'Poursuivi' : 'Non poursuivi') + '" ?')) return;
+    var f = document.createElement('form');
+    f.method = 'POST';
+    f.action = '<?= BASE_URL ?>/pv/mise-en-cause/decision/' + mecId;
+    f.innerHTML = document.querySelector('[name="_csrf"]').outerHTML + '<input type="hidden" name="decision_substitut" value="' + decision + '">';
+    document.body.appendChild(f);
+    f.submit();
+}
+
+function openNonPoursuite(el) {
+    var mecId = el.dataset.id;
+    var frm   = document.getElementById('formNonPoursuite');
+    frm.action = '<?= BASE_URL ?>/pv/mise-en-cause/decision/' + mecId;
+    var modal  = new bootstrap.Modal(document.getElementById('modalNonPoursuite'));
+    modal.show();
+}
+
+// ── Recherche MEC pour reconduction ──────────────────────────────────
+var mecSearchTimer = null;
+function searchMEC(q) {
+    clearTimeout(mecSearchTimer);
+    if (q.length < 2) { document.getElementById('mecSearchResults').innerHTML = ''; return; }
+    mecSearchTimer = setTimeout(function() {
+        fetch('<?= BASE_URL ?>/api/mises-en-cause/search?q=' + encodeURIComponent(q))
+        .then(r => r.json())
+        .then(data => {
+            var html = '';
+            if (data.success && data.data.length) {
+                data.data.forEach(function(m) {
+                    html += '<a href="#" class="list-group-item list-group-item-action d-flex justify-content-between" ' +
+                        'onclick="selectMEC(' + m.id + ',\'' + (m.nom+'').replace(/'/g,"\\'") + ' ' + ((m.prenom||'')+'').replace(/'/g,"\\'")+'\',\'' + ((m.numero_rg||'')+'').replace(/'/g,"\\'")+'\'); return false;">' +
+                        '<div><strong class="text-uppercase">' + m.nom + '</strong> ' + (m.prenom||'') +
+                        (m.alias ? ' <em class="text-muted">('+m.alias+')</em>' : '') +
+                        (m.est_connu_archives ? ' <span class="badge bg-danger ms-1">Récidiviste</span>' : '')+'</div>' +
+                        '<small class="text-muted">PV ' + (m.numero_rg||'') + '</small></a>';
+                });
+            } else { html = '<p class="text-muted text-center py-2 small">Aucun résultat</p>'; }
+            document.getElementById('mecSearchResults').innerHTML = html;
+        }).catch(function(){});
+    }, 300);
+}
+
+function selectMEC(id, name, pvNum) {
+    document.getElementById('mecSourceId').value = id;
+    document.getElementById('mecSelectedText').textContent = name + ' (PV : ' + pvNum + ')';
+    document.getElementById('mecSelectedInfo').style.display = 'block';
+    document.getElementById('mecSearchResults').innerHTML = '';
+    document.getElementById('mecSearchInput').value = name;
+}
+</script>

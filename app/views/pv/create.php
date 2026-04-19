@@ -17,31 +17,58 @@
                 <div class="card-header bg-white fw-semibold"><i class="bi bi-card-text me-2"></i>Identification du PV</div>
                 <div class="card-body">
                     <div class="row g-3">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label">N° de PV <span class="text-danger">*</span></label>
                             <input type="text" name="numero_pv" class="form-control" required value="<?= htmlspecialchars($_POST['numero_pv']??'') ?>" placeholder="ex: PV 456/2026/BCAN">
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
+                            <label class="form-label">N° d'ordre du PV <span class="text-muted small">(saisi manuellement)</span></label>
+                            <input type="text" name="numero_ordre" class="form-control font-monospace" value="<?= htmlspecialchars($_POST['numero_ordre']??'') ?>" placeholder="ex: 001/2026">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">
+                                N° RP (Registre du Parquet)
+                                <span class="text-muted small">(unique, saisi manuellement)</span>
+                            </label>
+                            <input type="text" name="numero_rp" class="form-control font-monospace text-primary fw-semibold"
+                                   value="<?= htmlspecialchars($_POST['numero_rp']??'') ?>"
+                                   placeholder="ex: RP N°001/2026/PARQUET">
+                            <div class="form-text">Le système vérifie l'unicité du RP.</div>
+                        </div>
+                        <div class="col-md-4">
                             <label class="form-label">N° RG (auto-généré)</label>
-                            <input type="text" class="form-control bg-light" value="<?= htmlspecialchars($suggestRG) ?>" readonly>
+                            <input type="text" class="form-control bg-light font-monospace" value="<?= htmlspecialchars($suggestRG) ?>" readonly>
                             <div class="form-text">Attribué automatiquement à l'enregistrement</div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label">Date du PV <span class="text-danger">*</span></label>
                             <input type="date" name="date_pv" class="form-control" required value="<?= htmlspecialchars($_POST['date_pv']??date('Y-m-d')) ?>">
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label">Date de réception <span class="text-danger">*</span></label>
                             <input type="date" name="date_reception" class="form-control" required value="<?= htmlspecialchars($_POST['date_reception']??date('Y-m-d')) ?>">
                         </div>
+
+                        <!-- 5 types d'affaire officiels -->
                         <div class="col-md-6">
-                            <label class="form-label">Type d'affaire <span class="text-danger">*</span></label>
+                            <label class="form-label fw-semibold">
+                                <i class="bi bi-tag me-1 text-primary"></i>Type d'affaire — Pôle <span class="text-danger">*</span>
+                            </label>
                             <select name="type_affaire" class="form-select" required>
-                                <option value="penale" <?= ($_POST['type_affaire']??'penale')==='penale'?'selected':'' ?>>Pénale</option>
-                                <option value="civile" <?= ($_POST['type_affaire']??'')==='civile'?'selected':'' ?>>Civile</option>
-                                <option value="commerciale" <?= ($_POST['type_affaire']??'')==='commerciale'?'selected':'' ?>>Commerciale</option>
+                                <optgroup label="Droit Commun">
+                                    <option value="droit_commun_mineur" <?= ($_POST['type_affaire']??'')==='droit_commun_mineur'?'selected':'' ?>>Droit Commun — Mineur</option>
+                                    <option value="droit_commun_majeur" <?= ($_POST['type_affaire']??'droit_commun_majeur')==='droit_commun_majeur'?'selected':'' ?>>Droit Commun — Majeur</option>
+                                </optgroup>
+                                <optgroup label="Pôle Antiterroriste">
+                                    <option value="pole_antiterro_mineur" <?= ($_POST['type_affaire']??'')==='pole_antiterro_mineur'?'selected':'' ?>>Pôle Antiterroriste — Mineur</option>
+                                    <option value="pole_antiterro_majeur" <?= ($_POST['type_affaire']??'')==='pole_antiterro_majeur'?'selected':'' ?>>Pôle Antiterroriste — Majeur</option>
+                                </optgroup>
+                                <optgroup label="Pôle Économique">
+                                    <option value="pole_economique" <?= ($_POST['type_affaire']??'')==='pole_economique'?'selected':'' ?>>Pôle Économique et Financier</option>
+                                </optgroup>
                             </select>
                         </div>
+
                         <div class="col-md-6">
                             <label class="form-label">Type d'infraction</label>
                             <select name="infraction_id" class="form-select">

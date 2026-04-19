@@ -63,8 +63,29 @@ $router->post('/pv/update/{id}',       'PVController@update');
 $router->post('/pv/affecter/{id}',     'PVController@affecter');
 $router->post('/pv/classer/{id}',      'PVController@classer');
 $router->post('/pv/transferer/{id}',   'PVController@transferer');
+$router->post('/pv/declasser/{id}',    'PVController@declasser');
 $router->get('/api/departements/{region_id}', 'PVController@apiDepartements');
 $router->get('/api/communes/{departement_id}', 'PVController@apiCommunes');
+
+// Mises en cause
+$router->post('/pv/mise-en-cause/store/{pvId}',      'MiseEnCauseController@store');
+$router->get('/pv/mise-en-cause/edit/{id}',          'MiseEnCauseController@edit');
+$router->post('/pv/mise-en-cause/update/{id}',       'MiseEnCauseController@update');
+$router->post('/pv/mise-en-cause/delete/{id}',       'MiseEnCauseController@delete');
+$router->post('/pv/mise-en-cause/decision/{id}',     'MiseEnCauseController@decision');
+$router->post('/pv/mise-en-cause/reconduire/{pvId}', 'MiseEnCauseController@reconduire');
+$router->get('/api/mises-en-cause/search',           'MiseEnCauseController@apiSearch');
+
+// Plaintes
+$router->get('/plaintes',                  'PlainteController@index');
+$router->get('/plaintes/create',           'PlainteController@create');
+$router->post('/plaintes/store',           'PlainteController@store');
+$router->get('/plaintes/show/{id}',        'PlainteController@show');
+$router->get('/plaintes/edit/{id}',        'PlainteController@edit');
+$router->post('/plaintes/update/{id}',     'PlainteController@update');
+$router->post('/plaintes/traiter/{id}',    'PlainteController@traiter');
+$router->post('/plaintes/classer/{id}',    'PlainteController@classer');
+$router->post('/plaintes/creer-pv/{id}',   'PlainteController@creerPV');
 
 // Dossiers
 $router->get('/dossiers',                        'DossierController@index');
