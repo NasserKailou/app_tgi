@@ -2498,7 +2498,6 @@ CREATE TABLE IF NOT EXISTS `mises_en_cause` (
   KEY `idx_mec_decision` (`decision_substitut`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='Mises en cause saisies au moment de l enregistrement du PV';
-
 -- ────────────────────────────────────────────────────────────
 -- 2. TABLE : plaintes
 -- ────────────────────────────────────────────────────────────
@@ -2530,15 +2529,14 @@ CREATE TABLE IF NOT EXISTS `plaintes` (
   `substitut_id`         int(11) DEFAULT NULL COMMENT 'Substitut chargé',
   `observations`         text DEFAULT NULL,
   `created_by`           int(11) DEFAULT NULL,
-  `created_at`           timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at`           timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `created_at`           timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`           timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_numero_plainte` (`numero_plainte`),
   KEY `idx_plainte_statut` (`statut`),
   KEY `idx_plainte_date` (`date_plainte`),
   KEY `idx_plainte_pv` (`pv_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-  COMMENT='Gestion des plaintes reçues au parquet';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Gestion des plaintes reçues au parquet';
 
 -- ────────────────────────────────────────────────────────────
 -- 3. MODIFICATION : table pv — nouveaux types d'affaire + champs RP manuel
