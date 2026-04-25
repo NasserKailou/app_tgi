@@ -132,19 +132,40 @@ class ScelleController extends Controller
         Auth::requireLogin();
         Auth::requireRole(['admin', 'greffier', 'president', 'juge_instruction']);
         CSRF::check();
-        $this->db->prepare(
-            "UPDATE scelles SET
-                categorie=:cat, lieu_conservation=:lieu,
-                description=:desc, statut=:statut, observations=:obs
-             WHERE id=:id"
-        )->execute([
-            ':cat'    => $_POST['categorie'] ?? 'autre',
-            ':lieu'   => $this->sanitize($_POST['lieu_conservation'] ?? ''),
-            ':desc'   => $this->sanitize($_POST['description'] ?? ''),
-            ':statut' => $_POST['statut'] ?? 'depose',
-            ':obs'    => $this->sanitize($_POST['observations'] ?? ''),
-            ':id'     => (int)$id,
-        ]);
+        $categorie = $_POST['categorie'] ?? 'autre';
+        $categorieAutreDetail = ($categorie === 'autre')
+            ? $this->sanitize($_POST['categorie_autre_detail'] ?? '')
+            : null;
+        try {
+            $this->db->prepare(
+                "UPDATE scelles SET
+                    categorie=:cat, categorie_autre_detail=:cad, lieu_conservation=:lieu,
+                    description=:desc, statut=:statut, observations=:obs
+                 WHERE id=:id"
+            )->execute([
+                ':cat'  => $categorie,
+                ':cad'  => $categorieAutreDetail,
+                ':lieu' => $this->sanitize($_POST['lieu_conservation'] ?? ''),
+                ':desc' => $this->sanitize($_POST['description'] ?? ''),
+                ':statut'=> $_POST['statut'] ?? 'depose',
+                ':obs'  => $this->sanitize($_POST['observations'] ?? ''),
+                ':id'   => (int)$id,
+            ]);
+        } catch (\Exception $e) {
+            // Fallback sans categorie_autre_detail
+            $this->db->prepare(
+                "UPDATE scelles SET categorie=:cat, lieu_conservation=:lieu,
+                    description=:desc, statut=:statut, observations=:obs
+                 WHERE id=:id"
+            )->execute([
+                ':cat'  => $categorie,
+                ':lieu' => $this->sanitize($_POST['lieu_conservation'] ?? ''),
+                ':desc' => $this->sanitize($_POST['description'] ?? ''),
+                ':statut'=> $_POST['statut'] ?? 'depose',
+                ':obs'  => $this->sanitize($_POST['observations'] ?? ''),
+                ':id'   => (int)$id,
+            ]);
+        }
         $this->flash('success', 'Scellé mis à jour.');
         $this->redirect('/scelles/show/' . $id);
     }

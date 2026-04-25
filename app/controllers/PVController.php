@@ -263,9 +263,15 @@ class PVController extends Controller {
 
         $isSubstitut = Auth::hasRole(['admin','procureur','substitut_procureur']);
 
+        // pvInfractions : alias pour la vue (qui utilise $pvInfractions['unite'] et ['substitut'])
+        $pvInfractions = [
+            'unite'    => array_values($pv['infractions_unite']    ?? []),
+            'substitut'=> array_values($pv['infractions_substitut'] ?? []),
+        ];
+
         $this->view('pv/show', compact(
             'pv','flash','user','substituts','cabinets','infractions',
-            'dossier','misesEnCause','pvsMemeRP','pvDocuments','isSubstitut'
+            'dossier','misesEnCause','pvsMemeRP','pvDocuments','isSubstitut','pvInfractions'
         ));
     }
 
