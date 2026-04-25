@@ -151,7 +151,8 @@ class RapportController extends Controller
         $debut    = date('d/m/Y', strtotime($data['date_debut']));
         $fin      = date('d/m/Y', strtotime($data['date_fin']));
         $genDate  = date('d/m/Y à H:i', strtotime($data['date_generation']));
-        $genPar   = htmlspecialchars(($data['genere_par']['prenom'] ?? '') . ' ' . ($data['genere_par']['nom'] ?? ''));
+        $genPar       = htmlspecialchars(($data['genere_par']['prenom'] ?? '') . ' ' . ($data['genere_par']['nom'] ?? ''));
+        $rapportIdNote = $rapportId ? "— Rapport #{$rapportId} archivé dans le système" : '';
 
         $typeColors = ['penale'=>'#dc3545','civile'=>'#0d6efd','commerciale'=>'#198754'];
         $pvTypesRows = '';
@@ -232,7 +233,7 @@ td { border: 1px solid #dee2e6; padding: 5px 8px; }
 
 <div class="footer">
     TGI Hors Classe de Niamey — Parquet du Procureur de la République — Document confidentiel généré automatiquement
-    <?php if ($rapportId): ?>— Rapport #{$rapportId} archivé dans le système<?php endif; ?>
+    {$rapportIdNote}
 </div>
 </body>
 </html>
