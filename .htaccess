@@ -1,9 +1,16 @@
 Options -Indexes
 RewriteEngine On
 
-# Si la requête est déjà dans /public, ne pas rediriger
-RewriteCond %{REQUEST_URI} !^/([^/]+/)?public/
-RewriteCond %{REQUEST_URI} !^/([^/]+/)?index\.php$
+# ── Forcer HTTPS (optionnel, décommentez si certificat SSL actif) ──
+# RewriteCond %{HTTPS} off
+# RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
 
-# Rediriger tout vers public/login
-RewriteRule ^(.*)$ public/login [R=302,L]
+# ── Ne pas réécrire les fichiers et dossiers qui existent réellement ──
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# ── Ne pas réécrire si déjà dans /public ──
+RewriteCond %{REQUEST_URI} !^/public/
+
+# ── Tout rediriger vers public/index.php ──
+RewriteRule ^(.*)$ public/index.php [L]

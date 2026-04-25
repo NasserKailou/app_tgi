@@ -5,7 +5,7 @@ class Database {
 
     private function __construct() {
         $host   = getenv('DB_HOST') ?: 'localhost';
-        $dbname = getenv('DB_NAME') ?: 'tribunal_tgi_ny_maj';
+        $dbname = getenv('DB_NAME') ?: 'tgi_ny';
         $user   = getenv('DB_USER') ?: 'root';
         $pass   = getenv('DB_PASS') ?: '';
         $port   = getenv('DB_PORT') ?: '3306';

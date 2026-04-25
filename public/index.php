@@ -1,4 +1,20 @@
 <?php
+// ─── En-têtes de sécurité ─────────────────────────────────────────────────
+// Empêcher le clickjacking
+header('X-Frame-Options: SAMEORIGIN');
+// Empêcher la détection MIME sniffing
+header('X-Content-Type-Options: nosniff');
+// Protection XSS (anciens navigateurs)
+header('X-XSS-Protection: 1; mode=block');
+// Content Security Policy — permissif mais protège les injections CSS/JS externes
+header("Content-Security-Policy: default-src 'self' https://cdn.jsdelivr.net https://unpkg.com 'unsafe-inline'; img-src 'self' data:; font-src 'self' https://cdn.jsdelivr.net; frame-src 'self'");
+// Strict Transport Security (si HTTPS)
+if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+    header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+}
+// Referrer Policy
+header('Referrer-Policy: strict-origin-when-cross-origin');
+
 // Buffer de sortie global — protège les réponses JSON des notices PHP
 ob_start();
 
@@ -50,8 +66,10 @@ $router->get('/logout',   'AuthController@logout');
 
 // Dashboard
 $router->get('/',          'DashboardController@index');
-$router->get('/dashboard', 'DashboardController@index');
-$router->get('/api/dashboard-stats', 'DashboardController@apiStats');
+$router->get('/dashboard',               'DashboardController@index');
+$router->get('/api/dashboard-stats',    'DashboardController@apiStats');
+$router->post('/dashboard/rapport',     'DashboardController@genererRapport');
+$router->get('/dashboard/rapport/{id}', 'DashboardController@voirRapport');
 
 // PV
 $router->get('/pv',                    'PVController@index');
@@ -63,8 +81,35 @@ $router->post('/pv/update/{id}',       'PVController@update');
 $router->post('/pv/affecter/{id}',     'PVController@affecter');
 $router->post('/pv/classer/{id}',      'PVController@classer');
 $router->post('/pv/transferer/{id}',   'PVController@transferer');
-$router->get('/api/departements/{region_id}', 'PVController@apiDepartements');
+$router->post('/pv/declasser/{id}',    'PVController@declasser');
+$router->get('/api/departements/{region_id}',  'PVController@apiDepartements');
 $router->get('/api/communes/{departement_id}', 'PVController@apiCommunes');
+// PV — pièces jointes (substitut uniquement)
+$router->post('/pv/upload/{pvId}',             'PVController@uploadDocument');
+$router->get('/api/pv/documents/{pvId}',       'PVController@listDocuments');
+// PV — fusion multi-PV + recherche RP
+$router->post('/pv/fusionner/{id}',            'PVController@fusionner');
+$router->get('/api/pv/search-rp',              'PVController@apiSearchRP');
+
+// Mises en cause
+$router->post('/pv/mise-en-cause/store/{pvId}',      'MiseEnCauseController@store');
+$router->get('/pv/mise-en-cause/edit/{id}',          'MiseEnCauseController@edit');
+$router->post('/pv/mise-en-cause/update/{id}',       'MiseEnCauseController@update');
+$router->post('/pv/mise-en-cause/delete/{id}',       'MiseEnCauseController@delete');
+$router->post('/pv/mise-en-cause/decision/{id}',     'MiseEnCauseController@decision');
+$router->post('/pv/mise-en-cause/reconduire/{pvId}', 'MiseEnCauseController@reconduire');
+$router->get('/api/mises-en-cause/search',           'MiseEnCauseController@apiSearch');
+
+// Plaintes
+$router->get('/plaintes',                  'PlainteController@index');
+$router->get('/plaintes/create',           'PlainteController@create');
+$router->post('/plaintes/store',           'PlainteController@store');
+$router->get('/plaintes/show/{id}',        'PlainteController@show');
+$router->get('/plaintes/edit/{id}',        'PlainteController@edit');
+$router->post('/plaintes/update/{id}',     'PlainteController@update');
+$router->post('/plaintes/traiter/{id}',    'PlainteController@traiter');
+$router->post('/plaintes/classer/{id}',    'PlainteController@classer');
+$router->post('/plaintes/creer-pv/{id}',   'PlainteController@creerPV');
 
 // Dossiers
 $router->get('/dossiers',                        'DossierController@index');
@@ -275,6 +320,10 @@ $router->get( '/scelles/edit/{id}',          'ScelleController@edit');
 $router->post('/scelles/update/{id}',        'ScelleController@update');
 $router->post('/scelles/restituer/{id}',     'ScelleController@restituer');
 $router->post('/scelles/detruire/{id}',      'ScelleController@detruire');
+
+// ─── Rapports ─────────────────────────────────────────────────────────────────
+$router->post('/rapports/generer',           'RapportController@generer');
+$router->get( '/rapports',                   'RapportController@index');
 
 // ─── Casier judiciaire ────────────────────────────────────────────────────────
 $router->get( '/casier-judiciaire',          'CasierJudiciairController@index');
