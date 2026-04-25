@@ -56,23 +56,51 @@ class ScelleController extends Controller
         CSRF::check();
 
         $numero = $this->genererNumero();
-        $stmt   = $this->db->prepare(
-            "INSERT INTO scelles
-                (numero_scelle, dossier_id, categorie, description,
-                 date_depot, lieu_conservation, observations, statut, created_by)
-             VALUES
-                (:num, :did, :cat, :desc, :date, :lieu, :obs, 'depose', :by)"
-        );
-        $stmt->execute([
-            ':num'  => $numero,
-            ':did'  => (int)($_POST['dossier_id'] ?? 0) ?: null,
-            ':cat'  => $_POST['categorie'] ?? 'autre',
-            ':desc' => $this->sanitize($_POST['description'] ?? ''),
-            ':date' => $_POST['date_depot'] ?? date('Y-m-d'),
-            ':lieu' => $this->sanitize($_POST['lieu_conservation'] ?? 'Greffe du TGI-NY'),
-            ':obs'  => $this->sanitize($_POST['observations'] ?? ''),
-            ':by'   => Auth::userId(),
-        ]);
+        $categorie = $_POST['categorie'] ?? 'autre';
+        $categorieAutreDetail = ($categorie === 'autre')
+            ? $this->sanitize($_POST['categorie_autre_detail'] ?? '')
+            : null;
+
+        // Tentative avec colonne categorie_autre_detail (migration 004)
+        try {
+            $stmt = $this->db->prepare(
+                "INSERT INTO scelles
+                    (numero_scelle, dossier_id, categorie, categorie_autre_detail, description,
+                     date_depot, lieu_conservation, observations, statut, created_by)
+                 VALUES
+                    (:num, :did, :cat, :cad, :desc, :date, :lieu, :obs, 'depose', :by)"
+            );
+            $stmt->execute([
+                ':num'  => $numero,
+                ':did'  => (int)($_POST['dossier_id'] ?? 0) ?: null,
+                ':cat'  => $categorie,
+                ':cad'  => $categorieAutreDetail,
+                ':desc' => $this->sanitize($_POST['description'] ?? ''),
+                ':date' => $_POST['date_depot'] ?? date('Y-m-d'),
+                ':lieu' => $this->sanitize($_POST['lieu_conservation'] ?? 'Greffe du TGI-NY'),
+                ':obs'  => $this->sanitize($_POST['observations'] ?? ''),
+                ':by'   => Auth::userId(),
+            ]);
+        } catch (\Exception $e) {
+            // Fallback sans la nouvelle colonne
+            $stmt = $this->db->prepare(
+                "INSERT INTO scelles
+                    (numero_scelle, dossier_id, categorie, description,
+                     date_depot, lieu_conservation, observations, statut, created_by)
+                 VALUES
+                    (:num, :did, :cat, :desc, :date, :lieu, :obs, 'depose', :by)"
+            );
+            $stmt->execute([
+                ':num'  => $numero,
+                ':did'  => (int)($_POST['dossier_id'] ?? 0) ?: null,
+                ':cat'  => $categorie,
+                ':desc' => $this->sanitize($_POST['description'] ?? ''),
+                ':date' => $_POST['date_depot'] ?? date('Y-m-d'),
+                ':lieu' => $this->sanitize($_POST['lieu_conservation'] ?? 'Greffe du TGI-NY'),
+                ':obs'  => $this->sanitize($_POST['observations'] ?? ''),
+                ':by'   => Auth::userId(),
+            ]);
+        }
         $id = (int)$this->db->lastInsertId();
         $this->flash('success', "Scellé {$numero} enregistré.");
         $this->redirect('/scelles/show/' . $id);
@@ -104,19 +132,40 @@ class ScelleController extends Controller
         Auth::requireLogin();
         Auth::requireRole(['admin', 'greffier', 'president', 'juge_instruction']);
         CSRF::check();
-        $this->db->prepare(
-            "UPDATE scelles SET
-                categorie=:cat, lieu_conservation=:lieu,
-                description=:desc, statut=:statut, observations=:obs
-             WHERE id=:id"
-        )->execute([
-            ':cat'    => $_POST['categorie'] ?? 'autre',
-            ':lieu'   => $this->sanitize($_POST['lieu_conservation'] ?? ''),
-            ':desc'   => $this->sanitize($_POST['description'] ?? ''),
-            ':statut' => $_POST['statut'] ?? 'depose',
-            ':obs'    => $this->sanitize($_POST['observations'] ?? ''),
-            ':id'     => (int)$id,
-        ]);
+        $categorie = $_POST['categorie'] ?? 'autre';
+        $categorieAutreDetail = ($categorie === 'autre')
+            ? $this->sanitize($_POST['categorie_autre_detail'] ?? '')
+            : null;
+        try {
+            $this->db->prepare(
+                "UPDATE scelles SET
+                    categorie=:cat, categorie_autre_detail=:cad, lieu_conservation=:lieu,
+                    description=:desc, statut=:statut, observations=:obs
+                 WHERE id=:id"
+            )->execute([
+                ':cat'  => $categorie,
+                ':cad'  => $categorieAutreDetail,
+                ':lieu' => $this->sanitize($_POST['lieu_conservation'] ?? ''),
+                ':desc' => $this->sanitize($_POST['description'] ?? ''),
+                ':statut'=> $_POST['statut'] ?? 'depose',
+                ':obs'  => $this->sanitize($_POST['observations'] ?? ''),
+                ':id'   => (int)$id,
+            ]);
+        } catch (\Exception $e) {
+            // Fallback sans categorie_autre_detail
+            $this->db->prepare(
+                "UPDATE scelles SET categorie=:cat, lieu_conservation=:lieu,
+                    description=:desc, statut=:statut, observations=:obs
+                 WHERE id=:id"
+            )->execute([
+                ':cat'  => $categorie,
+                ':lieu' => $this->sanitize($_POST['lieu_conservation'] ?? ''),
+                ':desc' => $this->sanitize($_POST['description'] ?? ''),
+                ':statut'=> $_POST['statut'] ?? 'depose',
+                ':obs'  => $this->sanitize($_POST['observations'] ?? ''),
+                ':id'   => (int)$id,
+            ]);
+        }
         $this->flash('success', 'Scellé mis à jour.');
         $this->redirect('/scelles/show/' . $id);
     }
