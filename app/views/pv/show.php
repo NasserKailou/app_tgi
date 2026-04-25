@@ -33,14 +33,56 @@
                     </div>
                     <div class="col-md-6"><small class="text-muted d-block">Unité d'enquête</small><strong><?= htmlspecialchars($pv['unite_nom'] ?? '—') ?></strong></div>
                     <div class="col-md-6">
-                        <small class="text-muted d-block">Type d'infraction</small>
+                        <small class="text-muted d-block">Infraction déclarée (unité d'enquête)</small>
                         <?php if (!empty($pv['infraction_libelle'])): ?>
                         <strong><?= htmlspecialchars($pv['infraction_libelle']) ?></strong>
                         <?php $catColors = ['criminelle'=>'danger','correctionnelle'=>'warning','contraventionnelle'=>'secondary']; ?>
                         <span class="badge bg-<?= $catColors[$pv['infraction_categorie']] ?? 'secondary' ?> ms-1"><?= ucfirst($pv['infraction_categorie'] ?? '') ?></span>
                         <?php else: ?><span class="text-muted">—</span><?php endif; ?>
+                        <?php if (!empty($pvInfractions['unite'])): ?>
+                        <div class="mt-1">
+                        <?php foreach ($pvInfractions['unite'] as $inf): ?>
+                        <span class="badge bg-light text-dark border me-1 mb-1">
+                            <i class="bi bi-gavel me-1"></i><?= htmlspecialchars($inf['code']) ?> — <?= htmlspecialchars($inf['libelle']) ?>
+                        </span>
+                        <?php endforeach; ?>
+                        </div>
+                        <?php endif; ?>
                     </div>
-                    <div class="col-12"><small class="text-muted d-block">Description des faits</small><p class="mb-0"><?= nl2br(htmlspecialchars($pv['description_faits'] ?? '—')) ?></p></div>
+                    <?php if (!empty($pv['qualification_substitut_libelle']) || !empty($pvInfractions['substitut'])): ?>
+                    <div class="col-md-6">
+                        <small class="text-muted d-block">
+                            <i class="bi bi-scales me-1 text-success"></i>Qualification retenue
+                            <span class="badge bg-success ms-1 small">Substitut</span>
+                        </small>
+                        <?php if (!empty($pv['qualification_substitut_libelle'])): ?>
+                        <strong class="text-success"><?= htmlspecialchars($pv['qualification_substitut_libelle']) ?></strong>
+                        <?php endif; ?>
+                        <?php if (!empty($pv['qualification_details'])): ?>
+                        <div class="small text-muted mt-1 fst-italic"><?= htmlspecialchars($pv['qualification_details']) ?></div>
+                        <?php endif; ?>
+                        <?php if (!empty($pvInfractions['substitut'])): ?>
+                        <div class="mt-1">
+                        <?php foreach ($pvInfractions['substitut'] as $inf): ?>
+                        <span class="badge bg-success me-1 mb-1">
+                            <?= htmlspecialchars($inf['code']) ?>
+                            <?php if (!empty($inf['est_complicite'])): ?><i class="bi bi-people-fill ms-1" title="Complicité"></i><?php endif; ?>
+                        </span>
+                        <?php endforeach; ?>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                    <?php endif; ?>
+                    <div class="col-12"><small class="text-muted d-block">Description des faits (initiale)</small><p class="mb-0"><?= nl2br(htmlspecialchars($pv['description_faits'] ?? '—')) ?></p></div>
+                    <?php if (!empty($pv['lois_applicables'])): ?>
+                    <div class="col-12">
+                        <small class="text-muted d-block">
+                            <i class="bi bi-book me-1 text-warning"></i>Lois applicables
+                            <span class="badge bg-warning text-dark ms-1 small">Substitut</span>
+                        </small>
+                        <p class="mb-0 fw-semibold"><?= nl2br(htmlspecialchars($pv['lois_applicables'])) ?></p>
+                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -65,6 +107,161 @@
                         <?php endif; ?>
                     </div>
                 </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- ══════════ QUALIFICATION SUBSTITUT ══════════ -->
+        <?php if ($isSubstitut): ?>
+        <div class="card border-0 shadow-sm mb-4" style="border-left:4px solid #198754!important">
+            <div class="card-header bg-success text-white fw-semibold">
+                <i class="bi bi-scales me-2"></i>Qualification retenue & Lois applicables
+                <span class="badge bg-light text-success ms-2 small">Réservé substitut</span>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="<?= BASE_URL ?>/pv/update/<?= $pv['id'] ?>">
+                    <?= CSRF::field() ?>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Qualification retenue par le substitut</label>
+                            <select name="qualification_substitut_id" class="form-select form-select-sm">
+                                <option value="">— Même que l'unité d'enquête —</option>
+                                <?php foreach ($infractions as $inf): ?>
+                                <option value="<?= $inf['id'] ?>"
+                                    <?= ((int)($pv['qualification_substitut_id'] ?? 0) === (int)$inf['id']) ? 'selected' : '' ?>>
+                                    [<?= htmlspecialchars($inf['code']) ?>] <?= htmlspecialchars($inf['libelle']) ?>
+                                </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Infractions qualifiées (multi-sélection)</label>
+                            <div class="border rounded p-2" style="max-height:130px;overflow-y:auto;">
+                                <?php foreach ($infractions as $inf):
+                                    $isChecked = false;
+                                    foreach (($pv['infractions_substitut'] ?? []) as $is) {
+                                        if ((int)$is['infraction_id'] === (int)$inf['id']) { $isChecked = true; break; }
+                                    }
+                                ?>
+                                <div class="form-check mb-0">
+                                    <input class="form-check-input" type="checkbox"
+                                           name="infractions_substitut[]"
+                                           value="<?= $inf['id'] ?>"
+                                           id="qsub_<?= $inf['id'] ?>"
+                                           <?= $isChecked ? 'checked' : '' ?>>
+                                    <label class="form-check-label small" for="qsub_<?= $inf['id'] ?>">
+                                        <strong><?= htmlspecialchars($inf['code']) ?></strong>
+                                        — <?= htmlspecialchars($inf['libelle']) ?>
+                                        &nbsp;<input type="checkbox"
+                                            name="complicite_<?= $inf['id'] ?>" value="1"
+                                            <?= ($isChecked && ($pv['infractions_substitut'][array_search($inf['id'], array_column($pv['infractions_substitut'],'infraction_id'))]['est_complicite']??0)) ? 'checked' : '' ?>
+                                            title="Complicité"> <small class="text-muted">complicité</small>
+                                    </label>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Précisions qualification (circonstances, etc.)</label>
+                            <textarea name="qualification_details" class="form-control form-control-sm" rows="2"
+                                      placeholder="Ex: complicité, récidive, circonstances aggravantes..."><?= htmlspecialchars($pv['qualification_details'] ?? '') ?></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">
+                                <i class="bi bi-book me-1"></i>Lois applicables
+                                <small class="text-muted">(textes de référence)</small>
+                            </label>
+                            <textarea name="lois_applicables" class="form-control form-control-sm" rows="2"
+                                      placeholder="Ex: Art. 250 CPP, Loi n°2016-XX..."><?= htmlspecialchars($pv['lois_applicables'] ?? '') ?></textarea>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end mt-3">
+                        <button type="submit" class="btn btn-success btn-sm">
+                            <i class="bi bi-check-lg me-1"></i>Enregistrer la qualification
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- ══════════ PVs LIÉS (MÊME RP) ══════════ -->
+        <?php $pvsMemeRP = $pvLies ?? []; if (!empty($pvsMemeRP)): ?>
+        <div class="card border-0 shadow-sm mb-4 border-info">
+            <div class="card-header bg-info text-white fw-semibold">
+                <i class="bi bi-link-45deg me-2"></i>PVs liés (même numéro RP : <?= htmlspecialchars($pv['numero_rp']) ?>)
+                <span class="badge bg-light text-info ms-2"><?= count($pvsMemeRP) ?> autre(s)</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light"><tr><th>N° RG</th><th>N° PV</th><th>Date réception</th><th>Statut</th><th></th></tr></thead>
+                    <tbody>
+                    <?php foreach ($pvsMemeRP as $pvLie): ?>
+                    <tr>
+                        <td><a href="<?= BASE_URL ?>/pv/show/<?= $pvLie['id'] ?>" class="fw-semibold text-decoration-none"><?= htmlspecialchars($pvLie['numero_rg']) ?></a></td>
+                        <td><?= htmlspecialchars($pvLie['numero_pv']) ?></td>
+                        <td><?= date('d/m/Y', strtotime($pvLie['date_reception'])) ?></td>
+                        <td><span class="badge bg-secondary"><?= htmlspecialchars($pvLie['statut']) ?></span></td>
+                        <td>
+                        <?php if ($isSubstitut && !empty($dossier)): ?>
+                        <form method="POST" action="<?= BASE_URL ?>/pv/fusionner/<?= $pv['id'] ?>"
+                              style="display:inline"
+                              onsubmit="return confirm('Fusionner ce PV dans le dossier actuel ?')">
+                            <?= CSRF::field() ?>
+                            <input type="hidden" name="pv_ids[]" value="<?= $pvLie['id'] ?>">
+                            <button type="submit" class="btn btn-xs btn-outline-info btn-sm">
+                                <i class="bi bi-arrows-merge me-1"></i>Fusionner
+                            </button>
+                        </form>
+                        <?php endif; ?>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- ══════════ PIÈCES JOINTES DU PV (Substitut) ══════════ -->
+        <?php if ($isSubstitut): ?>
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white fw-semibold d-flex align-items-center justify-content-between">
+                <span><i class="bi bi-paperclip me-2 text-secondary"></i>Pièces jointes du PV</span>
+                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalUploadPV">
+                    <i class="bi bi-upload me-1"></i>Ajouter
+                </button>
+            </div>
+            <div class="card-body p-0" id="pvDocsList">
+                <?php $pvDocuments = $documentsPV ?? []; if (empty($pvDocuments)): ?>
+                <div class="text-center text-muted py-3 small">
+                    <i class="bi bi-file-earmark-x display-6 d-block mb-1 opacity-25"></i>Aucune pièce jointe
+                </div>
+                <?php else: ?>
+                <div class="list-group list-group-flush">
+                <?php foreach ($pvDocuments as $doc): ?>
+                <div class="list-group-item d-flex align-items-center gap-3">
+                    <i class="bi bi-file-earmark-<?= str_contains($doc['mime_type']??'','pdf') ? 'pdf text-danger' : (str_contains($doc['mime_type']??'','image') ? 'image text-success' : 'text-secondary') ?> fs-4 flex-shrink-0"></i>
+                    <div class="flex-grow-1">
+                        <div class="fw-semibold small"><?= htmlspecialchars($doc['nom_original'] ?? '') ?></div>
+                        <div class="text-muted small">
+                            <?= htmlspecialchars($doc['description'] ?? '') ?>
+                            <?php if ($doc['taille']): ?>
+                            — <?= round($doc['taille']/1024, 1) ?> Ko
+                            <?php endif; ?>
+                            — <?= date('d/m/Y H:i', strtotime($doc['created_at'])) ?>
+                            — par <?= htmlspecialchars(($doc['uploader_prenom']??'').' '.($doc['uploader_nom']??'')) ?>
+                        </div>
+                    </div>
+                    <a href="<?= BASE_URL ?>/documents/view/<?= $doc['id'] ?>" target="_blank" class="btn btn-xs btn-outline-primary btn-sm">
+                        <i class="bi bi-eye"></i>
+                    </a>
+                </div>
+                <?php endforeach; ?>
+                </div>
+                <?php endif; ?>
             </div>
         </div>
         <?php endif; ?>
@@ -553,6 +750,40 @@ function suggererSubstitut(){
 }
 </script>
 
+<!-- ══ Modal Upload Document PV ══ -->
+<div class="modal fade" id="modalUploadPV" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-upload me-2"></i>Ajouter une pièce jointe au PV</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Fichier <span class="text-danger">*</span></label>
+                    <input type="file" id="pvDocFile" class="form-control"
+                           accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xlsx,.xls,.odt">
+                    <div class="form-text">PDF, DOC, DOCX, JPG, PNG, XLSX, ODT — max 10 Mo</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Description (optionnel)</label>
+                    <input type="text" id="pvDocDesc" class="form-control" placeholder="Ex: Rapport d'expertise…">
+                </div>
+                <div id="pvUploadProgress" style="display:none">
+                    <div class="progress"><div class="progress-bar progress-bar-striped progress-bar-animated" style="width:100%"></div></div>
+                </div>
+                <div id="pvUploadMsg" class="mt-2"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="btnPVUpload">
+                    <i class="bi bi-upload me-1"></i>Envoyer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- ══ Modal Voir MEC ══ -->
 <div class="modal fade" id="modalVoirMEC" tabindex="-1">
     <div class="modal-dialog modal-lg">
@@ -581,11 +812,12 @@ function suggererSubstitut(){
             </div>
             <div class="modal-body p-3 overflow-auto" style="flex:1 1 auto;">
                 <?php
-                $formAction = BASE_URL . '/pv/mise-en-cause/store/' . $pv['id'];
-                $pvId       = $pv['id'];
-                $btnLabel   = 'Enregistrer la mise en cause';
-                $mec        = null;
-                $inModal    = true;
+                $formAction    = BASE_URL . '/pv/mise-en-cause/store/' . $pv['id'];
+                $pvId          = $pv['id'];
+                $btnLabel      = 'Enregistrer la mise en cause';
+                $mec           = null;
+                $inModal       = true;
+                $mecInfractions = ['unite' => [], 'substitut' => []];
                 // Inclusion du formulaire partagé (_form.php contient sa propre balise <form>)
                 include __DIR__ . '/../mises_en_cause/_form.php';
                 $inModal = false;
@@ -862,4 +1094,36 @@ var reconduireModal = document.getElementById('modalReconduire');
 if (reconduireModal) {
     reconduireModal.addEventListener('hidden.bs.modal', clearMecSearch);
 }
+
+// ── Upload pièce jointe PV ────────────────────────────────────────────
+document.getElementById('btnPVUpload')?.addEventListener('click', function() {
+    var file = document.getElementById('pvDocFile').files[0];
+    if (!file) { alert('Sélectionnez un fichier.'); return; }
+    var desc = document.getElementById('pvDocDesc').value;
+    var fd   = new FormData();
+    fd.append('fichier', file);
+    fd.append('description', desc);
+    fd.append('_csrf', document.querySelector('[name="_csrf"]')?.value || '');
+    document.getElementById('pvUploadProgress').style.display = 'block';
+    document.getElementById('pvUploadMsg').innerHTML = '';
+    document.getElementById('btnPVUpload').disabled = true;
+    fetch('<?= BASE_URL ?>/pv/upload/<?= $pv['id'] ?>', {method:'POST', body:fd})
+    .then(r=>r.json())
+    .then(data=>{
+        document.getElementById('pvUploadProgress').style.display = 'none';
+        document.getElementById('btnPVUpload').disabled = false;
+        if (data.error) {
+            document.getElementById('pvUploadMsg').innerHTML = '<div class="alert alert-danger small py-2">'+data.error+'</div>';
+        } else {
+            document.getElementById('pvUploadMsg').innerHTML = '<div class="alert alert-success small py-2"><i class="bi bi-check-circle me-1"></i>'+data.message+'</div>';
+            document.getElementById('pvDocFile').value = '';
+            document.getElementById('pvDocDesc').value = '';
+            setTimeout(()=>location.reload(), 1200);
+        }
+    }).catch(e=>{
+        document.getElementById('pvUploadProgress').style.display = 'none';
+        document.getElementById('btnPVUpload').disabled = false;
+        document.getElementById('pvUploadMsg').innerHTML = '<div class="alert alert-danger small py-2">Erreur réseau</div>';
+    });
+});
 </script>

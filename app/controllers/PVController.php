@@ -1,6 +1,25 @@
 <?php
 class PVController extends Controller {
 
+    // ─── Visibilité : restreindre aux entrées de l'utilisateur sauf admin/procureur ───
+    private function addVisibilityFilter(array &$where, array &$params, string $alias = 'p'): void {
+        $user = Auth::currentUser();
+        $role = $user['role_code'] ?? '';
+        // Admin et procureur voient tout
+        if (in_array($role, ['admin','procureur'])) return;
+        $uid = (int)($user['id'] ?? 0);
+        if ($role === 'substitut_procureur') {
+            // Voit ses PV affectés + ceux qu'il a créés
+            $where[]            = "({$alias}.substitut_id = :vis_uid OR {$alias}.created_by = :vis_uid2)";
+            $params['vis_uid']  = $uid;
+            $params['vis_uid2'] = $uid;
+        } else {
+            // Greffier, etc. : seulement ce qu'il a créé
+            $where[]             = "{$alias}.created_by = :vis_uid";
+            $params['vis_uid']   = $uid;
+        }
+    }
+
     public function index(): void {
         Auth::requireLogin();
         $flash = $this->getFlash();
@@ -8,14 +27,20 @@ class PVController extends Controller {
 
         $where  = [];
         $params = [];
-        $search = trim($_GET['q'] ?? '');
-        $statut = $_GET['statut'] ?? '';
-        $type   = $_GET['type'] ?? '';
+        $search    = trim($_GET['q'] ?? '');
+        $statut    = $_GET['statut'] ?? '';
+        $type      = $_GET['type'] ?? '';
         $antiterro = $_GET['antiterro'] ?? '';
+        $rp        = trim($_GET['rp'] ?? '');
 
         if ($search) {
-            $where[]  = "(p.numero_rg LIKE :q OR p.numero_pv LIKE :q OR p.description_faits LIKE :q)";
+            $where[]  = "(p.numero_rg LIKE :q OR p.numero_pv LIKE :q OR p.description_faits LIKE :q OR p.lois_applicables LIKE :q)";
             $params['q'] = "%{$search}%";
+        }
+        // Recherche par numéro RP : retourne tous les PV liés au même RP
+        if ($rp) {
+            $where[]    = "p.numero_rp = :rp";
+            $params['rp'] = $rp;
         }
         if ($statut) {
             $where[] = "p.statut = :statut";
@@ -28,6 +53,9 @@ class PVController extends Controller {
         if ($antiterro === '1') {
             $where[] = "p.est_antiterroriste = 1";
         }
+
+        // Filtre de visibilité par rôle
+        $this->addVisibilityFilter($where, $params);
 
         $whereSQL = $where ? 'WHERE ' . implode(' AND ', $where) : '';
         $page = max(1, (int)($_GET['page'] ?? 1));
@@ -55,19 +83,19 @@ class PVController extends Controller {
         $totalPages = ceil($total / $perPage);
         $substituts = $this->db->query("SELECT u.* FROM users u JOIN roles r ON u.role_id=r.id WHERE r.code='substitut_procureur' AND u.actif=1")->fetchAll();
 
-        $this->view('pv/index', compact('pvList','total','page','perPage','totalPages','search','statut','type','antiterro','substituts','flash','user'));
+        $this->view('pv/index', compact('pvList','total','page','perPage','totalPages','search','statut','type','antiterro','rp','substituts','flash','user'));
     }
 
     public function create(): void {
         Auth::requireLogin();
         Auth::requireRole(['admin','greffier','procureur','substitut_procureur','president']);
-        $user       = Auth::currentUser();
-        $unites     = $this->db->query("SELECT * FROM unites_enquete WHERE actif=1 ORDER BY nom")->fetchAll();
-        $regions    = $this->db->query("SELECT * FROM regions ORDER BY nom")->fetchAll();
-        $primos     = $this->db->query("SELECT * FROM primo_intervenants WHERE actif=1 ORDER BY nom")->fetchAll();
-        $infractions= $this->db->query("SELECT id, code, libelle, categorie FROM infractions ORDER BY libelle")->fetchAll();
-        $num        = new Numerotation($this->db);
-        $suggestRG  = $num->genererRG();
+        $user        = Auth::currentUser();
+        $unites      = $this->db->query("SELECT * FROM unites_enquete WHERE actif=1 ORDER BY nom")->fetchAll();
+        $regions     = $this->db->query("SELECT * FROM regions ORDER BY nom")->fetchAll();
+        $primos      = $this->db->query("SELECT * FROM primo_intervenants WHERE actif=1 ORDER BY nom")->fetchAll();
+        $infractions = $this->db->query("SELECT id, code, libelle, categorie FROM infractions ORDER BY libelle")->fetchAll();
+        $num         = new Numerotation($this->db);
+        $suggestRG   = $num->genererRG();
 
         // Construire les données géographiques complètes pour la cascade JS
         $geoDataForJs = [];
@@ -121,11 +149,8 @@ class PVController extends Controller {
         if ($numeroRP) {
             $chkRP = $this->db->prepare("SELECT COUNT(*) FROM pv WHERE numero_rp = ?");
             $chkRP->execute([$numeroRP]);
-            if ((int)$chkRP->fetchColumn() > 0) {
-                $this->flash('error', "Le numéro de Registre du Parquet (RP) {$numeroRP} existe déjà dans le système.");
-                $this->redirect('/pv/create');
-                return;
-            }
+            // On autorise plusieurs PV avec le même RP (multi-PV par affaire)
+            // Mais on avertit s'il existe déjà
         }
 
         $stmt = $this->db->prepare(
@@ -139,19 +164,29 @@ class PVController extends Controller {
             'rg'     => $numeroRG,
             'rp'     => $numeroRP ?: null,
             'nordre' => $this->sanitize($_POST['numero_ordre'] ?? '') ?: null,
-            'ue'     => $_POST['unite_enquete_id'] ?: null,
+            'ue'     => !empty($_POST['unite_enquete_id']) ? (int)$_POST['unite_enquete_id'] : null,
             'dpv'    => $_POST['date_pv'],
             'drec'   => $_POST['date_reception'],
             'type'   => $_POST['type_affaire'],
             'infr'   => !empty($_POST['infraction_id']) ? (int)$_POST['infraction_id'] : null,
             'anti'   => isset($_POST['est_antiterroriste']) ? 1 : 0,
-            'reg'    => $_POST['region_id'] ?: null,
-            'dep'    => $_POST['departement_id'] ?: null,
-            'com'    => $_POST['commune_id'] ?: null,
+            'reg'    => !empty($_POST['region_id']) ? (int)$_POST['region_id'] : null,
+            'dep'    => !empty($_POST['departement_id']) ? (int)$_POST['departement_id'] : null,
+            'com'    => !empty($_POST['commune_id']) ? (int)$_POST['commune_id'] : null,
             'desc'   => $this->sanitize($_POST['description_faits'] ?? ''),
             'by'     => Auth::userId(),
         ]);
         $pvId = (int)$this->db->lastInsertId();
+
+        // Infractions multiples (unité d'enquête) — cases à cocher
+        if (!empty($_POST['infractions_unite']) && is_array($_POST['infractions_unite'])) {
+            $insInfr = $this->db->prepare(
+                "INSERT IGNORE INTO pv_infractions (pv_id, infraction_id, type) VALUES (?,?,'unite')"
+            );
+            foreach ($_POST['infractions_unite'] as $iid) {
+                $insInfr->execute([$pvId, (int)$iid]);
+            }
+        }
 
         // Primo intervenants
         if (!empty($_POST['primo_intervenants']) && is_array($_POST['primo_intervenants'])) {
@@ -169,18 +204,43 @@ class PVController extends Controller {
         Auth::requireLogin();
         $pv = $this->getPVDetail((int)$id);
         if (!$pv) { $this->redirect('/pv'); }
+
+        // Vérification de visibilité
+        if (!$this->canAccessPV($pv)) {
+            $this->flash('error', 'Accès refusé à ce PV.');
+            $this->redirect('/pv');
+            return;
+        }
+
         $flash = $this->getFlash();
         $user  = Auth::currentUser();
         $substituts  = $this->db->query("SELECT u.* FROM users u JOIN roles r ON u.role_id=r.id WHERE r.code='substitut_procureur' AND u.actif=1")->fetchAll();
         $cabinets    = $this->db->query("SELECT * FROM cabinets_instruction WHERE actif=1")->fetchAll();
         $infractions = $this->db->query("SELECT id, code, libelle, categorie FROM infractions ORDER BY libelle")->fetchAll();
 
-        // Dossier lié éventuel
+        // Dossier(s) lié(s) — via dossier_pvs (multi-PV) ou pv_id direct
         $dossier = null;
         if ($pv['id']) {
-            $dossierStmt = $this->db->prepare("SELECT * FROM dossiers WHERE pv_id=? LIMIT 1");
-            $dossierStmt->execute([$pv['id']]);
+            $dossierStmt = $this->db->prepare(
+                "SELECT d.* FROM dossiers d
+                 LEFT JOIN dossier_pvs dp ON dp.dossier_id = d.id
+                 WHERE d.pv_id=? OR dp.pv_id=?
+                 ORDER BY d.created_at DESC LIMIT 1"
+            );
+            $dossierStmt->execute([$pv['id'], $pv['id']]);
             $dossier = $dossierStmt->fetch() ?: null;
+        }
+
+        // PVs avec le même RP (affaire liée)
+        $pvsMemeRP = [];
+        if (!empty($pv['numero_rp'])) {
+            $rpStmt = $this->db->prepare(
+                "SELECT p.id, p.numero_rg, p.numero_pv, p.date_reception, p.statut
+                 FROM pv p WHERE p.numero_rp = ? AND p.id != ?
+                 ORDER BY p.date_reception ASC"
+            );
+            $rpStmt->execute([$pv['numero_rp'], $pv['id']]);
+            $pvsMemeRP = $rpStmt->fetchAll();
         }
 
         // Mises en cause liées à ce PV
@@ -190,7 +250,35 @@ class PVController extends Controller {
         $mecStmt->execute([(int)$id]);
         $misesEnCause = $mecStmt->fetchAll();
 
-        $this->view('pv/show', compact('pv','flash','user','substituts','cabinets','infractions','dossier','misesEnCause'));
+        // Pièces jointes du PV
+        $docsStmt = $this->db->prepare(
+            "SELECT d.*, u.nom AS uploader_nom, u.prenom AS uploader_prenom
+             FROM documents d
+             LEFT JOIN users u ON d.uploaded_by = u.id
+             WHERE d.pv_id = ?
+             ORDER BY d.created_at DESC"
+        );
+        $docsStmt->execute([(int)$id]);
+        $pvDocuments = $docsStmt->fetchAll();
+
+        $isSubstitut = Auth::hasRole(['admin','procureur','substitut_procureur']);
+
+        $this->view('pv/show', compact(
+            'pv','flash','user','substituts','cabinets','infractions',
+            'dossier','misesEnCause','pvsMemeRP','pvDocuments','isSubstitut'
+        ));
+    }
+
+    // Vérifier si l'utilisateur courant peut accéder à ce PV
+    private function canAccessPV(array $pv): bool {
+        $user = Auth::currentUser();
+        $role = $user['role_code'] ?? '';
+        if (in_array($role, ['admin','procureur'])) return true;
+        $uid = (int)($user['id'] ?? 0);
+        if ($role === 'substitut_procureur') {
+            return (int)($pv['substitut_id'] ?? 0) === $uid || (int)($pv['created_by'] ?? 0) === $uid;
+        }
+        return (int)($pv['created_by'] ?? 0) === $uid;
     }
 
     public function edit(string $id): void {
@@ -203,38 +291,102 @@ class PVController extends Controller {
         $regions     = $this->db->query("SELECT * FROM regions ORDER BY nom")->fetchAll();
         $primos      = $this->db->query("SELECT * FROM primo_intervenants WHERE actif=1 ORDER BY nom")->fetchAll();
         $infractions = $this->db->query("SELECT id, code, libelle, categorie FROM infractions ORDER BY libelle")->fetchAll();
-        $this->view('pv/edit', compact('pv','unites','regions','primos','infractions','user'));
+
+        // Geo JSON pour cascade
+        $geoDataForJs = [];
+        foreach ($regions as $r) {
+            $depts = $this->db->prepare("SELECT id, nom FROM departements WHERE region_id=? ORDER BY nom");
+            $depts->execute([$r['id']]);
+            $deptsData = [];
+            foreach ($depts->fetchAll(PDO::FETCH_ASSOC) as $d2) {
+                $comms = $this->db->prepare("SELECT id, nom FROM communes WHERE departement_id=? ORDER BY nom");
+                $comms->execute([$d2['id']]);
+                $deptsData[] = [
+                    'id'       => (int)$d2['id'],
+                    'nom'      => $d2['nom'],
+                    'communes' => array_map(fn($c)=>['id'=>(int)$c['id'],'nom'=>$c['nom']],
+                                           $comms->fetchAll(PDO::FETCH_ASSOC))
+                ];
+            }
+            $geoDataForJs[$r['id']] = ['id'=>(int)$r['id'],'nom'=>$r['nom'],'departements'=>$deptsData];
+        }
+        $geoJson = json_encode($geoDataForJs, JSON_UNESCAPED_UNICODE);
+
+        $this->view('pv/edit', compact('pv','unites','regions','primos','infractions','user','geoJson'));
     }
 
     public function update(string $id): void {
         Auth::requireLogin();
         CSRF::check();
-        $stmt = $this->db->prepare(
-            "UPDATE pv SET numero_pv=:pv, unite_enquete_id=:ue, date_pv=:dpv, date_reception=:drec,
-             type_affaire=:type, infraction_id=:infr, est_antiterroriste=:anti, region_id=:reg, departement_id=:dep,
-             commune_id=:com, description_faits=:desc WHERE id=:id"
-        );
-        $stmt->execute([
-            'pv'   => $this->sanitize($_POST['numero_pv'] ?? ''),
-            'ue'   => $_POST['unite_enquete_id'] ?: null,
-            'dpv'  => $_POST['date_pv'],
-            'drec' => $_POST['date_reception'],
-            'type' => $_POST['type_affaire'],
-            'infr' => !empty($_POST['infraction_id']) ? (int)$_POST['infraction_id'] : null,
-            'anti' => isset($_POST['est_antiterroriste']) ? 1 : 0,
-            'reg'  => $_POST['region_id'] ?: null,
-            'dep'  => $_POST['departement_id'] ?: null,
-            'com'  => $_POST['commune_id'] ?: null,
-            'desc' => $this->sanitize($_POST['description_faits'] ?? ''),
-            'id'   => (int)$id,
-        ]);
+        $user = Auth::currentUser();
+        $role = $user['role_code'] ?? '';
+        $isSubstitut = in_array($role, ['admin','procureur','substitut_procureur']);
 
-        // Mise à jour primo intervenants
-        $this->db->prepare("DELETE FROM pv_primo_intervenants WHERE pv_id=?")->execute([(int)$id]);
-        if (!empty($_POST['primo_intervenants']) && is_array($_POST['primo_intervenants'])) {
-            $insPI = $this->db->prepare("INSERT IGNORE INTO pv_primo_intervenants (pv_id, primo_intervenant_id) VALUES (?,?)");
-            foreach ($_POST['primo_intervenants'] as $piId) {
-                $insPI->execute([(int)$id, (int)$piId]);
+        // Substitut peut mettre à jour qualification + lois_applicables
+        if ($isSubstitut) {
+            $stmt = $this->db->prepare(
+                "UPDATE pv SET qualification_substitut_id=:qsub, qualification_details=:qdet,
+                 lois_applicables=:lois WHERE id=:id"
+            );
+            $stmt->execute([
+                'qsub' => !empty($_POST['qualification_substitut_id']) ? (int)$_POST['qualification_substitut_id'] : null,
+                'qdet' => $this->sanitize($_POST['qualification_details'] ?? ''),
+                'lois' => $this->sanitize($_POST['lois_applicables'] ?? ''),
+                'id'   => (int)$id,
+            ]);
+
+            // Infractions substitut (multi-select)
+            $this->db->prepare("DELETE FROM pv_infractions WHERE pv_id=? AND type='substitut'")->execute([(int)$id]);
+            if (!empty($_POST['infractions_substitut']) && is_array($_POST['infractions_substitut'])) {
+                $insIS = $this->db->prepare(
+                    "INSERT IGNORE INTO pv_infractions (pv_id, infraction_id, type, est_complicite, notes) VALUES (?,?,'substitut',?,?)"
+                );
+                foreach ($_POST['infractions_substitut'] as $iid) {
+                    $complicite = isset($_POST['complicite_' . $iid]) ? 1 : 0;
+                    $notes      = $this->sanitize($_POST['notes_infraction_' . $iid] ?? '');
+                    $insIS->execute([(int)$id, (int)$iid, $complicite, $notes ?: null]);
+                }
+            }
+        }
+
+        // Greffier/admin peut modifier les données générales
+        if (in_array($role, ['admin','greffier','procureur'])) {
+            $stmt2 = $this->db->prepare(
+                "UPDATE pv SET numero_pv=:pv, unite_enquete_id=:ue, date_pv=:dpv, date_reception=:drec,
+                 type_affaire=:type, infraction_id=:infr, est_antiterroriste=:anti, region_id=:reg, departement_id=:dep,
+                 commune_id=:com, description_faits=:desc WHERE id=:id"
+            );
+            $stmt2->execute([
+                'pv'   => $this->sanitize($_POST['numero_pv'] ?? ''),
+                'ue'   => !empty($_POST['unite_enquete_id']) ? (int)$_POST['unite_enquete_id'] : null,
+                'dpv'  => $_POST['date_pv'],
+                'drec' => $_POST['date_reception'],
+                'type' => $_POST['type_affaire'],
+                'infr' => !empty($_POST['infraction_id']) ? (int)$_POST['infraction_id'] : null,
+                'anti' => isset($_POST['est_antiterroriste']) ? 1 : 0,
+                'reg'  => !empty($_POST['region_id']) ? (int)$_POST['region_id'] : null,
+                'dep'  => !empty($_POST['departement_id']) ? (int)$_POST['departement_id'] : null,
+                'com'  => !empty($_POST['commune_id']) ? (int)$_POST['commune_id'] : null,
+                'desc' => $this->sanitize($_POST['description_faits'] ?? ''),
+                'id'   => (int)$id,
+            ]);
+
+            // Mise à jour primo intervenants
+            $this->db->prepare("DELETE FROM pv_primo_intervenants WHERE pv_id=?")->execute([(int)$id]);
+            if (!empty($_POST['primo_intervenants']) && is_array($_POST['primo_intervenants'])) {
+                $insPI = $this->db->prepare("INSERT IGNORE INTO pv_primo_intervenants (pv_id, primo_intervenant_id) VALUES (?,?)");
+                foreach ($_POST['primo_intervenants'] as $piId) {
+                    $insPI->execute([(int)$id, (int)$piId]);
+                }
+            }
+
+            // Infractions unité (multi)
+            $this->db->prepare("DELETE FROM pv_infractions WHERE pv_id=? AND type='unite'")->execute([(int)$id]);
+            if (!empty($_POST['infractions_unite']) && is_array($_POST['infractions_unite'])) {
+                $insIU = $this->db->prepare("INSERT IGNORE INTO pv_infractions (pv_id, infraction_id, type) VALUES (?,?,'unite')");
+                foreach ($_POST['infractions_unite'] as $iid) {
+                    $insIU->execute([(int)$id, (int)$iid]);
+                }
             }
         }
 
@@ -279,8 +431,6 @@ class PVController extends Controller {
             $this->redirect('/pv/show/' . $id);
             return;
         }
-        $pv = $this->db->prepare("SELECT statut FROM pv WHERE id=?")->execute([$id])
-            ? $this->db->prepare("SELECT statut FROM pv WHERE id=?") : null;
         $stmtPV = $this->db->prepare("SELECT statut FROM pv WHERE id=?");
         $stmtPV->execute([$id]);
         $pv = $stmtPV->fetch();
@@ -311,29 +461,23 @@ class PVController extends Controller {
         $num    = new Numerotation($this->db);
         $annee  = date('Y');
 
-        // Mode de poursuite décidé par le substitut
         $modePoursuite = $_POST['mode_poursuite'] ?? 'RI';
         if (!in_array($modePoursuite, ['RI','CD','FD','CRPC','autre'])) {
             $modePoursuite = 'RI';
         }
 
-        // RÈGLE : seul RI peut aller au cabinet d'instruction
-        // CD, FD, CRPC, autre → audience directe
         $destination = ($modePoursuite === 'RI') ? 'instruction' : 'audience';
 
-        // Numéro RP auto-généré (depuis le PV si déjà renseigné, sinon générer)
         $numeroRP = $pvData['numero_rp'] ?? null;
         if (!$numeroRP) {
             $numeroRP = $num->genererRP($annee);
         }
 
-        // RI : saisi manuellement par la greffière lors du transfert
         $numeroRI  = null;
         $cabinetId = null;
         if ($destination === 'instruction') {
             $numeroRI = trim($this->sanitize($_POST['numero_ri'] ?? ''));
             if ($numeroRI) {
-                // Vérifier unicité du RI
                 $chkRI = $this->db->prepare("SELECT COUNT(*) FROM dossiers WHERE numero_ri = ?");
                 $chkRI->execute([$numeroRI]);
                 if ((int)$chkRI->fetchColumn() > 0) {
@@ -344,7 +488,7 @@ class PVController extends Controller {
             } else {
                 $numeroRI = $num->genererRI($annee);
             }
-            $cabinetId = $_POST['cabinet_id'] ? (int)$_POST['cabinet_id'] : null;
+            $cabinetId = !empty($_POST['cabinet_id']) ? (int)$_POST['cabinet_id'] : null;
         }
 
         $numeroRG    = $num->genererRG($annee);
@@ -377,6 +521,10 @@ class PVController extends Controller {
         ]);
         $dossierId = (int)$this->db->lastInsertId();
 
+        // Enregistrer la jonction dans dossier_pvs
+        $this->db->prepare("INSERT IGNORE INTO dossier_pvs (dossier_id, pv_id, joint_par) VALUES (?,?,?)")
+            ->execute([$dossierId, (int)$id, Auth::userId()]);
+
         // Historique
         $mpLabels = [
             'RI'    => 'Réquisitoire Introductif (→ Cabinet instruction)',
@@ -399,7 +547,155 @@ class PVController extends Controller {
         $this->redirect('/dossiers/show/' . $dossierId);
     }
 
-    // API endpoints AJAX
+    // Fusionner plusieurs PVs (même RP) dans un seul dossier
+    public function fusionner(string $id): void {
+        Auth::requireLogin();
+        CSRF::check();
+        Auth::requireRole(['admin','procureur','substitut_procureur']);
+
+        $pvIds = array_map('intval', (array)($_POST['pv_ids'] ?? []));
+        if (empty($pvIds)) {
+            $this->flash('error', 'Sélectionnez au moins un PV à fusionner.');
+            $this->redirect('/pv/show/' . $id);
+            return;
+        }
+
+        // Vérifier qu'il y a un dossier existant pour ce PV
+        $dossierStmt = $this->db->prepare(
+            "SELECT d.* FROM dossiers d
+             LEFT JOIN dossier_pvs dp ON dp.dossier_id = d.id
+             WHERE d.pv_id=? OR dp.pv_id=?
+             ORDER BY d.created_at DESC LIMIT 1"
+        );
+        $dossierStmt->execute([(int)$id, (int)$id]);
+        $dossier = $dossierStmt->fetch();
+
+        if (!$dossier) {
+            $this->flash('error', 'Ce PV n\'a pas encore de dossier. Transférez-le d\'abord.');
+            $this->redirect('/pv/show/' . $id);
+            return;
+        }
+
+        $insJonction = $this->db->prepare("INSERT IGNORE INTO dossier_pvs (dossier_id, pv_id, joint_par) VALUES (?,?,?)");
+        foreach ($pvIds as $pid) {
+            $insJonction->execute([$dossier['id'], $pid, Auth::userId()]);
+            // Mettre à jour le statut du PV joint
+            $this->db->prepare("UPDATE pv SET statut='transfere_instruction' WHERE id=?")->execute([$pid]);
+        }
+
+        $this->flash('success', count($pvIds) . ' PV(s) fusionné(s) dans le dossier ' . $dossier['numero_rg'] . '.');
+        $this->redirect('/dossiers/show/' . $dossier['id']);
+    }
+
+    // API endpoint : upload pièce jointe pour un PV (réservé substitut)
+    public function uploadDocument(string $pvId): void {
+        Auth::requireLogin();
+        Auth::requireRole(['admin','procureur','substitut_procureur']);
+        CSRF::check();
+
+        $pvId = (int)$pvId;
+        $pvStmt = $this->db->prepare("SELECT id FROM pv WHERE id=?");
+        $pvStmt->execute([$pvId]);
+        if (!$pvStmt->fetch()) {
+            $this->json(['error' => 'PV introuvable'], 404); return;
+        }
+
+        if (empty($_FILES['fichier']) || $_FILES['fichier']['error'] !== UPLOAD_ERR_OK) {
+            $this->json(['error' => 'Aucun fichier ou erreur upload'], 400); return;
+        }
+
+        $file    = $_FILES['fichier'];
+        $maxSize = 10 * 1024 * 1024;
+        if ($file['size'] > $maxSize) {
+            $this->json(['error' => 'Fichier trop volumineux (max 10 Mo)'], 400); return;
+        }
+
+        $allowed = ['pdf','doc','docx','jpg','jpeg','png','xlsx','xls','odt'];
+        $ext     = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if (!in_array($ext, $allowed)) {
+            $this->json(['error' => 'Type de fichier non autorisé'], 400); return;
+        }
+
+        $dir = ROOT_PATH . '/public/uploads/documents/pv_' . $pvId . '/';
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+
+        $hash    = hash('sha256', $file['name'] . microtime(true));
+        $newName = $hash . '_' . preg_replace('/[^a-zA-Z0-9.\-_]/', '_', $file['name']);
+        move_uploaded_file($file['tmp_name'], $dir . $newName);
+
+        // Détecter MIME
+        $finfo    = finfo_open(FILEINFO_MIME_TYPE);
+        $mimeType = finfo_file($finfo, $dir . $newName);
+        finfo_close($finfo);
+
+        $desc = $this->sanitize($_POST['description'] ?? '');
+
+        // Insérer dans documents — compatible avec schema variable
+        $cols = $this->db->query("SHOW COLUMNS FROM documents")->fetchAll(PDO::FETCH_COLUMN);
+        $insert = ['pv_id','nom_original','nom_stockage','chemin','taille','mime_type','description','uploaded_by','uploaded_by_role'];
+        $insertCols = array_filter($insert, fn($c) => in_array($c, $cols));
+        $insertCols = array_values($insertCols);
+
+        $data = [
+            'pv_id'          => $pvId,
+            'nom_original'   => $file['name'],
+            'nom_stockage'   => $newName,
+            'chemin'         => 'uploads/documents/pv_' . $pvId . '/' . $newName,
+            'taille'         => $file['size'],
+            'mime_type'      => $mimeType,
+            'description'    => $desc ?: null,
+            'uploaded_by'    => Auth::userId(),
+            'uploaded_by_role'=> Auth::roleCode(),
+        ];
+
+        $keys = array_filter(array_keys($data), fn($k) => in_array($k, $insertCols));
+        $keys = array_values($keys);
+        $sqlCols = implode(',', $keys);
+        $sqlVals = implode(',', array_map(fn($k)=>':'.$k, $keys));
+        $insStmt = $this->db->prepare("INSERT INTO documents ($sqlCols) VALUES ($sqlVals)");
+        $filteredData = array_intersect_key($data, array_flip($keys));
+        $insStmt->execute($filteredData);
+        $newId = (int)$this->db->lastInsertId();
+
+        $this->json([
+            'id'      => $newId,
+            'nom'     => $file['name'],
+            'url'     => BASE_URL . '/documents/view/' . $newId,
+            'taille'  => $file['size'],
+            'message' => 'Document uploadé avec succès',
+        ]);
+    }
+
+    // API endpoint : liste des documents d'un PV
+    public function listDocuments(string $pvId): void {
+        Auth::requireLogin();
+        $pvId = (int)$pvId;
+        $stmt = $this->db->prepare(
+            "SELECT d.id, d.nom_original, d.taille, d.mime_type,
+                    d.description, d.created_at,
+                    u.nom AS uploader_nom, u.prenom AS uploader_prenom
+             FROM documents d
+             LEFT JOIN users u ON d.uploaded_by = u.id
+             WHERE d.pv_id = ?
+             ORDER BY d.created_at DESC"
+        );
+        $stmt->execute([$pvId]);
+        $docs = $stmt->fetchAll();
+        foreach ($docs as &$doc) {
+            $doc['url']    = BASE_URL . '/documents/view/' . $doc['id'];
+            $doc['taille_fmt'] = $this->formatSize((int)$doc['taille']);
+            $doc['inline'] = in_array($doc['mime_type'], ['application/pdf','image/jpeg','image/png','image/gif']);
+        }
+        $this->json($docs);
+    }
+
+    private function formatSize(int $bytes): string {
+        if ($bytes >= 1048576) return round($bytes/1048576,1) . ' Mo';
+        if ($bytes >= 1024) return round($bytes/1024,1) . ' Ko';
+        return $bytes . ' o';
+    }
+
+    // API endpoints AJAX géo
     public function apiDepartements(string $region_id): void {
         $stmt = $this->db->prepare("SELECT id, nom FROM departements WHERE region_id=? ORDER BY nom");
         $stmt->execute([(int)$region_id]);
@@ -412,13 +708,27 @@ class PVController extends Controller {
         $this->json($stmt->fetchAll());
     }
 
+    // API : recherche par RP
+    public function apiSearchRP(): void {
+        Auth::requireLogin();
+        $rp = trim($_GET['rp'] ?? '');
+        if (!$rp) { $this->json([]); return; }
+        $stmt = $this->db->prepare(
+            "SELECT p.id, p.numero_rg, p.numero_pv, p.numero_rp, p.date_reception, p.statut, p.type_affaire
+             FROM pv p WHERE p.numero_rp = ? ORDER BY p.date_reception DESC"
+        );
+        $stmt->execute([$rp]);
+        $this->json($stmt->fetchAll());
+    }
+
     private function getPVDetail(int $id): ?array {
         $stmt = $this->db->prepare(
             "SELECT p.*, ue.nom as unite_nom, ue.type as unite_type,
                     us.nom as substitut_nom, us.prenom as substitut_prenom,
                     r.nom as region_nom, dep.nom as dept_nom, c.nom as commune_nom,
                     cb.nom as created_by_nom, cb.prenom as created_by_prenom,
-                    inf.libelle as infraction_libelle, inf.code as infraction_code, inf.categorie as infraction_categorie
+                    inf.libelle as infraction_libelle, inf.code as infraction_code, inf.categorie as infraction_categorie,
+                    qsub.libelle as qualification_sub_libelle, qsub.code as qualification_sub_code
              FROM pv p
              LEFT JOIN unites_enquete ue ON p.unite_enquete_id = ue.id
              LEFT JOIN users us ON p.substitut_id = us.id
@@ -427,6 +737,7 @@ class PVController extends Controller {
              LEFT JOIN communes c ON p.commune_id = c.id
              LEFT JOIN users cb ON p.created_by = cb.id
              LEFT JOIN infractions inf ON p.infraction_id = inf.id
+             LEFT JOIN infractions qsub ON p.qualification_substitut_id = qsub.id
              WHERE p.id = ?"
         );
         $stmt->execute([$id]);
@@ -442,6 +753,24 @@ class PVController extends Controller {
         $piStmt->execute([$id]);
         $pv['primo_intervenants'] = $piStmt->fetchAll();
         $pv['primo_ids'] = array_column($pv['primo_intervenants'], 'id');
+
+        // Infractions multiples
+        try {
+            $infStmt = $this->db->prepare(
+                "SELECT pi.*, inf.libelle, inf.code, inf.categorie
+                 FROM pv_infractions pi
+                 JOIN infractions inf ON pi.infraction_id = inf.id
+                 WHERE pi.pv_id = ?
+                 ORDER BY pi.type, inf.libelle"
+            );
+            $infStmt->execute([$id]);
+            $allInfr = $infStmt->fetchAll();
+            $pv['infractions_unite']     = array_filter($allInfr, fn($i) => $i['type'] === 'unite');
+            $pv['infractions_substitut'] = array_filter($allInfr, fn($i) => $i['type'] === 'substitut');
+        } catch (\Exception $e) {
+            $pv['infractions_unite']     = [];
+            $pv['infractions_substitut'] = [];
+        }
 
         return $pv;
     }
