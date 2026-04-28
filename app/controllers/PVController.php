@@ -251,8 +251,10 @@ class PVController extends Controller {
         $misesEnCause = $mecStmt->fetchAll();
 
         // Pièces jointes du PV
-        $docsStmt = $this->db->prepare(
-            "SELECT d.*, u.nom AS uploader_nom, u.prenom AS uploader_prenom
+              $docsStmt = $this->db->prepare(
+            "SELECT d.id, d.pv_id, d.nom_original, d.nom_stockage, d.chemin_fichier,
+                    d.mime_type, d.taille_octets AS taille, d.description, d.created_at,
+                    u.nom AS uploader_nom, u.prenom AS uploader_prenom
              FROM documents d
              LEFT JOIN users u ON d.uploaded_by = u.id
              WHERE d.pv_id = ?
@@ -260,6 +262,7 @@ class PVController extends Controller {
         );
         $docsStmt->execute([(int)$id]);
         $pvDocuments = $docsStmt->fetchAll();
+
 
         $isSubstitut = Auth::hasRole(['admin','procureur','substitut_procureur']);
 
@@ -329,31 +332,38 @@ class PVController extends Controller {
         $isSubstitut = in_array($role, ['admin','procureur','substitut_procureur']);
 
         // Substitut peut mettre à jour qualification + lois_applicables
-        if ($isSubstitut) {
-            $stmt = $this->db->prepare(
-                "UPDATE pv SET qualification_substitut_id=:qsub, qualification_details=:qdet,
-                 lois_applicables=:lois WHERE id=:id"
-            );
-            $stmt->execute([
-                'qsub' => !empty($_POST['qualification_substitut_id']) ? (int)$_POST['qualification_substitut_id'] : null,
-                'qdet' => $this->sanitize($_POST['qualification_details'] ?? ''),
-                'lois' => $this->sanitize($_POST['lois_applicables'] ?? ''),
-                'id'   => (int)$id,
-            ]);
+     if ($isSubstitut) {
+    // Calcul de qualification_substitut_id : première infraction cochée
+    $qsubId = null;
+    if (!empty($_POST['infractions_substitut']) && is_array($_POST['infractions_substitut'])) {
+        $first = reset($_POST['infractions_substitut']);
+        if ($first) $qsubId = (int)$first;
+    }
 
-            // Infractions substitut (multi-select)
-            $this->db->prepare("DELETE FROM pv_infractions WHERE pv_id=? AND type='substitut'")->execute([(int)$id]);
-            if (!empty($_POST['infractions_substitut']) && is_array($_POST['infractions_substitut'])) {
-                $insIS = $this->db->prepare(
-                    "INSERT IGNORE INTO pv_infractions (pv_id, infraction_id, type, est_complicite, notes) VALUES (?,?,'substitut',?,?)"
-                );
-                foreach ($_POST['infractions_substitut'] as $iid) {
-                    $complicite = isset($_POST['complicite_' . $iid]) ? 1 : 0;
-                    $notes      = $this->sanitize($_POST['notes_infraction_' . $iid] ?? '');
-                    $insIS->execute([(int)$id, (int)$iid, $complicite, $notes ?: null]);
-                }
-            }
+    $stmt = $this->db->prepare(
+        "UPDATE pv SET qualification_substitut_id=:qsub, qualification_details=:qdet,
+         lois_applicables=:lois WHERE id=:id"
+    );
+    $stmt->execute([
+        'qsub' => $qsubId,
+        'qdet' => $this->sanitize($_POST['qualification_details'] ?? ''),
+        'lois' => $this->sanitize($_POST['lois_applicables'] ?? ''),
+        'id'   => (int)$id,
+    ]);
+
+    // Infractions substitut (multi-select)
+    $this->db->prepare("DELETE FROM pv_infractions WHERE pv_id=? AND type='substitut'")->execute([(int)$id]);
+    if (!empty($_POST['infractions_substitut']) && is_array($_POST['infractions_substitut'])) {
+        $insIS = $this->db->prepare(
+            "INSERT IGNORE INTO pv_infractions (pv_id, infraction_id, type, est_complicite, notes) VALUES (?,?,'substitut',?,?)"
+        );
+        foreach ($_POST['infractions_substitut'] as $iid) {
+            $complicite = isset($_POST['complicite_' . $iid]) ? 1 : 0;
+            $notes      = $this->sanitize($_POST['notes_infraction_' . $iid] ?? '');
+            $insIS->execute([(int)$id, (int)$iid, $complicite, $notes ?: null]);
         }
+    }
+}
 
         // Greffier/admin peut modifier les données générales
         if (in_array($role, ['admin','greffier','procureur'])) {
@@ -594,106 +604,174 @@ class PVController extends Controller {
     }
 
     // API endpoint : upload pièce jointe pour un PV (réservé substitut)
-    public function uploadDocument(string $pvId): void {
-        Auth::requireLogin();
-        Auth::requireRole(['admin','procureur','substitut_procureur']);
-        CSRF::check();
+public function uploadDocument(string $pvId): void {
+    // Force la réponse JSON dès le départ
+    header('Content-Type: application/json; charset=utf-8');
 
-        $pvId = (int)$pvId;
-        $pvStmt = $this->db->prepare("SELECT id FROM pv WHERE id=?");
-        $pvStmt->execute([$pvId]);
-        if (!$pvStmt->fetch()) {
-            $this->json(['error' => 'PV introuvable'], 404); return;
-        }
+    Auth::requireLogin();
+    Auth::requireRole(['admin','procureur','substitut_procureur']);
+    CSRF::check();
 
-        if (empty($_FILES['fichier']) || $_FILES['fichier']['error'] !== UPLOAD_ERR_OK) {
-            $this->json(['error' => 'Aucun fichier ou erreur upload'], 400); return;
-        }
+    $pvId = (int)$pvId;
 
-        $file    = $_FILES['fichier'];
-        $maxSize = 10 * 1024 * 1024;
-        if ($file['size'] > $maxSize) {
-            $this->json(['error' => 'Fichier trop volumineux (max 10 Mo)'], 400); return;
-        }
+    // 1. Vérifier que le PV existe et récupérer le dossier_id éventuel
+    $pvStmt = $this->db->prepare("SELECT id, dossier_id FROM pv p
+                                  LEFT JOIN dossier_pvs dp ON dp.pv_id = p.id
+                                  WHERE p.id = ? LIMIT 1");
+    // Note : dossier_id sur pv n'existe pas, on récupère via dossier_pvs ou dossiers.pv_id
+    $pvStmt = $this->db->prepare(
+        "SELECT p.id,
+                COALESCE(dp.dossier_id, d.id) AS dossier_id
+         FROM pv p
+         LEFT JOIN dossier_pvs dp ON dp.pv_id = p.id
+         LEFT JOIN dossiers d ON d.pv_id = p.id
+         WHERE p.id = ?
+         LIMIT 1"
+    );
+    $pvStmt->execute([$pvId]);
+    $pvRow = $pvStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$pvRow) {
+        echo json_encode(['error' => 'PV introuvable']);
+        return;
+    }
 
-        $allowed = ['pdf','doc','docx','jpg','jpeg','png','xlsx','xls','odt'];
-        $ext     = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        if (!in_array($ext, $allowed)) {
-            $this->json(['error' => 'Type de fichier non autorisé'], 400); return;
-        }
-
-        $dir = ROOT_PATH . '/public/uploads/documents/pv_' . $pvId . '/';
-        if (!is_dir($dir)) mkdir($dir, 0755, true);
-
-        $hash    = hash('sha256', $file['name'] . microtime(true));
-        $newName = $hash . '_' . preg_replace('/[^a-zA-Z0-9.\-_]/', '_', $file['name']);
-        move_uploaded_file($file['tmp_name'], $dir . $newName);
-
-        // Détecter MIME
-        $finfo    = finfo_open(FILEINFO_MIME_TYPE);
-        $mimeType = finfo_file($finfo, $dir . $newName);
-        finfo_close($finfo);
-
-        $desc = $this->sanitize($_POST['description'] ?? '');
-
-        // Insérer dans documents — compatible avec schema variable
-        $cols = $this->db->query("SHOW COLUMNS FROM documents")->fetchAll(PDO::FETCH_COLUMN);
-        $insert = ['pv_id','nom_original','nom_stockage','chemin','taille','mime_type','description','uploaded_by','uploaded_by_role'];
-        $insertCols = array_filter($insert, fn($c) => in_array($c, $cols));
-        $insertCols = array_values($insertCols);
-
-        $data = [
-            'pv_id'          => $pvId,
-            'nom_original'   => $file['name'],
-            'nom_stockage'   => $newName,
-            'chemin'         => 'uploads/documents/pv_' . $pvId . '/' . $newName,
-            'taille'         => $file['size'],
-            'mime_type'      => $mimeType,
-            'description'    => $desc ?: null,
-            'uploaded_by'    => Auth::userId(),
-            'uploaded_by_role'=> Auth::roleCode(),
+    // 2. Vérifier le fichier reçu
+    if (empty($_FILES['fichier']) || $_FILES['fichier']['error'] !== UPLOAD_ERR_OK) {
+        $errMap = [
+            UPLOAD_ERR_INI_SIZE   => 'Fichier trop volumineux (limite serveur)',
+            UPLOAD_ERR_FORM_SIZE  => 'Fichier trop volumineux (limite formulaire)',
+            UPLOAD_ERR_PARTIAL    => 'Upload partiel',
+            UPLOAD_ERR_NO_FILE    => 'Aucun fichier envoyé',
+            UPLOAD_ERR_NO_TMP_DIR => 'Dossier temporaire manquant',
+            UPLOAD_ERR_CANT_WRITE => 'Impossible d\'écrire sur disque',
+            UPLOAD_ERR_EXTENSION  => 'Upload bloqué par une extension PHP',
         ];
+        $code = $_FILES['fichier']['error'] ?? UPLOAD_ERR_NO_FILE;
+        echo json_encode(['error' => $errMap[$code] ?? 'Erreur upload']);
+        return;
+    }
 
-        $keys = array_filter(array_keys($data), fn($k) => in_array($k, $insertCols));
-        $keys = array_values($keys);
-        $sqlCols = implode(',', $keys);
-        $sqlVals = implode(',', array_map(fn($k)=>':'.$k, $keys));
-        $insStmt = $this->db->prepare("INSERT INTO documents ($sqlCols) VALUES ($sqlVals)");
-        $filteredData = array_intersect_key($data, array_flip($keys));
-        $insStmt->execute($filteredData);
-        $newId = (int)$this->db->lastInsertId();
+    $file = $_FILES['fichier'];
 
-        $this->json([
-            'id'      => $newId,
+    // 3. Validation taille (10 Mo)
+    if ($file['size'] > 10 * 1024 * 1024) {
+        echo json_encode(['error' => 'Fichier trop volumineux (max 10 Mo)']);
+        return;
+    }
+
+    // 4. Validation extension
+    $allowed = ['pdf','doc','docx','jpg','jpeg','png','xlsx','xls','odt'];
+    $ext     = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    if (!in_array($ext, $allowed, true)) {
+        echo json_encode(['error' => 'Type de fichier non autorisé']);
+        return;
+    }
+
+    // 5. Création du dossier de destination
+    $dir = ROOT_PATH . '/public/uploads/documents/pv_' . $pvId . '/';
+    if (!is_dir($dir) && !@mkdir($dir, 0775, true) && !is_dir($dir)) {
+        echo json_encode(['error' => 'Impossible de créer le dossier de stockage']);
+        return;
+    }
+    if (!is_writable($dir)) {
+        echo json_encode(['error' => 'Dossier de stockage non accessible en écriture : ' . $dir]);
+        return;
+    }
+
+    // 6. Nom de fichier sécurisé
+    $hash    = bin2hex(random_bytes(8));
+    $safe    = preg_replace('/[^a-zA-Z0-9.\-_]/', '_', $file['name']);
+    $newName = $hash . '_' . $safe;
+    $absPath = $dir . $newName;
+
+    if (!move_uploaded_file($file['tmp_name'], $absPath)) {
+        echo json_encode(['error' => 'Échec de l\'écriture du fichier sur le disque']);
+        return;
+    }
+
+    // 7. Détection MIME
+    $mimeType = $file['type'] ?? 'application/octet-stream';
+    if (function_exists('finfo_open')) {
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        if ($finfo) {
+            $detected = finfo_file($finfo, $absPath);
+            finfo_close($finfo);
+            if ($detected) $mimeType = $detected;
+        }
+    }
+
+    // 8. INSERT en base — colonnes EXACTES du schéma documents
+    try {
+        $user = Auth::currentUser();
+        $roleCode = $user['role_code'] ?? null;
+
+        $sql = "INSERT INTO documents
+                (dossier_id, pv_id, nom_original, nom_stockage, chemin_fichier,
+                 type_document, mime_type, taille_octets, description,
+                 uploaded_by, uploaded_by_role, created_at)
+                VALUES (?, ?, ?, ?, ?, 'piece_jointe', ?, ?, ?, ?, ?, NOW())";
+        $stmt = $this->db->prepare($sql);
+        $ok = $stmt->execute([
+            $pvRow['dossier_id'] ?: null,
+            $pvId,
+            $file['name'],
+            $newName,
+            'uploads/documents/pv_' . $pvId . '/' . $newName,
+            $mimeType,
+            (int)$file['size'],
+            $this->sanitize($_POST['description'] ?? '') ?: null,
+            (int)Auth::userId(),
+            $roleCode,
+        ]);
+
+        if (!$ok) {
+            @unlink($absPath);
+            $errInfo = $stmt->errorInfo();
+            echo json_encode(['error' => 'Erreur SQL : ' . ($errInfo[2] ?? 'inconnue')]);
+            return;
+        }
+
+        $docId = (int)$this->db->lastInsertId();
+
+        echo json_encode([
+            'success' => true,
+            'id'      => $docId,
             'nom'     => $file['name'],
-            'url'     => BASE_URL . '/documents/view/' . $newId,
-            'taille'  => $file['size'],
+            'url'     => BASE_URL . '/documents/view/' . $docId,
+            'taille'  => (int)$file['size'],
             'message' => 'Document uploadé avec succès',
         ]);
+    } catch (\Throwable $e) {
+        @unlink($absPath);
+        echo json_encode(['error' => 'Exception : ' . $e->getMessage()]);
     }
+}
+
 
     // API endpoint : liste des documents d'un PV
-    public function listDocuments(string $pvId): void {
-        Auth::requireLogin();
-        $pvId = (int)$pvId;
-        $stmt = $this->db->prepare(
-            "SELECT d.id, d.nom_original, d.taille, d.mime_type,
-                    d.description, d.created_at,
-                    u.nom AS uploader_nom, u.prenom AS uploader_prenom
-             FROM documents d
-             LEFT JOIN users u ON d.uploaded_by = u.id
-             WHERE d.pv_id = ?
-             ORDER BY d.created_at DESC"
-        );
-        $stmt->execute([$pvId]);
-        $docs = $stmt->fetchAll();
-        foreach ($docs as &$doc) {
-            $doc['url']    = BASE_URL . '/documents/view/' . $doc['id'];
-            $doc['taille_fmt'] = $this->formatSize((int)$doc['taille']);
-            $doc['inline'] = in_array($doc['mime_type'], ['application/pdf','image/jpeg','image/png','image/gif']);
-        }
-        $this->json($docs);
+public function listDocuments(string $pvId): void {
+    Auth::requireLogin();
+    $pvId = (int)$pvId;
+    $stmt = $this->db->prepare(
+        "SELECT d.id, d.nom_original,
+                d.taille_octets AS taille, d.mime_type,
+                d.description, d.created_at,
+                u.nom AS uploader_nom, u.prenom AS uploader_prenom
+         FROM documents d
+         LEFT JOIN users u ON d.uploaded_by = u.id
+         WHERE d.pv_id = ?
+         ORDER BY d.created_at DESC"
+    );
+    $stmt->execute([$pvId]);
+    $docs = $stmt->fetchAll();
+    foreach ($docs as &$doc) {
+        $doc['url']        = BASE_URL . '/documents/view/' . $doc['id'];
+        $doc['taille_fmt'] = $this->formatSize((int)$doc['taille']);
+        $doc['inline']     = in_array($doc['mime_type'], ['application/pdf','image/jpeg','image/png','image/gif']);
     }
+    $this->json($docs);
+}
+
 
     private function formatSize(int $bytes): string {
         if ($bytes >= 1048576) return round($bytes/1048576,1) . ' Mo';

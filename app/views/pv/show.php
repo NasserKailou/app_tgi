@@ -111,79 +111,69 @@
         </div>
         <?php endif; ?>
 
-        <!-- ══════════ QUALIFICATION SUBSTITUT ══════════ -->
-        <?php if ($isSubstitut): ?>
-        <div class="card border-0 shadow-sm mb-4" style="border-left:4px solid #198754!important">
-            <div class="card-header bg-success text-white fw-semibold">
-                <i class="bi bi-scales me-2"></i>Qualification retenue & Lois applicables
-                <span class="badge bg-light text-success ms-2 small">Réservé substitut</span>
-            </div>
-            <div class="card-body">
-                <form method="POST" action="<?= BASE_URL ?>/pv/update/<?= $pv['id'] ?>">
-                    <?= CSRF::field() ?>
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold small">Qualification retenue par le substitut</label>
-                            <select name="qualification_substitut_id" class="form-select form-select-sm">
-                                <option value="">— Même que l'unité d'enquête —</option>
-                                <?php foreach ($infractions as $inf): ?>
-                                <option value="<?= $inf['id'] ?>"
-                                    <?= ((int)($pv['qualification_substitut_id'] ?? 0) === (int)$inf['id']) ? 'selected' : '' ?>>
-                                    [<?= htmlspecialchars($inf['code']) ?>] <?= htmlspecialchars($inf['libelle']) ?>
-                                </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold small">Infractions qualifiées (multi-sélection)</label>
-                            <div class="border rounded p-2" style="max-height:130px;overflow-y:auto;">
-                                <?php foreach ($infractions as $inf):
-                                    $isChecked = false;
-                                    foreach (($pv['infractions_substitut'] ?? []) as $is) {
-                                        if ((int)$is['infraction_id'] === (int)$inf['id']) { $isChecked = true; break; }
-                                    }
-                                ?>
-                                <div class="form-check mb-0">
-                                    <input class="form-check-input" type="checkbox"
-                                           name="infractions_substitut[]"
-                                           value="<?= $inf['id'] ?>"
-                                           id="qsub_<?= $inf['id'] ?>"
-                                           <?= $isChecked ? 'checked' : '' ?>>
-                                    <label class="form-check-label small" for="qsub_<?= $inf['id'] ?>">
-                                        <strong><?= htmlspecialchars($inf['code']) ?></strong>
-                                        — <?= htmlspecialchars($inf['libelle']) ?>
-                                        &nbsp;<input type="checkbox"
-                                            name="complicite_<?= $inf['id'] ?>" value="1"
-                                            <?= ($isChecked && ($pv['infractions_substitut'][array_search($inf['id'], array_column($pv['infractions_substitut'],'infraction_id'))]['est_complicite']??0)) ? 'checked' : '' ?>
-                                            title="Complicité"> <small class="text-muted">complicité</small>
-                                    </label>
-                                </div>
-                                <?php endforeach; ?>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold small">Précisions qualification (circonstances, etc.)</label>
-                            <textarea name="qualification_details" class="form-control form-control-sm" rows="2"
-                                      placeholder="Ex: complicité, récidive, circonstances aggravantes..."><?= htmlspecialchars($pv['qualification_details'] ?? '') ?></textarea>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold small">
-                                <i class="bi bi-book me-1"></i>Lois applicables
-                                <small class="text-muted">(textes de référence)</small>
+      <!-- ══════════ QUALIFICATION SUBSTITUT ══════════ -->
+<?php if ($isSubstitut): ?>
+<div class="card border-0 shadow-sm mb-4" style="border-left:4px solid #198754!important">
+    <div class="card-header bg-success text-white fw-semibold">
+        <i class="bi bi-scales me-2"></i>Qualification retenue & Lois applicables
+        <span class="badge bg-light text-success ms-2 small">Réservé substitut</span>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="<?= BASE_URL ?>/pv/update/<?= $pv['id'] ?>">
+            <?= CSRF::field() ?>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold small">Infractions qualifiées (multi-sélection)</label>
+                    <div class="border rounded p-2" style="max-height:130px;overflow-y:auto;">
+                        <?php foreach ($infractions as $inf):
+                            $isChecked = false;
+                            foreach (($pv['infractions_substitut'] ?? []) as $is) {
+                                if ((int)$is['infraction_id'] === (int)$inf['id']) { $isChecked = true; break; }
+                            }
+                        ?>
+                        <div class="form-check mb-0">
+                            <input class="form-check-input" type="checkbox"
+                                   name="infractions_substitut[]"
+                                   value="<?= $inf['id'] ?>"
+                                   id="qsub_<?= $inf['id'] ?>"
+                                   <?= $isChecked ? 'checked' : '' ?>>
+                            <label class="form-check-label small" for="qsub_<?= $inf['id'] ?>">
+                                <strong><?= htmlspecialchars($inf['code']) ?></strong>
+                                — <?= htmlspecialchars($inf['libelle']) ?>
+                                &nbsp;<input type="checkbox"
+                                    name="complicite_<?= $inf['id'] ?>" value="1"
+                                    <?= ($isChecked && ($pv['infractions_substitut'][array_search($inf['id'], array_column($pv['infractions_substitut'],'infraction_id'))]['est_complicite']??0)) ? 'checked' : '' ?>
+                                    title="Complicité"> <small class="text-muted">complicité</small>
                             </label>
-                            <textarea name="lois_applicables" class="form-control form-control-sm" rows="2"
-                                      placeholder="Ex: Art. 250 CPP, Loi n°2016-XX..."><?= htmlspecialchars($pv['lois_applicables'] ?? '') ?></textarea>
                         </div>
+                        <?php endforeach; ?>
                     </div>
-                    <div class="d-flex justify-content-end mt-3">
-                        <button type="submit" class="btn btn-success btn-sm">
-                            <i class="bi bi-check-lg me-1"></i>Enregistrer la qualification
-                        </button>
-                    </div>
-                </form>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold small">Précisions qualification (circonstances, etc.)</label>
+                    <textarea name="qualification_details" class="form-control form-control-sm" rows="5"
+                              placeholder="Ex: complicité, récidive, circonstances aggravantes..."><?= htmlspecialchars($pv['qualification_details'] ?? '') ?></textarea>
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-semibold small">
+                        <i class="bi bi-book me-1"></i>Lois applicables
+                        <small class="text-muted">(textes de référence)</small>
+                    </label>
+                    <textarea name="lois_applicables" class="form-control form-control-sm" rows="3"
+                              placeholder="Ex: Art. 250 CPP, Loi n°2016-XX..."><?= htmlspecialchars($pv['lois_applicables'] ?? '') ?></textarea>
+                </div>
             </div>
-        </div>
-        <?php endif; ?>
+            <div class="d-flex justify-content-end mt-3">
+                <button type="submit" class="btn btn-success btn-sm">
+                    <i class="bi bi-check-lg me-1"></i>Enregistrer la qualification
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+<?php endif; ?>
+
+
 
         <!-- ══════════ PVs LIÉS (MÊME RP) ══════════ -->
         <?php $pvsMemeRP = $pvLies ?? []; if (!empty($pvsMemeRP)): ?>
@@ -235,7 +225,8 @@
                 </button>
             </div>
             <div class="card-body p-0" id="pvDocsList">
-                <?php $pvDocuments = $documentsPV ?? []; if (empty($pvDocuments)): ?>
+            <?php if (empty($pvDocuments)): ?>
+
                 <div class="text-center text-muted py-3 small">
                     <i class="bi bi-file-earmark-x display-6 d-block mb-1 opacity-25"></i>Aucune pièce jointe
                 </div>
