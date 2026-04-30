@@ -10,11 +10,19 @@
             <div class="row g-3">
                 <div class="col-md-6">
                     <label class="form-label fw-semibold">Catégorie</label>
-                    <select name="categorie" class="form-select">
-                        <?php foreach(['arme'=>'Arme','drogue'=>'Drogue / Stupéfiant','document'=>'Document','argent'=>'Argent / Valeur','electronique'=>'Appareil électronique','vehicule'=>'Véhicule','autre'=>'Autre'] as $v=>$l): ?>
+                    <select name="categorie" class="form-select" id="editCategorieScelle"
+                            onchange="toggleEditCategorieAutre(this.value)">
+                        <?php foreach(['arme'=>'Arme','drogue'=>'Drogue / Stupéfiant','document'=>'Document','argent'=>'Argent / Valeur','electronique'=>'Appareil électronique','vehicule'=>'Véhicule','autre'=>'Autre (à préciser)'] as $v=>$l): ?>
                         <option value="<?=$v?>" <?=$scelle['categorie']===$v?'selected':''?>><?=$l?></option>
                         <?php endforeach; ?>
                     </select>
+                </div>
+                <div class="col-md-6" id="editRowCategorieAutre"
+                     style="display:<?=$scelle['categorie']==='autre'?'block':'none'?>">
+                    <label class="form-label fw-semibold">Préciser la catégorie</label>
+                    <input type="text" name="categorie_autre_detail" class="form-control"
+                           placeholder="Ex: Bijoux, Produits chimiques…"
+                           value="<?=htmlspecialchars($scelle['categorie_autre_detail']??'')?>">
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-semibold">Lieu de conservation</label>
@@ -40,3 +48,9 @@
         </form>
     </div>
 </div>
+<script>
+function toggleEditCategorieAutre(val) {
+    var el = document.getElementById('editRowCategorieAutre');
+    if (el) el.style.display = (val === 'autre') ? 'block' : 'none';
+}
+</script>

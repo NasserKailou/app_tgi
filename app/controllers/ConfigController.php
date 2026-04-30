@@ -820,11 +820,13 @@ class ConfigController extends Controller
         $substituts = $this->db->query(
             "SELECT u.id, u.nom, u.prenom,
                     (SELECT COUNT(*) FROM dossiers d WHERE d.substitut_id=u.id AND d.statut NOT IN ('juge','classe')) AS nb_dossiers,
-                    (SELECT COUNT(*) FROM pv p WHERE p.substitut_id=u.id AND p.statut='en_traitement') AS nb_pvs
+                    (SELECT COUNT(*) FROM pv p WHERE p.substitut_id=u.id AND p.statut IN ('en_traitement','recu')) AS nb_pvs,
+                    (SELECT COUNT(*) FROM dossiers d2 WHERE d2.substitut_id=u.id AND d2.statut NOT IN ('juge','classe')) +
+                    (SELECT COUNT(*) FROM pv p2 WHERE p2.substitut_id=u.id AND p2.statut IN ('en_traitement','recu')) AS charge_totale
              FROM users u
              JOIN roles r ON u.role_id=r.id
              WHERE r.code='substitut_procureur' AND u.actif=1
-             ORDER BY nb_dossiers ASC, nb_pvs ASC"
+             ORDER BY charge_totale ASC, nb_pvs ASC"
         )->fetchAll();
         $this->json(['success' => true, 'data' => $substituts]);
     }
