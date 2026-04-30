@@ -1,15 +1,9 @@
--- ============================================================
--- global.sql — Schéma complet TGI-NY
--- Généré le 2026-04-19 08:33:44
--- Inclut : tribunal_tgi_ny_maj.sql + 002 + 003
--- ============================================================
-
 -- phpMyAdmin SQL Dump
 -- version 5.2.1
 -- https://www.phpmyadmin.net/
 --
 -- Hôte : 127.0.0.1
--- Généré le : dim. 19 avr. 2026 à 08:41
+-- Généré le : mar. 28 avr. 2026 à 14:56
 -- Version du serveur : 10.4.32-MariaDB
 -- Version de PHP : 8.2.12
 
@@ -24,7 +18,7 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Base de données : `tribunal_tgi_ny_maj`
+-- Base de données : `app_tgi`
 --
 
 -- --------------------------------------------------------
@@ -98,7 +92,14 @@ CREATE TABLE `avocats` (
   `statut` enum('actif','suspendu','radié','honoraire') NOT NULL DEFAULT 'actif',
   `observations` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `date_naissance` date DEFAULT NULL,
+  `lieu_naissance` varchar(150) DEFAULT NULL,
+  `nationalite` varchar(100) DEFAULT 'Nigérienne',
+  `sexe` enum('M','F') DEFAULT 'M',
+  `specialite` varchar(200) DEFAULT NULL,
+  `notes` text DEFAULT NULL,
+  `created_by` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -230,29 +231,272 @@ CREATE TABLE `communes` (
 --
 
 INSERT INTO `communes` (`id`, `departement_id`, `nom`, `code`, `latitude`, `longitude`) VALUES
-(1, 1, 'Agadez', NULL, 16.9742000, 7.9924000),
-(2, 2, 'Arlit', NULL, 18.7369000, 7.3853000),
-(3, 3, 'Bilma', NULL, 18.6875000, 12.9164000),
-(4, 6, 'Diffa', NULL, 13.3155000, 12.6138000),
-(5, 11, 'Dosso', NULL, 13.0449000, 3.1972000),
-(6, 14, 'Gaya', NULL, 11.8833000, 3.4500000),
-(7, 19, 'Maradi', NULL, 13.5000000, 7.1000000),
-(8, 24, 'Tahoua', NULL, 14.8889000, 5.2664000),
-(9, 26, 'Birni N\'Konni', NULL, 13.7917000, 5.2528000),
-(10, 32, 'Tillabéri', NULL, 14.2081000, 1.4536000),
-(11, 33, 'Ayorou', NULL, 14.7333000, 0.9167000),
-(12, 35, 'Gothèye', NULL, 13.8833000, 1.5833000),
-(13, 36, 'Kollo', NULL, 13.3167000, 2.3167000),
-(14, 37, 'Say', NULL, 13.1042000, 2.3694000),
-(15, 38, 'Téra', NULL, 14.0167000, 0.7500000),
-(16, 44, 'Zinder', NULL, 13.8069000, 8.9881000),
-(17, 46, 'Magaria', NULL, 12.9833000, 8.9167000),
-(18, 47, 'Mirriah', NULL, 13.7167000, 9.1500000),
-(19, 49, 'Niamey', NULL, 13.5137000, 2.1098000),
-(20, 49, 'Niamey II', NULL, 13.5200000, 2.1050000),
-(21, 49, 'Niamey III', NULL, 13.5080000, 2.1180000),
-(22, 49, 'Niamey IV', NULL, 13.5000000, 2.1300000),
-(23, 49, 'Niamey V', NULL, 13.5300000, 2.0900000);
+(1, 1, 'Aderbissinat', '1011', NULL, NULL),
+(2, 2, 'Agadez', '1021', NULL, NULL),
+(3, 3, 'Arlit', '1031', NULL, NULL),
+(4, 3, 'Dannet', '1032', NULL, NULL),
+(5, 3, 'Gougaram', '1033', NULL, NULL),
+(6, 4, 'Bilma', '1041', NULL, NULL),
+(7, 4, 'Dirkou', '1042', NULL, NULL),
+(8, 4, 'Djado', '1043', NULL, NULL),
+(9, 4, 'Fachi', '1044', NULL, NULL),
+(10, 5, 'Iferouane', '1051', NULL, NULL),
+(11, 5, 'Timia', '1052', NULL, NULL),
+(12, 6, 'Ingall', '1061', NULL, NULL),
+(13, 7, 'Tassara', '1071', NULL, NULL),
+(14, 8, 'Kao', '1081', NULL, NULL),
+(15, 8, 'Tchintabaraden', '1082', NULL, NULL),
+(16, 9, 'Dabaga', '1091', NULL, NULL),
+(17, 9, 'Tabelot', '1092', NULL, NULL),
+(18, 9, 'Tchirozerine', '1093', NULL, NULL),
+(19, 10, 'Bosso', '2011', NULL, NULL),
+(20, 10, 'Toumour', '2012', NULL, NULL),
+(21, 11, 'Chétimari', '2021', NULL, NULL),
+(22, 11, 'Diffa', '2022', NULL, NULL),
+(23, 11, 'Gueskérou', '2023', NULL, NULL),
+(24, 12, 'Goudoumaria', '2031', NULL, NULL),
+(25, 13, 'Foulatari', '2041', NULL, NULL),
+(26, 13, 'Maïné Soroa', '2042', NULL, NULL),
+(27, 13, 'N\'Gelbeyli', '2043', NULL, NULL),
+(28, 14, 'N\'Gourti', '2051', NULL, NULL),
+(29, 15, 'Kabelawa', '2061', NULL, NULL),
+(30, 15, 'N\'Guigmi', '2062', NULL, NULL),
+(31, 16, 'Birni N\'Gaouré', '3011', NULL, NULL),
+(32, 16, 'Fabidji', '3012', NULL, NULL),
+(33, 16, 'Fakara', '3013', NULL, NULL),
+(34, 16, 'Harika', '3014', NULL, NULL),
+(35, 16, 'Kankandi', '3015', NULL, NULL),
+(36, 16, 'Kiota', '3016', NULL, NULL),
+(37, 16, 'Koygolo', '3017', NULL, NULL),
+(38, 16, 'N\'Gonga', '3018', NULL, NULL),
+(39, 17, 'Dioundiou', '3021', NULL, NULL),
+(40, 17, 'Kara Kara', '3022', NULL, NULL),
+(41, 17, 'Zabori', '3023', NULL, NULL),
+(42, 18, 'Dan Kassari', '3031', NULL, NULL),
+(43, 18, 'Dogon Kiria', '3032', NULL, NULL),
+(44, 18, 'Dogondoutchi', '3033', NULL, NULL),
+(45, 18, 'Kiéché', '3034', NULL, NULL),
+(46, 18, 'Matankari', '3035', NULL, NULL),
+(47, 18, 'Soucoucoutane', '3036', NULL, NULL),
+(48, 19, 'Dosso', '3041', NULL, NULL),
+(49, 19, 'Farrey', '3042', NULL, NULL),
+(50, 19, 'Garankedeye', '3043', NULL, NULL),
+(51, 19, 'Goberi', '3044', NULL, NULL),
+(52, 19, 'Gorouol Bangou', '3045', NULL, NULL),
+(53, 19, 'Kargui Bangou', '3046', NULL, NULL),
+(54, 19, 'Mokko', '3047', NULL, NULL),
+(55, 19, 'Sakadamna', '3048', NULL, NULL),
+(56, 19, 'Sambera', '3049', NULL, NULL),
+(57, 19, 'Tessa', '3050', NULL, NULL),
+(58, 19, 'Tombo Koarey', '3051', NULL, NULL),
+(59, 20, 'Falmey', '3051', NULL, NULL),
+(60, 20, 'Guilladjé', '3052', NULL, NULL),
+(61, 21, 'Bana', '3061', NULL, NULL),
+(62, 21, 'Bengou', '3062', NULL, NULL),
+(63, 21, 'Gaya', '3063', NULL, NULL),
+(64, 21, 'Tanda', '3064', NULL, NULL),
+(65, 21, 'Tounouga', '3065', NULL, NULL),
+(66, 21, 'Yélou', '3066', NULL, NULL),
+(67, 22, 'Falwel', '3071', NULL, NULL),
+(68, 22, 'Loga', '3072', NULL, NULL),
+(69, 22, 'Sokorbe', '3073', NULL, NULL),
+(70, 23, 'Doumega', '3081', NULL, NULL),
+(71, 23, 'Guéchémé', '3082', NULL, NULL),
+(72, 23, 'Koré Maïroua', '3083', NULL, NULL),
+(73, 23, 'Tibiri', '3084', NULL, NULL),
+(74, 24, 'Aguié', '4011', NULL, NULL),
+(75, 24, 'Tchadoua', '4012', NULL, NULL),
+(76, 25, 'Adjékoria', '4021', NULL, NULL),
+(77, 25, 'Azagor', '4022', NULL, NULL),
+(78, 25, 'Bader Goula', '4023', NULL, NULL),
+(79, 25, 'Birnin Lallé', '4024', NULL, NULL),
+(80, 25, 'Dakoro', '4025', NULL, NULL),
+(81, 25, 'Dan Goulbi', '4026', NULL, NULL),
+(82, 25, 'Korahanné', '4027', NULL, NULL),
+(83, 25, 'Kornaka', '4028', NULL, NULL),
+(84, 25, 'Maïyara', '4029', NULL, NULL),
+(85, 25, 'Roumbou', '4030', NULL, NULL),
+(86, 25, 'Sabon Machi', '4031', NULL, NULL),
+(87, 25, 'Tagriss', '4032', NULL, NULL),
+(88, 26, 'Gangara', '4031', NULL, NULL),
+(89, 26, 'Gazaoua', '4032', NULL, NULL),
+(90, 27, 'Chadakori', '4041', NULL, NULL),
+(91, 27, 'Guidan Roumdji', '4042', NULL, NULL),
+(92, 27, 'Guidan Sori', '4043', NULL, NULL),
+(93, 27, 'Saé Saboua', '4044', NULL, NULL),
+(94, 27, 'Tibiri', '4045', NULL, NULL),
+(95, 28, 'Dan Issa', '4051', NULL, NULL),
+(96, 28, 'Djirataoua', '4052', NULL, NULL),
+(97, 28, 'Gabi', '4053', NULL, NULL),
+(98, 28, 'Madarounfa', '4054', NULL, NULL),
+(99, 28, 'Safo', '4055', NULL, NULL),
+(100, 28, 'Serkin Yamma', '4056', NULL, NULL),
+(101, 29, 'Attantané', '4061', NULL, NULL),
+(102, 29, 'El Allassane Maïrerey', '4062', NULL, NULL),
+(103, 29, 'Guidan Amoumoune', '4063', NULL, NULL),
+(104, 29, 'Issawane', '4064', NULL, NULL),
+(105, 29, 'Kanembakaché', '4065', NULL, NULL),
+(106, 29, 'Mayahi', '4066', NULL, NULL),
+(107, 29, 'Serkin Haoussa', '4067', NULL, NULL),
+(108, 29, 'Tchaké', '4068', NULL, NULL),
+(109, 30, 'Baoudéta', '4071', NULL, NULL),
+(110, 30, 'Hawandawaki', '4072', NULL, NULL),
+(111, 30, 'Koona', '4073', NULL, NULL),
+(112, 30, 'Korgom', '4074', NULL, NULL),
+(113, 30, 'Maïjirgui', '4075', NULL, NULL),
+(114, 30, 'Ourafane', '4076', NULL, NULL),
+(115, 30, 'Tessaoua', '4077', NULL, NULL),
+(116, 31, 'Maradi 1', '4081', NULL, NULL),
+(117, 31, 'Maradi 2', '4082', NULL, NULL),
+(118, 31, 'Maradi 3', '4083', NULL, NULL),
+(119, 32, 'Abalak', '5011', NULL, NULL),
+(120, 32, 'Akoubounou', '5012', NULL, NULL),
+(121, 32, 'Azèye', '5013', NULL, NULL),
+(122, 32, 'Tabalak', '5014', NULL, NULL),
+(123, 32, 'Tamaya', '5015', NULL, NULL),
+(124, 33, 'Bagaroua', '5021', NULL, NULL),
+(125, 34, 'Allela', '5031', NULL, NULL),
+(126, 34, 'Bazaga', '5032', NULL, NULL),
+(127, 34, 'Birni N\'Konni', '5033', NULL, NULL),
+(128, 34, 'Tsernaoua', '5034', NULL, NULL),
+(129, 35, 'Allakeye', '5041', NULL, NULL),
+(130, 35, 'Baban Katami', '5042', NULL, NULL),
+(131, 35, 'Bouza', '5043', NULL, NULL),
+(132, 35, 'Déoulé', '5044', NULL, NULL),
+(133, 35, 'Karofane', '5045', NULL, NULL),
+(134, 35, 'Tabotaki', '5046', NULL, NULL),
+(135, 35, 'Tama', '5047', NULL, NULL),
+(136, 36, 'Badaguichiri', '5051', NULL, NULL),
+(137, 36, 'Illéla', '5052', NULL, NULL),
+(138, 36, 'Tajaé', '5053', NULL, NULL),
+(139, 37, 'Garhanga', '5061', NULL, NULL),
+(140, 37, 'Ibohamane', '5062', NULL, NULL),
+(141, 37, 'Keita', '5063', NULL, NULL),
+(142, 37, 'Tamaské', '5064', NULL, NULL),
+(143, 38, 'Azarori', '5071', NULL, NULL),
+(144, 38, 'Bangui', '5072', NULL, NULL),
+(145, 38, 'Galma Koudawatché', '5073', NULL, NULL),
+(146, 38, 'Madaoua', '5074', NULL, NULL),
+(147, 38, 'Ourno', '5075', NULL, NULL),
+(148, 38, 'Sabon Guida', '5076', NULL, NULL),
+(149, 39, 'Dogueraoua', '5081', NULL, NULL),
+(150, 39, 'Malbaza', '5082', NULL, NULL),
+(151, 40, 'Afala', '5091', NULL, NULL),
+(152, 40, 'Bambeye', '5092', NULL, NULL),
+(153, 40, 'Barmou', '5093', NULL, NULL),
+(154, 40, 'Kalfou', '5094', NULL, NULL),
+(155, 40, 'Takanamatt', '5095', NULL, NULL),
+(156, 40, 'Tébaram', '5096', NULL, NULL),
+(157, 41, 'Dakoussa', '5101', NULL, NULL),
+(158, 41, 'Garagoumsa', '5102', NULL, NULL),
+(159, 41, 'Tirmini', '5103', NULL, NULL),
+(160, 42, 'Tillia', '5111', NULL, NULL),
+(161, 43, 'Tahoua Commune 1', '5121', NULL, NULL),
+(162, 43, 'Tahoua Commune 2', '5122', NULL, NULL),
+(163, 44, 'Abala', '6011', NULL, NULL),
+(164, 44, 'Sanam', '6012', NULL, NULL),
+(165, 45, 'Ayorou', '6021', NULL, NULL),
+(166, 45, 'Inatès', '6022', NULL, NULL),
+(167, 46, 'Tagazar', '6031', NULL, NULL),
+(168, 47, 'Banibangou', '6041', NULL, NULL),
+(169, 48, 'Bankilaré', '6051', NULL, NULL),
+(170, 49, 'Damana', '6061', NULL, NULL),
+(171, 49, 'Filingué', '6062', NULL, NULL),
+(172, 49, 'Imanan', '6063', NULL, NULL),
+(173, 49, 'Kourféye Centre', '6064', NULL, NULL),
+(174, 50, 'Dargol', '6071', NULL, NULL),
+(175, 50, 'Gothèye', '6072', NULL, NULL),
+(176, 51, 'Bitinkodji', '6081', NULL, NULL),
+(177, 51, 'Dantchandou', '6082', NULL, NULL),
+(178, 51, 'Hamdallaye', '6083', NULL, NULL),
+(179, 51, 'Karma', '6084', NULL, NULL),
+(180, 51, 'Kirtachi', '6085', NULL, NULL),
+(181, 51, 'Kollo', '6086', NULL, NULL),
+(182, 51, 'Kouré', '6087', NULL, NULL),
+(183, 51, 'Liboré', '6088', NULL, NULL),
+(184, 51, 'N\'Dounga', '6089', NULL, NULL),
+(185, 51, 'Namaro', '6090', NULL, NULL),
+(186, 51, 'Youri', '6091', NULL, NULL),
+(187, 52, 'Dingazi Banda', '6091', NULL, NULL),
+(188, 52, 'Ouallam', '6092', NULL, NULL),
+(189, 52, 'Simiri', '6093', NULL, NULL),
+(190, 52, 'Tondikiwindi', '6094', NULL, NULL),
+(191, 53, 'Ouro Gueladio', '6101', NULL, NULL),
+(192, 53, 'Say', '6102', NULL, NULL),
+(193, 53, 'Tamou', '6103', NULL, NULL),
+(194, 54, 'Diagourou', '6111', NULL, NULL),
+(195, 54, 'Goroual', '6112', NULL, NULL),
+(196, 54, 'Kokorou', '6113', NULL, NULL),
+(197, 54, 'Méhana', '6114', NULL, NULL),
+(198, 54, 'Téra', '6115', NULL, NULL),
+(199, 55, 'Anzourou', '6121', NULL, NULL),
+(200, 55, 'Bibiyergou', '6122', NULL, NULL),
+(201, 55, 'Dessa', '6123', NULL, NULL),
+(202, 55, 'Kourteye', '6124', NULL, NULL),
+(203, 55, 'Sakoïra', '6125', NULL, NULL),
+(204, 55, 'Sindar', '6126', NULL, NULL),
+(205, 55, 'Tillabéri', '6127', NULL, NULL),
+(206, 56, 'Makalondi', '6131', NULL, NULL),
+(207, 56, 'Torodi', '6132', NULL, NULL),
+(208, 57, 'Tarka', '7011', NULL, NULL),
+(209, 58, 'Bermo', '7021', NULL, NULL),
+(210, 58, 'Gadabédji', '7022', NULL, NULL),
+(211, 59, 'Alberkaram', '7031', NULL, NULL),
+(212, 59, 'Damagaram Takaya', '7032', NULL, NULL),
+(213, 59, 'Guidimouni', '7033', NULL, NULL),
+(214, 59, 'Kagna Wame', '7034', NULL, NULL),
+(215, 59, 'Mazamni', '7035', NULL, NULL),
+(216, 59, 'Moa', '7036', NULL, NULL),
+(217, 60, 'Dogo Dogo', '7041', NULL, NULL),
+(218, 60, 'Dungass', '7042', NULL, NULL),
+(219, 60, 'Gouchi', '7043', NULL, NULL),
+(220, 60, 'Mallaoua', '7044', NULL, NULL),
+(221, 61, 'Alakos', '7051', NULL, NULL),
+(222, 61, 'Bouné', '7052', NULL, NULL),
+(223, 61, 'Gamou', '7053', NULL, NULL),
+(224, 61, 'Gouré', '7054', NULL, NULL),
+(225, 61, 'Guidiguir', '7055', NULL, NULL),
+(226, 61, 'Kellé', '7056', NULL, NULL),
+(227, 62, 'Dan Barto', '7061', NULL, NULL),
+(228, 62, 'Daoutché', '7062', NULL, NULL),
+(229, 62, 'Doungou', '7063', NULL, NULL),
+(230, 62, 'Ichernaoua', '7064', NULL, NULL),
+(231, 62, 'Kantché', '7065', NULL, NULL),
+(232, 62, 'Kourni', '7066', NULL, NULL),
+(233, 62, 'Matamèye', '7067', NULL, NULL),
+(234, 62, 'Tsouni', '7068', NULL, NULL),
+(235, 62, 'Yaouri', '7069', NULL, NULL),
+(236, 63, 'Bandé', '7071', NULL, NULL),
+(237, 63, 'Dan Tchio', '7072', NULL, NULL),
+(238, 63, 'Kouaya', '7073', NULL, NULL),
+(239, 63, 'Magaria', '7074', NULL, NULL),
+(240, 63, 'Sassoumdoum', '7075', NULL, NULL),
+(241, 63, 'Wacha', '7076', NULL, NULL),
+(242, 63, 'Yékoua', '7077', NULL, NULL),
+(243, 64, 'Dala Koleram', '7081', NULL, NULL),
+(244, 64, 'Dogo', '7082', NULL, NULL),
+(245, 64, 'Droum', '7083', NULL, NULL),
+(246, 64, 'Gaffati', '7084', NULL, NULL),
+(247, 64, 'Gouna', '7085', NULL, NULL),
+(248, 64, 'Hamdara', '7086', NULL, NULL),
+(249, 64, 'Mirriah', '7087', NULL, NULL),
+(250, 64, 'Zermou', '7088', NULL, NULL),
+(251, 65, 'Falenko', '7091', NULL, NULL),
+(252, 65, 'Gangara', '7092', NULL, NULL),
+(253, 65, 'Olléléwa', '7093', NULL, NULL),
+(254, 65, 'Tanout', '7094', NULL, NULL),
+(255, 65, 'Tenhya', '7095', NULL, NULL),
+(256, 66, 'Tesker', '7101', NULL, NULL),
+(257, 67, 'Zinder 1', '7111', NULL, NULL),
+(258, 67, 'Zinder 2', '7112', NULL, NULL),
+(259, 67, 'Zinder 3', '7113', NULL, NULL),
+(260, 67, 'Zinder 4', '7114', NULL, NULL),
+(261, 67, 'Zinder 5', '7115', NULL, NULL),
+(262, 68, 'Niamey 1', '8011', NULL, NULL),
+(263, 68, 'Niamey 2', '8012', NULL, NULL),
+(264, 68, 'Niamey 3', '8013', NULL, NULL),
+(265, 68, 'Niamey 4', '8014', NULL, NULL),
+(266, 68, 'Niamey 5', '8015', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -586,63 +830,74 @@ CREATE TABLE `departements` (
 --
 
 INSERT INTO `departements` (`id`, `region_id`, `nom`, `code`) VALUES
-(1, 1, 'Agadez', 'AGZ-AGZ'),
-(2, 1, 'Arlit', 'AGZ-ARL'),
-(3, 1, 'Bilma', 'AGZ-BIL'),
-(4, 1, 'Tchirozérine', 'AGZ-TCH'),
-(5, 1, 'Aderbissinat', 'AGZ-ADE'),
-(6, 2, 'Diffa', 'DIF-DIF'),
-(7, 2, 'Bosso', 'DIF-BOS'),
-(8, 2, 'Goudoumaria', 'DIF-GOU'),
-(9, 2, 'Mainé-Soroa', 'DIF-MAI'),
-(10, 2, 'N\'Guigmi', 'DIF-NGU'),
-(11, 3, 'Dosso', 'DOS-DOS'),
-(12, 3, 'Boboye', 'DOS-BOB'),
-(13, 3, 'Dogondoutchi', 'DOS-DOU'),
-(14, 3, 'Gaya', 'DOS-GAY'),
-(15, 3, 'Loga', 'DOS-LOG'),
-(16, 3, 'Dioundiou', 'DOS-DIO'),
-(17, 3, 'Falmey', 'DOS-FAL'),
-(18, 3, 'Tibiri', 'DOS-TIB'),
-(19, 4, 'Maradi', 'MAR-MAR'),
-(20, 4, 'Aguié', 'MAR-AGU'),
-(21, 4, 'Dakoro', 'MAR-DAK'),
-(22, 4, 'Guidan Roumdji', 'MAR-GUI'),
-(23, 4, 'Madarounfa', 'MAR-MAD'),
-(24, 4, 'Mayahi', 'MAR-MAY'),
-(25, 4, 'Tessaoua', 'MAR-TES'),
-(26, 5, 'Tahoua', 'TAH-TAH'),
-(27, 5, 'Abalak', 'TAH-ABA'),
-(28, 5, 'Birni N\'Konni', 'TAH-BIR'),
-(29, 5, 'Bouza', 'TAH-BOU'),
-(30, 5, 'Illéla', 'TAH-ILL'),
-(31, 5, 'Keita', 'TAH-KEI'),
-(32, 5, 'Madaoua', 'TAH-MAD'),
-(33, 5, 'Malbaza', 'TAH-MAL'),
-(34, 5, 'Tchintabaraden', 'TAH-TCH'),
-(35, 5, 'Bagaroua', 'TAH-BAG'),
-(36, 5, 'Tillia', 'TAH-TIL'),
-(37, 6, 'Tillabéri', 'TIL-TIL'),
-(38, 6, 'Ayorou', 'TIL-AYO'),
-(39, 6, 'Filingué', 'TIL-FIL'),
-(40, 6, 'Gothèye', 'TIL-GOT'),
-(41, 6, 'Kollo', 'TIL-KOL'),
-(42, 6, 'Say', 'TIL-SAY'),
-(43, 6, 'Téra', 'TIL-TER'),
-(44, 6, 'Abala', 'TIL-ABA'),
-(45, 6, 'Balleyara', 'TIL-BAL'),
-(46, 6, 'Banibangou', 'TIL-BAN'),
-(47, 6, 'Ouallam', 'TIL-OUA'),
-(48, 6, 'Torodi', 'TIL-TOR'),
-(49, 7, 'Zinder', 'ZND-ZND'),
-(50, 7, 'Dungass', 'ZND-DUN'),
-(51, 7, 'Gouré', 'ZND-GOU'),
-(52, 7, 'Magaria', 'ZND-MAG'),
-(53, 7, 'Mirriah', 'ZND-MIR'),
-(54, 7, 'Tanout', 'ZND-TAN'),
-(55, 7, 'Damagaram Takaya', 'ZND-DAM'),
-(56, 7, 'Kantché', 'ZND-KAN'),
-(57, 8, 'Ville de Niamey', 'NIA-VIL');
+(1, 1, 'Aderbissinat', '101'),
+(2, 1, 'Agadez', '102'),
+(3, 1, 'Arlit', '103'),
+(4, 1, 'Bilma', '104'),
+(5, 1, 'Iferouane', '105'),
+(6, 1, 'Ingall', '106'),
+(7, 1, 'Tassara', '107'),
+(8, 1, 'Tchintabaraden', '108'),
+(9, 1, 'Tchirozerine', '109'),
+(10, 2, 'Bosso', '201'),
+(11, 2, 'Diffa', '202'),
+(12, 2, 'Goudoumaria', '203'),
+(13, 2, 'Maïné Soroa', '204'),
+(14, 2, 'N\'Gourti', '205'),
+(15, 2, 'N\'Guigmi', '206'),
+(16, 3, 'Boboye', '301'),
+(17, 3, 'Dioundiou', '302'),
+(18, 3, 'Dogondoutchi', '303'),
+(19, 3, 'Dosso', '304'),
+(20, 3, 'Falmey', '305'),
+(21, 3, 'Gaya', '306'),
+(22, 3, 'Loga', '307'),
+(23, 3, 'Tibiri', '308'),
+(24, 4, 'Aguié', '401'),
+(25, 4, 'Dakoro', '402'),
+(26, 4, 'Gazaoua', '403'),
+(27, 4, 'Guidan Roumdji', '404'),
+(28, 4, 'Madarounfa', '405'),
+(29, 4, 'Mayahi', '406'),
+(30, 4, 'Tessaoua', '407'),
+(31, 4, 'Maradi', '408'),
+(32, 5, 'Abalak', '501'),
+(33, 5, 'Bagaroua', '502'),
+(34, 5, 'Birni N\'Konni', '503'),
+(35, 5, 'Bouza', '504'),
+(36, 5, 'Illéla', '505'),
+(37, 5, 'Keita', '506'),
+(38, 5, 'Madaoua', '507'),
+(39, 5, 'Malbaza', '508'),
+(40, 5, 'Tahoua', '509'),
+(41, 5, 'Takanamatt', '510'),
+(42, 5, 'Tillia', '511'),
+(43, 5, 'Ville de Tahoua', '512'),
+(44, 6, 'Abala', '601'),
+(45, 6, 'Ayorou', '602'),
+(46, 6, 'Balleyara', '603'),
+(47, 6, 'Banibangou', '604'),
+(48, 6, 'Bankilaré', '605'),
+(49, 6, 'Filingué', '606'),
+(50, 6, 'Gothèye', '607'),
+(51, 6, 'Kollo', '608'),
+(52, 6, 'Ouallam', '609'),
+(53, 6, 'Say', '610'),
+(54, 6, 'Téra', '611'),
+(55, 6, 'Tillabéri', '612'),
+(56, 6, 'Torodi', '613'),
+(57, 7, 'Belbédji', '701'),
+(58, 7, 'Bermo', '702'),
+(59, 7, 'Damagaram Takaya', '703'),
+(60, 7, 'Dungass', '704'),
+(61, 7, 'Gouré', '705'),
+(62, 7, 'Kantché', '706'),
+(63, 7, 'Magaria', '707'),
+(64, 7, 'Mirriah', '708'),
+(65, 7, 'Tanout', '709'),
+(66, 7, 'Tesker', '710'),
+(67, 7, 'Zinder', '711'),
+(68, 8, 'Niamey', '801');
 
 -- --------------------------------------------------------
 
@@ -668,6 +923,7 @@ CREATE TABLE `detenus` (
   `profession` varchar(150) DEFAULT NULL,
   `adresse` text DEFAULT NULL,
   `dossier_id` int(11) DEFAULT NULL,
+  `jugement_id` int(11) DEFAULT NULL,
   `type_detention` enum('provisoire','condamne','prevenu','inculpe','detenu_provisoire','mis_en_examen','autre') DEFAULT 'provisoire',
   `date_incarceration` date DEFAULT NULL,
   `date_liberation_prevue` date DEFAULT NULL,
@@ -686,8 +942,8 @@ CREATE TABLE `detenus` (
 -- Déchargement des données de la table `detenus`
 --
 
-INSERT INTO `detenus` (`id`, `numero_ecrou`, `nom`, `prenom`, `surnom_alias`, `nom_mere`, `statut_matrimonial`, `nombre_enfants`, `sexe`, `photo_identite`, `maison_arret_id`, `date_naissance`, `lieu_naissance`, `nationalite`, `profession`, `adresse`, `dossier_id`, `type_detention`, `date_incarceration`, `date_liberation_prevue`, `date_liberation_effective`, `cellule`, `etablissement`, `statut`, `infractions_retenues`, `notes`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 'ECR0001/2026', 'Ali', 'ARZIKA', 'KOUDIZE', 'MINTOU SINKA', 'marie', 5, 'M', 'uploads/photos_detenus/det_dae062d59f963628_1776491861.jpg', 1, '1990-04-18', 'SOKORBE', 'Nigérienne', 'REVENDEUR', NULL, 3, 'prevenu', '2026-04-18', '2026-12-18', NULL, '', 'Maison d&#039;Arrêt de Niamey', 'incarcere', NULL, '', NULL, '2026-04-18 05:57:41', '2026-04-18 05:57:41');
+INSERT INTO `detenus` (`id`, `numero_ecrou`, `nom`, `prenom`, `surnom_alias`, `nom_mere`, `statut_matrimonial`, `nombre_enfants`, `sexe`, `photo_identite`, `maison_arret_id`, `date_naissance`, `lieu_naissance`, `nationalite`, `profession`, `adresse`, `dossier_id`, `jugement_id`, `type_detention`, `date_incarceration`, `date_liberation_prevue`, `date_liberation_effective`, `cellule`, `etablissement`, `statut`, `infractions_retenues`, `notes`, `created_by`, `created_at`, `updated_at`) VALUES
+(1, 'ECR0001/2026', 'Ali', 'ARZIKA', 'KOUDIZE', 'MINTOU SINKA', 'marie', 5, 'M', 'uploads/photos_detenus/det_dae062d59f963628_1776491861.jpg', 1, '1990-04-18', 'SOKORBE', 'Nigérienne', 'REVENDEUR', NULL, 3, NULL, 'prevenu', '2026-04-18', '2026-12-18', NULL, '', 'Maison d&#039;Arrêt de Niamey', 'incarcere', NULL, '', NULL, '2026-04-18 05:57:41', '2026-04-18 05:57:41');
 
 -- --------------------------------------------------------
 
@@ -709,6 +965,7 @@ CREATE TABLE `documents` (
   `taille_octets` int(11) DEFAULT NULL,
   `description` text DEFAULT NULL,
   `uploaded_by` int(11) DEFAULT NULL,
+  `uploaded_by_role` varchar(50) DEFAULT NULL COMMENT 'Role de l utilisateur qui a uploadé',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -716,13 +973,13 @@ CREATE TABLE `documents` (
 -- Déchargement des données de la table `documents`
 --
 
-INSERT INTO `documents` (`id`, `dossier_id`, `pv_id`, `audience_id`, `jugement_id`, `nom_original`, `nom_stockage`, `chemin_fichier`, `type_document`, `mime_type`, `taille_octets`, `description`, `uploaded_by`, `created_at`) VALUES
-(1, 1, NULL, NULL, NULL, 'MANDAT D\'ARRÊT — MAND N°001_2026_TGI-NY.pdf', '677c960acb6a72df_MANDAT_D_ARR__T_____MAND_N__001_2026_TGI-NY.pdf', 'uploads/documents/dossier_1/677c960acb6a72df_MANDAT_D_ARR__T_____MAND_N__001_2026_TGI-NY.pdf', 'piece_jointe', 'application/pdf', 234142, 'test', 1, '2026-04-17 17:01:17'),
-(2, 2, NULL, NULL, NULL, 'MANDAT D\'ARRÊT — MAND N°001_2026_TGI-NY.pdf', '677c960acb6a72df_MANDAT_D_ARR__T_____MAND_N__001_2026_TGI-NY.pdf', 'uploads/documents/dossier_2/677c960acb6a72df_MANDAT_D_ARR__T_____MAND_N__001_2026_TGI-NY.pdf', 'piece_jointe', 'application/pdf', 234142, 'TEST', 1, '2026-04-17 20:54:09'),
-(3, 3, NULL, NULL, NULL, 'MANDAT D\'ARRÊT — MAND N°001_2026_TGI-NY.pdf', '677c960acb6a72df_MANDAT_D_ARR__T_____MAND_N__001_2026_TGI-NY.pdf', 'uploads/documents/dossier_3/677c960acb6a72df_MANDAT_D_ARR__T_____MAND_N__001_2026_TGI-NY.pdf', 'piece_jointe', 'application/pdf', 234142, 'TEST', 1, '2026-04-17 21:01:43'),
-(4, 3, NULL, NULL, NULL, 'whatsapp_image_2025-11-25_at_17.20_40.jpg', 'b83d439bf4ec2e05_whatsapp_image_2025-11-25_at_17.20_40.jpg', 'uploads/documents/dossier_3/b83d439bf4ec2e05_whatsapp_image_2025-11-25_at_17.20_40.jpg', 'piece_jointe', 'image/jpeg', 153485, 'gg', 1, '2026-04-17 21:25:27'),
-(5, 3, NULL, NULL, NULL, 'whatsapp_image_2025-11-25_at_17.20_40.jpg', 'b83d439bf4ec2e05_whatsapp_image_2025-11-25_at_17.20_40.jpg', 'uploads/documents/dossier_3/b83d439bf4ec2e05_whatsapp_image_2025-11-25_at_17.20_40.jpg', 'piece_jointe', 'image/jpeg', 153485, NULL, 1, '2026-04-17 23:11:17'),
-(6, 3, NULL, NULL, NULL, 'WhatsApp Image 2026-04-14 at 16.51.49.jpeg', '0e827f44df1fa653_WhatsApp_Image_2026-04-14_at_16.51.49.jpeg', 'uploads/documents/dossier_3/0e827f44df1fa653_WhatsApp_Image_2026-04-14_at_16.51.49.jpeg', 'piece_jointe', 'image/jpeg', 260836, NULL, 1, '2026-04-18 06:05:03');
+INSERT INTO `documents` (`id`, `dossier_id`, `pv_id`, `audience_id`, `jugement_id`, `nom_original`, `nom_stockage`, `chemin_fichier`, `type_document`, `mime_type`, `taille_octets`, `description`, `uploaded_by`, `uploaded_by_role`, `created_at`) VALUES
+(1, 1, NULL, NULL, NULL, 'MANDAT D\'ARRÊT — MAND N°001_2026_TGI-NY.pdf', '677c960acb6a72df_MANDAT_D_ARR__T_____MAND_N__001_2026_TGI-NY.pdf', 'uploads/documents/dossier_1/677c960acb6a72df_MANDAT_D_ARR__T_____MAND_N__001_2026_TGI-NY.pdf', 'piece_jointe', 'application/pdf', 234142, 'test', 1, NULL, '2026-04-17 17:01:17'),
+(2, 2, NULL, NULL, NULL, 'MANDAT D\'ARRÊT — MAND N°001_2026_TGI-NY.pdf', '677c960acb6a72df_MANDAT_D_ARR__T_____MAND_N__001_2026_TGI-NY.pdf', 'uploads/documents/dossier_2/677c960acb6a72df_MANDAT_D_ARR__T_____MAND_N__001_2026_TGI-NY.pdf', 'piece_jointe', 'application/pdf', 234142, 'TEST', 1, NULL, '2026-04-17 20:54:09'),
+(3, 3, NULL, NULL, NULL, 'MANDAT D\'ARRÊT — MAND N°001_2026_TGI-NY.pdf', '677c960acb6a72df_MANDAT_D_ARR__T_____MAND_N__001_2026_TGI-NY.pdf', 'uploads/documents/dossier_3/677c960acb6a72df_MANDAT_D_ARR__T_____MAND_N__001_2026_TGI-NY.pdf', 'piece_jointe', 'application/pdf', 234142, 'TEST', 1, NULL, '2026-04-17 21:01:43'),
+(4, 3, NULL, NULL, NULL, 'whatsapp_image_2025-11-25_at_17.20_40.jpg', 'b83d439bf4ec2e05_whatsapp_image_2025-11-25_at_17.20_40.jpg', 'uploads/documents/dossier_3/b83d439bf4ec2e05_whatsapp_image_2025-11-25_at_17.20_40.jpg', 'piece_jointe', 'image/jpeg', 153485, 'gg', 1, NULL, '2026-04-17 21:25:27'),
+(5, 3, NULL, NULL, NULL, 'whatsapp_image_2025-11-25_at_17.20_40.jpg', 'b83d439bf4ec2e05_whatsapp_image_2025-11-25_at_17.20_40.jpg', 'uploads/documents/dossier_3/b83d439bf4ec2e05_whatsapp_image_2025-11-25_at_17.20_40.jpg', 'piece_jointe', 'image/jpeg', 153485, NULL, 1, NULL, '2026-04-17 23:11:17'),
+(6, 3, NULL, NULL, NULL, 'WhatsApp Image 2026-04-14 at 16.51.49.jpeg', '0e827f44df1fa653_WhatsApp_Image_2026-04-14_at_16.51.49.jpeg', 'uploads/documents/dossier_3/0e827f44df1fa653_WhatsApp_Image_2026-04-14_at_16.51.49.jpeg', 'piece_jointe', 'image/jpeg', 260836, NULL, 1, NULL, '2026-04-18 06:05:03');
 
 -- --------------------------------------------------------
 
@@ -776,6 +1033,46 @@ INSERT INTO `dossiers` (`id`, `numero_rg`, `numero_rp`, `numero_ri`, `pv_id`, `s
 -- --------------------------------------------------------
 
 --
+-- Structure de la table `dossier_avocats`
+--
+
+CREATE TABLE `dossier_avocats` (
+  `id` int(11) NOT NULL,
+  `dossier_id` int(11) NOT NULL,
+  `avocat_id` int(11) NOT NULL,
+  `partie_id` int(11) DEFAULT NULL,
+  `role_avocat` varchar(100) DEFAULT 'défenseur',
+  `date_mandat` date DEFAULT NULL,
+  `notes` text DEFAULT NULL,
+  `actif` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `dossier_pvs`
+--
+
+CREATE TABLE `dossier_pvs` (
+  `dossier_id` int(11) NOT NULL,
+  `pv_id` int(11) NOT NULL,
+  `date_jonction` timestamp NOT NULL DEFAULT current_timestamp(),
+  `joint_par` int(11) DEFAULT NULL COMMENT 'user_id du substitut ayant fait la jonction'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Jonction plusieurs PVs → un dossier (fusion par le substitut)';
+
+--
+-- Déchargement des données de la table `dossier_pvs`
+--
+
+INSERT INTO `dossier_pvs` (`dossier_id`, `pv_id`, `date_jonction`, `joint_par`) VALUES
+(1, 1, '2026-04-27 10:19:25', NULL),
+(2, 2, '2026-04-27 10:19:25', NULL),
+(3, 3, '2026-04-27 10:19:25', NULL);
+
+-- --------------------------------------------------------
+
+--
 -- Structure de la table `droits_utilisateurs`
 --
 
@@ -794,42 +1091,80 @@ CREATE TABLE `droits_utilisateurs` (
 --
 
 INSERT INTO `droits_utilisateurs` (`id`, `user_id`, `menu_id`, `fonctionnalite_id`, `accorde`, `accorde_par`, `updated_at`) VALUES
-(1, 1, 1, NULL, 1, 1, '2026-04-17 17:37:52'),
-(2, 1, 2, NULL, 1, 1, '2026-04-17 17:37:52'),
-(3, 1, 3, NULL, 1, 1, '2026-04-17 17:37:52'),
-(4, 1, 4, NULL, 1, 1, '2026-04-17 17:37:52'),
-(5, 1, 5, NULL, 1, 1, '2026-04-17 17:37:52'),
-(6, 1, 6, NULL, 1, 1, '2026-04-17 17:37:52'),
-(7, 1, 7, NULL, 1, 1, '2026-04-17 17:37:52'),
-(8, 1, 8, NULL, 1, 1, '2026-04-17 17:37:52'),
-(9, 1, 9, NULL, 1, 1, '2026-04-17 17:37:52'),
-(10, 1, 10, NULL, 1, 1, '2026-04-17 17:37:52'),
-(11, 1, 11, NULL, 1, 1, '2026-04-17 17:37:52'),
-(12, 1, NULL, 1, 1, 1, '2026-04-17 17:37:52'),
-(13, 1, NULL, 2, 1, 1, '2026-04-17 17:37:52'),
-(14, 1, NULL, 3, 1, 1, '2026-04-17 17:37:52'),
-(15, 1, NULL, 4, 1, 1, '2026-04-17 17:37:52'),
-(16, 1, NULL, 5, 1, 1, '2026-04-17 17:37:52'),
-(17, 1, NULL, 6, 1, 1, '2026-04-17 17:37:52'),
-(18, 1, NULL, 7, 1, 1, '2026-04-17 17:37:52'),
-(19, 1, NULL, 8, 1, 1, '2026-04-17 17:37:52'),
-(20, 1, NULL, 9, 1, 1, '2026-04-17 17:37:52'),
-(21, 1, NULL, 10, 1, 1, '2026-04-17 17:37:52'),
-(22, 1, NULL, 11, 1, 1, '2026-04-17 17:37:52'),
-(23, 1, NULL, 12, 1, 1, '2026-04-17 17:37:52'),
-(24, 1, NULL, 13, 1, 1, '2026-04-17 17:37:52'),
-(25, 1, NULL, 14, 1, 1, '2026-04-17 17:37:52'),
-(26, 1, NULL, 15, 1, 1, '2026-04-17 17:37:52'),
-(27, 1, NULL, 18, 1, 1, '2026-04-17 17:37:52'),
-(28, 1, NULL, 19, 1, 1, '2026-04-17 17:37:52'),
-(29, 1, NULL, 16, 1, 1, '2026-04-17 17:37:52'),
-(30, 1, NULL, 17, 1, 1, '2026-04-17 17:37:52'),
-(31, 1, NULL, 20, 1, 1, '2026-04-17 17:37:52'),
-(32, 1, NULL, 21, 1, 1, '2026-04-17 17:37:52'),
-(33, 1, NULL, 22, 1, 1, '2026-04-17 17:37:52'),
-(34, 11, 2, NULL, 1, 1, '2026-04-19 07:26:34'),
-(35, 11, NULL, 1, 1, 1, '2026-04-19 07:26:34'),
-(36, 11, NULL, 2, 1, 1, '2026-04-19 07:26:34');
+(44, 1, 1, NULL, 1, 1, '2026-04-19 09:48:50'),
+(45, 1, 2, NULL, 1, 1, '2026-04-19 09:48:50'),
+(46, 1, 3, NULL, 1, 1, '2026-04-19 09:48:50'),
+(47, 1, 4, NULL, 1, 1, '2026-04-19 09:48:50'),
+(48, 1, 5, NULL, 1, 1, '2026-04-19 09:48:50'),
+(49, 1, 6, NULL, 1, 1, '2026-04-19 09:48:50'),
+(50, 1, 7, NULL, 1, 1, '2026-04-19 09:48:50'),
+(51, 1, 8, NULL, 1, 1, '2026-04-19 09:48:50'),
+(52, 1, 9, NULL, 1, 1, '2026-04-19 09:48:50'),
+(53, 1, 10, NULL, 1, 1, '2026-04-19 09:48:50'),
+(54, 1, 11, NULL, 1, 1, '2026-04-19 09:48:50'),
+(55, 1, 12, NULL, 1, 1, '2026-04-19 09:48:50'),
+(56, 1, 13, NULL, 1, 1, '2026-04-19 09:48:50'),
+(57, 1, 14, NULL, 1, 1, '2026-04-19 09:48:50'),
+(58, 1, 15, NULL, 1, 1, '2026-04-19 09:48:50'),
+(59, 1, 16, NULL, 1, 1, '2026-04-19 09:48:50'),
+(60, 1, 17, NULL, 1, 1, '2026-04-19 09:48:50'),
+(61, 1, 18, NULL, 1, 1, '2026-04-19 09:48:50'),
+(62, 1, 19, NULL, 1, 1, '2026-04-19 09:48:50'),
+(63, 1, 20, NULL, 1, 1, '2026-04-19 09:48:50'),
+(64, 1, NULL, 1, 1, 1, '2026-04-19 09:48:50'),
+(65, 1, NULL, 2, 1, 1, '2026-04-19 09:48:50'),
+(66, 1, NULL, 3, 1, 1, '2026-04-19 09:48:50'),
+(67, 1, NULL, 4, 1, 1, '2026-04-19 09:48:50'),
+(68, 1, NULL, 5, 1, 1, '2026-04-19 09:48:50'),
+(69, 1, NULL, 6, 1, 1, '2026-04-19 09:48:50'),
+(70, 1, NULL, 25, 1, 1, '2026-04-19 09:48:50'),
+(71, 1, NULL, 26, 1, 1, '2026-04-19 09:48:50'),
+(72, 1, NULL, 7, 1, 1, '2026-04-19 09:48:50'),
+(73, 1, NULL, 8, 1, 1, '2026-04-19 09:48:50'),
+(74, 1, NULL, 9, 1, 1, '2026-04-19 09:48:50'),
+(75, 1, NULL, 10, 1, 1, '2026-04-19 09:48:50'),
+(76, 1, NULL, 11, 1, 1, '2026-04-19 09:48:50'),
+(77, 1, NULL, 12, 1, 1, '2026-04-19 09:48:50'),
+(78, 1, NULL, 13, 1, 1, '2026-04-19 09:48:50'),
+(79, 1, NULL, 14, 1, 1, '2026-04-19 09:48:50'),
+(80, 1, NULL, 15, 1, 1, '2026-04-19 09:48:50'),
+(81, 1, NULL, 18, 1, 1, '2026-04-19 09:48:50'),
+(82, 1, NULL, 19, 1, 1, '2026-04-19 09:48:50'),
+(83, 1, NULL, 16, 1, 1, '2026-04-19 09:48:50'),
+(84, 1, NULL, 17, 1, 1, '2026-04-19 09:48:50'),
+(85, 1, NULL, 20, 1, 1, '2026-04-19 09:48:50'),
+(86, 1, NULL, 21, 1, 1, '2026-04-19 09:48:50'),
+(87, 1, NULL, 22, 1, 1, '2026-04-19 09:48:50'),
+(88, 1, NULL, 23, 1, 1, '2026-04-19 09:48:50'),
+(89, 1, NULL, 24, 1, 1, '2026-04-19 09:48:50'),
+(107, 11, 2, NULL, 1, 1, '2026-04-22 17:45:16'),
+(108, 11, 12, NULL, 1, 1, '2026-04-22 17:45:16'),
+(109, 11, NULL, 1, 1, 1, '2026-04-22 17:45:16'),
+(110, 11, NULL, 2, 1, 1, '2026-04-22 17:45:16'),
+(111, 11, NULL, 3, 1, 1, '2026-04-22 17:45:16'),
+(112, 11, NULL, 4, 1, 1, '2026-04-22 17:45:16'),
+(113, 11, NULL, 5, 1, 1, '2026-04-22 17:45:16'),
+(114, 11, NULL, 6, 1, 1, '2026-04-22 17:45:16'),
+(115, 11, NULL, 25, 1, 1, '2026-04-22 17:45:16'),
+(116, 11, NULL, 26, 1, 1, '2026-04-22 17:45:16'),
+(117, 11, NULL, 23, 1, 1, '2026-04-22 17:45:16'),
+(118, 11, NULL, 24, 1, 1, '2026-04-22 17:45:17'),
+(119, 7, 2, NULL, 1, 1, '2026-04-22 17:58:39'),
+(120, 7, 8, NULL, 1, 1, '2026-04-22 17:58:39'),
+(121, 7, NULL, 1, 1, 1, '2026-04-22 17:58:39'),
+(122, 7, NULL, 2, 1, 1, '2026-04-22 17:58:39'),
+(123, 7, NULL, 3, 1, 1, '2026-04-22 17:58:39'),
+(124, 7, NULL, 4, 1, 1, '2026-04-22 17:58:39'),
+(125, 7, NULL, 5, 1, 1, '2026-04-22 17:58:39'),
+(126, 7, NULL, 6, 1, 1, '2026-04-22 17:58:39'),
+(127, 7, NULL, 25, 1, 1, '2026-04-22 17:58:39'),
+(128, 7, NULL, 26, 1, 1, '2026-04-22 17:58:39'),
+(129, 7, NULL, 7, 1, 1, '2026-04-22 17:58:39'),
+(130, 7, NULL, 8, 1, 1, '2026-04-22 17:58:39'),
+(131, 7, NULL, 9, 1, 1, '2026-04-22 17:58:39'),
+(132, 7, NULL, 10, 1, 1, '2026-04-22 17:58:39'),
+(133, 7, NULL, 11, 1, 1, '2026-04-22 17:58:39'),
+(134, 7, NULL, 12, 1, 1, '2026-04-22 17:58:39');
 
 -- --------------------------------------------------------
 
@@ -903,7 +1238,11 @@ INSERT INTO `fonctionnalites` (`id`, `code`, `libelle`, `menu_id`, `description`
 (19, 'detenu_liberer', 'Libérer un détenu', 6, NULL, 1),
 (20, 'config_cabinets', 'Gérer les cabinets', 11, NULL, 1),
 (21, 'config_substituts', 'Gérer les substituts', 11, NULL, 1),
-(22, 'config_parametres', 'Paramètres du tribunal', 11, NULL, 1);
+(22, 'config_parametres', 'Paramètres du tribunal', 11, NULL, 1),
+(23, 'plainte_creer', 'Déposer une plainte', 12, NULL, 1),
+(24, 'plainte_traiter', 'Traiter une plainte', 12, NULL, 1),
+(25, 'mec_creer', 'Saisir une mise en cause', 2, NULL, 1),
+(26, 'mec_decision', 'Décider poursuite/non poursuite', 2, NULL, 1);
 
 -- --------------------------------------------------------
 
@@ -1007,7 +1346,9 @@ INSERT INTO `infractions` (`id`, `code`, `libelle`, `categorie`, `peine_min_mois
 (34, 'INF-034', 'Viol sur mineur de moins de 13 ans', 'criminelle', 120, 999, '2026-04-17 20:52:30'),
 (35, 'INF-035', 'Financement du terrorisme', 'criminelle', 120, 999, '2026-04-17 20:52:30'),
 (36, 'INF-036', 'Vol avec violence', 'criminelle', 60, 120, '2026-04-17 20:52:30'),
-(37, 'INF-037', 'Terrorisme', 'criminelle', 120, 999, '2026-04-17 20:52:30');
+(37, 'INF-037', 'Terrorisme', 'criminelle', 120, 999, '2026-04-17 20:52:30'),
+(38, 'RJ', 'RENSEIGNEMENT JUDICIAIRE', 'correctionnelle', NULL, NULL, '2026-04-22 15:44:46'),
+(39, 'ES', 'EXAMEN DE SITUATION', 'criminelle', NULL, NULL, '2026-04-22 15:45:17');
 
 -- --------------------------------------------------------
 
@@ -1118,7 +1459,24 @@ CREATE TABLE `mandats` (
 --
 
 INSERT INTO `mandats` (`id`, `numero`, `type_mandat`, `dossier_id`, `detenu_id`, `partie_id`, `nouveau_nom`, `nouveau_prenom`, `nouveau_ddn`, `nouveau_nationalite`, `nouveau_adresse`, `nouveau_profession`, `motif`, `infraction_libelle`, `lieu_execution`, `emetteur_id`, `date_emission`, `date_expiration`, `statut`, `date_execution`, `executant_nom`, `observations`, `created_at`, `updated_at`, `created_by`) VALUES
-(1, 'MAND N°001/2026/TGI-NY', 'arret', NULL, NULL, NULL, 'DG CAIMA', 'LAOUALI', '1993-04-17', 'Nigérienne', NULL, NULL, 'test', 'ttt', 'tttt', 1, '2026-04-17', '2026-10-17', 'execute', '2026-04-17', NULL, NULL, '2026-04-17 16:07:29', '2026-04-17 21:31:50', 1);
+(1, 'MAND N°001/2026/TGI-NY', 'arret', NULL, NULL, NULL, 'DG CAIMA', 'LAOUALI', '1993-04-17', 'Nigérienne', NULL, NULL, 'test', 'ttt', 'tttt', 1, '2026-04-17', '2026-10-17', 'execute', '2026-04-17', NULL, NULL, '2026-04-17 16:07:29', '2026-04-17 21:31:50', 1),
+(2, 'MAND N°002/2026/TGI-NY', 'depot', 3, NULL, NULL, 'SANI', 'SIDIKOU', '1990-04-22', 'Nigérienne', 'BOBIEL', 'COMMERCANTE', 'ESCROQUERIE, vol en reuinion', NULL, 'NIAMEY', 1, '2026-04-22', '2026-10-22', 'emis', NULL, NULL, NULL, '2026-04-22 17:18:20', '2026-04-22 17:18:20', 1);
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `mec_infractions`
+--
+
+CREATE TABLE `mec_infractions` (
+  `id` int(11) NOT NULL,
+  `mec_id` int(11) NOT NULL COMMENT 'mises_en_cause.id',
+  `infraction_id` int(11) NOT NULL,
+  `type` enum('unite','substitut') NOT NULL DEFAULT 'unite',
+  `est_complicite` tinyint(1) DEFAULT 0,
+  `notes` varchar(500) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Infractions retenues par mis en cause';
 
 -- --------------------------------------------------------
 
@@ -1178,7 +1536,66 @@ INSERT INTO `menus` (`id`, `code`, `libelle`, `icone`, `url`, `parent_id`, `ordr
 (8, 'carte', 'Carte Antiterroriste', 'bi-map', '/carte', NULL, 8, 1),
 (9, 'alertes', 'Alertes', 'bi-bell', '/alertes', NULL, 9, 1),
 (10, 'users', 'Utilisateurs', 'bi-people', '/users', NULL, 10, 1),
-(11, 'config', 'Configuration', 'bi-gear-fill', '/config', NULL, 11, 1);
+(11, 'config', 'Configuration', 'bi-gear-fill', '/config', NULL, 11, 1),
+(12, 'plaintes', 'Plaintes', 'bi-megaphone', '/plaintes', NULL, 25, 1),
+(13, 'avocats', 'Barreau / Avocats', 'bi-person-badge', '/avocats', NULL, 26, 1),
+(14, 'casier_judiciaire', 'Casier judiciaire', 'bi-person-vcard', '/casier-judiciaire', NULL, 27, 1),
+(15, 'voies_recours', 'Voies de recours', 'bi-arrow-repeat', '/voies-recours', NULL, 28, 1),
+(16, 'ordonnances', 'Ordonnances JI', 'bi-file-earmark-text', '/ordonnances', NULL, 29, 1),
+(17, 'controles_judiciaires', 'Contrôles judiciaires', 'bi-shield-check', '/controles-judiciaires', NULL, 30, 1),
+(18, 'expertises', 'Expertises', 'bi-microscope', '/expertises', NULL, 31, 1),
+(19, 'commissions_rogatoires', 'Commissions rogatoires', 'bi-send', '/commissions-rogatoires', NULL, 32, 1),
+(20, 'scelles', 'Scellés', 'bi-archive', '/scelles', NULL, 33, 1);
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `mises_en_cause`
+--
+
+CREATE TABLE `mises_en_cause` (
+  `id` int(11) NOT NULL,
+  `pv_id` int(11) NOT NULL COMMENT 'PV concerné',
+  `nom` varchar(100) NOT NULL,
+  `prenom` varchar(100) DEFAULT NULL,
+  `alias` varchar(100) DEFAULT NULL COMMENT 'Alias / surnom',
+  `nom_mere` varchar(150) DEFAULT NULL,
+  `date_naissance` date DEFAULT NULL,
+  `lieu_naissance` varchar(200) DEFAULT NULL,
+  `nationalite` varchar(100) DEFAULT 'Nigérienne',
+  `sexe` enum('M','F','Inconnu') DEFAULT 'M',
+  `profession` varchar(150) DEFAULT NULL,
+  `adresse` text DEFAULT NULL,
+  `telephone` varchar(30) DEFAULT NULL,
+  `statut` enum('mise_en_cause','prevenu','temoin','autre') NOT NULL DEFAULT 'mise_en_cause',
+  `statut_autre_detail` varchar(200) DEFAULT NULL COMMENT 'Précision si statut=autre',
+  `photo` varchar(255) DEFAULT NULL,
+  `personne_contacter_nom` varchar(200) DEFAULT NULL COMMENT 'Personne à contacter',
+  `personne_contacter_tel` varchar(30) DEFAULT NULL,
+  `personne_contacter_lien` varchar(100) DEFAULT NULL COMMENT 'Lien (père, mère, époux...)',
+  `est_connu_archives` tinyint(1) DEFAULT 0 COMMENT '1 = déjà connu dans les archives',
+  `nb_affaires_precedentes` int(11) DEFAULT 0 COMMENT 'Nombre d affaires antérieures',
+  `notes_antecedents` text DEFAULT NULL,
+  `decision_substitut` enum('poursuivi','non_poursuivi','en_attente') DEFAULT 'en_attente',
+  `motif_non_poursuite` text DEFAULT NULL,
+  `date_decision` date DEFAULT NULL,
+  `created_by` int(11) DEFAULT NULL,
+  `substitut_id` int(11) DEFAULT NULL COMMENT 'Substitut chargé de ce mis en cause (hérite du PV)',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Mises en cause saisies au moment de l enregistrement du PV';
+
+--
+-- Déchargement des données de la table `mises_en_cause`
+--
+
+INSERT INTO `mises_en_cause` (`id`, `pv_id`, `nom`, `prenom`, `alias`, `nom_mere`, `date_naissance`, `lieu_naissance`, `nationalite`, `sexe`, `profession`, `adresse`, `telephone`, `statut`, `statut_autre_detail`, `photo`, `personne_contacter_nom`, `personne_contacter_tel`, `personne_contacter_lien`, `est_connu_archives`, `nb_affaires_precedentes`, `notes_antecedents`, `decision_substitut`, `motif_non_poursuite`, `date_decision`, `created_by`, `substitut_id`, `created_at`, `updated_at`) VALUES
+(1, 4, 'DETENUS 1', 'ARZIKA', 'cobra', 'MINTOU SINKA', '1999-04-19', NULL, 'Nigérienne', 'M', 'REVENDEUR', NULL, NULL, 'prevenu', NULL, 'uploads/photos_mec/mec_38fe96c8e62dbb44_1776588618.jpeg', 'HJHJHHJHJ', NULL, NULL, 1, 8, 'HHHHHHH', 'en_attente', NULL, NULL, 1, NULL, '2026-04-19 08:50:18', '2026-04-19 08:50:18'),
+(2, 5, 'AZIZ ET AUTRES', '', NULL, NULL, NULL, NULL, 'Nigérienne', 'M', NULL, NULL, NULL, 'mise_en_cause', NULL, NULL, NULL, NULL, NULL, 0, 0, NULL, 'en_attente', NULL, NULL, 1, NULL, '2026-04-22 16:38:58', '2026-04-22 16:38:58'),
+(3, 6, 'ABIBOULAYE MOUNKAILA ET AUTRES', '', NULL, NULL, NULL, NULL, 'Nigérienne', 'M', NULL, NULL, NULL, 'mise_en_cause', NULL, NULL, NULL, NULL, NULL, 0, 0, NULL, 'poursuivi', NULL, '2026-04-22', 11, NULL, '2026-04-22 16:39:39', '2026-04-22 16:51:35'),
+(4, 6, 'GARBA', '', NULL, NULL, NULL, NULL, 'Nigérienne', 'M', NULL, NULL, NULL, 'mise_en_cause', NULL, NULL, NULL, NULL, NULL, 0, 0, NULL, 'poursuivi', NULL, '2026-04-22', 1, NULL, '2026-04-22 16:48:22', '2026-04-22 16:48:51'),
+(5, 6, 'MOUSTAPHA', '', NULL, NULL, NULL, NULL, 'Nigérienne', 'M', NULL, NULL, NULL, 'mise_en_cause', NULL, NULL, NULL, NULL, NULL, 0, 0, NULL, 'non_poursuivi', 'test', '2026-04-22', 1, NULL, '2026-04-22 16:48:29', '2026-04-22 16:49:12'),
+(6, 7, 'ABDOU', '', NULL, NULL, NULL, NULL, 'Nigérienne', 'M', NULL, NULL, NULL, 'mise_en_cause', NULL, NULL, NULL, NULL, NULL, 0, 0, NULL, 'en_attente', NULL, NULL, 11, NULL, '2026-04-22 16:54:04', '2026-04-22 16:54:04');
 
 -- --------------------------------------------------------
 
@@ -1248,6 +1665,9 @@ INSERT INTO `ordonnances` (`id`, `numero_ordonnance`, `dossier_id`, `juge_id`, `
 
 CREATE TABLE `parametres_tribunal` (
   `id` int(11) NOT NULL,
+  `session_timeout_minutes` int(11) DEFAULT 60 COMMENT 'Durée de session en minutes',
+  `max_login_attempts` int(11) DEFAULT 5 COMMENT 'Tentatives de connexion max avant blocage',
+  `lockout_minutes` int(11) DEFAULT 15 COMMENT 'Durée de blocage en minutes',
   `cle` varchar(100) NOT NULL,
   `valeur` text DEFAULT NULL,
   `groupe` varchar(50) NOT NULL DEFAULT 'general',
@@ -1263,35 +1683,35 @@ CREATE TABLE `parametres_tribunal` (
 -- Déchargement des données de la table `parametres_tribunal`
 --
 
-INSERT INTO `parametres_tribunal` (`id`, `cle`, `valeur`, `groupe`, `libelle`, `description`, `type_champ`, `options_json`, `updated_at`, `updated_by`) VALUES
-(1, 'tribunal_nom_court', 'TGI-NY', 'identite', 'Nom court (sigle)', NULL, 'text', NULL, '2026-04-17 17:08:05', 1),
-(2, 'tribunal_nom_complet', 'Tribunal de Grande Instance Hors Classe de Niamey', 'identite', 'Nom complet du tribunal', NULL, 'text', NULL, '2026-04-17 17:08:05', 1),
-(3, 'tribunal_ville', 'Niamey', 'identite', 'Ville', NULL, 'text', NULL, '2026-04-17 17:08:05', 1),
-(4, 'tribunal_pays', 'République du Niger', 'identite', 'Pays', NULL, 'text', NULL, '2026-04-17 17:08:05', 1),
-(5, 'tribunal_adresse', 'Avenue de la Mairie — B.P. 466 — Niamey, République du Niger', 'identite', 'Adresse postale', NULL, 'text', NULL, '2026-04-17 17:08:05', 1),
-(6, 'tribunal_telephone', '+227 20 73 20 00', 'identite', 'Téléphone', NULL, 'tel', NULL, '2026-04-17 17:08:05', 1),
-(7, 'tribunal_email', 'contact@tgi-niamey.ne', 'identite', 'Email institutionnel', NULL, 'email', NULL, '2026-04-17 17:08:05', 1),
-(8, 'tribunal_website', '', 'identite', 'Site web', NULL, 'url', NULL, '2026-04-17 17:08:05', 1),
-(9, 'tribunal_devise', 'Fraternité — Travail — Progrès', 'identite', 'Devise nationale', NULL, 'text', NULL, '2026-04-17 17:08:05', 1),
-(10, 'doc_entete_ligne1', 'REPUBLIQUE DU NIGER', 'documents', 'En-tête ligne 1', NULL, 'text', NULL, '2026-04-17 17:08:05', 1),
-(11, 'doc_entete_ligne2', 'MINISTÈRE DE LA JUSTICE', 'documents', 'En-tête ligne 2', NULL, 'text', NULL, '2026-04-17 17:08:05', 1),
-(12, 'doc_entete_ligne3', 'Tribunal de Grande Instance Hors Classe de Niamey', 'documents', 'En-tête ligne 3', NULL, 'text', NULL, '2026-04-17 17:08:05', 1),
-(13, 'doc_pied_page', 'Document officiel — TGI-NY — Niamey — République du Niger', 'documents', 'Pied de page par défaut', NULL, 'text', NULL, '2026-04-17 17:08:05', 1),
-(14, 'doc_qr_code_actif', '1', 'documents', 'Activer le QR code sur les mandats', NULL, 'boolean', NULL, '2026-04-17 17:08:05', 1),
-(15, 'doc_qr_code_base_url', 'tjrtjrjrj', 'documents', 'URL de base pour les QR codes', NULL, 'url', NULL, '2026-04-17 17:08:05', 1),
-(16, 'delai_pv_jours', '30', 'delais', 'Délai traitement PV (jours)', NULL, 'number', NULL, '2026-04-17 17:08:05', 1),
-(17, 'delai_instruction_mois', '6', 'delais', 'Délai instruction (mois)', NULL, 'number', NULL, '2026-04-17 17:08:05', 1),
-(18, 'delai_alerte_audience_jours', '3', 'delais', 'Alerte avant audience (jours)', NULL, 'number', NULL, '2026-04-17 17:08:05', 1),
-(19, 'delai_appel_jours', '30', 'delais', 'Délai appel (jours)', NULL, 'number', NULL, '2026-04-17 17:08:05', 1),
-(20, 'delai_detention_prov_mois', '6', 'delais', 'Délai max détention provisoire (mois)', NULL, 'number', NULL, '2026-04-17 17:08:05', 1),
-(21, 'num_prefix_rg', 'RG N°', 'numerotation', 'Préfixe numéro RG', NULL, 'text', NULL, '2026-04-17 17:08:05', 1),
-(22, 'num_prefix_rp', 'RP N°', 'numerotation', 'Préfixe numéro RP', NULL, 'text', NULL, '2026-04-17 17:08:05', 1),
-(23, 'num_prefix_ri', 'RI N°', 'numerotation', 'Préfixe numéro RI', NULL, 'text', NULL, '2026-04-17 17:08:05', 1),
-(24, 'num_suffix_rg', 'TGI-NY', 'numerotation', 'Suffixe numéro RG', NULL, 'text', NULL, '2026-04-17 17:08:05', 1),
-(25, 'num_suffix_rp', 'PARQUET', 'numerotation', 'Suffixe numéro RP', NULL, 'text', NULL, '2026-04-17 17:08:05', 1),
-(26, 'num_suffix_ri', 'INSTR', 'numerotation', 'Suffixe numéro RI', NULL, 'text', NULL, '2026-04-17 17:08:05', 1),
-(27, 'theme_couleur_primaire', '#0a2342', 'affichage', 'Couleur primaire', NULL, 'color', NULL, '2026-04-17 17:08:05', 1),
-(28, 'items_par_page', '20', 'affichage', 'Éléments par page', NULL, 'number', NULL, '2026-04-17 17:08:05', 1);
+INSERT INTO `parametres_tribunal` (`id`, `session_timeout_minutes`, `max_login_attempts`, `lockout_minutes`, `cle`, `valeur`, `groupe`, `libelle`, `description`, `type_champ`, `options_json`, `updated_at`, `updated_by`) VALUES
+(1, 60, 5, 15, 'tribunal_nom_court', 'TGI-NY', 'identite', 'Nom court (sigle)', NULL, 'text', NULL, '2026-04-17 17:08:05', 1),
+(2, 60, 5, 15, 'tribunal_nom_complet', 'Tribunal de Grande Instance Hors Classe de Niamey', 'identite', 'Nom complet du tribunal', NULL, 'text', NULL, '2026-04-17 17:08:05', 1),
+(3, 60, 5, 15, 'tribunal_ville', 'Niamey', 'identite', 'Ville', NULL, 'text', NULL, '2026-04-17 17:08:05', 1),
+(4, 60, 5, 15, 'tribunal_pays', 'République du Niger', 'identite', 'Pays', NULL, 'text', NULL, '2026-04-17 17:08:05', 1),
+(5, 60, 5, 15, 'tribunal_adresse', 'Avenue de la Mairie — B.P. 466 — Niamey, République du Niger', 'identite', 'Adresse postale', NULL, 'text', NULL, '2026-04-17 17:08:05', 1),
+(6, 60, 5, 15, 'tribunal_telephone', '+227 20 73 20 00', 'identite', 'Téléphone', NULL, 'tel', NULL, '2026-04-17 17:08:05', 1),
+(7, 60, 5, 15, 'tribunal_email', 'contact@tgi-niamey.ne', 'identite', 'Email institutionnel', NULL, 'email', NULL, '2026-04-17 17:08:05', 1),
+(8, 60, 5, 15, 'tribunal_website', '', 'identite', 'Site web', NULL, 'url', NULL, '2026-04-17 17:08:05', 1),
+(9, 60, 5, 15, 'tribunal_devise', 'Fraternité — Travail — Progrès', 'identite', 'Devise nationale', NULL, 'text', NULL, '2026-04-17 17:08:05', 1),
+(10, 60, 5, 15, 'doc_entete_ligne1', 'REPUBLIQUE DU NIGER', 'documents', 'En-tête ligne 1', NULL, 'text', NULL, '2026-04-17 17:08:05', 1),
+(11, 60, 5, 15, 'doc_entete_ligne2', 'MINISTÈRE DE LA JUSTICE', 'documents', 'En-tête ligne 2', NULL, 'text', NULL, '2026-04-17 17:08:05', 1),
+(12, 60, 5, 15, 'doc_entete_ligne3', 'Tribunal de Grande Instance Hors Classe de Niamey', 'documents', 'En-tête ligne 3', NULL, 'text', NULL, '2026-04-17 17:08:05', 1),
+(13, 60, 5, 15, 'doc_pied_page', 'Document officiel — TGI-NY — Niamey — République du Niger', 'documents', 'Pied de page par défaut', NULL, 'text', NULL, '2026-04-17 17:08:05', 1),
+(14, 60, 5, 15, 'doc_qr_code_actif', '1', 'documents', 'Activer le QR code sur les mandats', NULL, 'boolean', NULL, '2026-04-17 17:08:05', 1),
+(15, 60, 5, 15, 'doc_qr_code_base_url', 'tjrtjrjrj', 'documents', 'URL de base pour les QR codes', NULL, 'url', NULL, '2026-04-17 17:08:05', 1),
+(16, 60, 5, 15, 'delai_pv_jours', '30', 'delais', 'Délai traitement PV (jours)', NULL, 'number', NULL, '2026-04-17 17:08:05', 1),
+(17, 60, 5, 15, 'delai_instruction_mois', '6', 'delais', 'Délai instruction (mois)', NULL, 'number', NULL, '2026-04-17 17:08:05', 1),
+(18, 60, 5, 15, 'delai_alerte_audience_jours', '3', 'delais', 'Alerte avant audience (jours)', NULL, 'number', NULL, '2026-04-17 17:08:05', 1),
+(19, 60, 5, 15, 'delai_appel_jours', '30', 'delais', 'Délai appel (jours)', NULL, 'number', NULL, '2026-04-17 17:08:05', 1),
+(20, 60, 5, 15, 'delai_detention_prov_mois', '6', 'delais', 'Délai max détention provisoire (mois)', NULL, 'number', NULL, '2026-04-17 17:08:05', 1),
+(21, 60, 5, 15, 'num_prefix_rg', 'RG N°', 'numerotation', 'Préfixe numéro RG', NULL, 'text', NULL, '2026-04-17 17:08:05', 1),
+(22, 60, 5, 15, 'num_prefix_rp', 'RP N°', 'numerotation', 'Préfixe numéro RP', NULL, 'text', NULL, '2026-04-17 17:08:05', 1),
+(23, 60, 5, 15, 'num_prefix_ri', 'RI N°', 'numerotation', 'Préfixe numéro RI', NULL, 'text', NULL, '2026-04-17 17:08:05', 1),
+(24, 60, 5, 15, 'num_suffix_rg', 'TGI-NY', 'numerotation', 'Suffixe numéro RG', NULL, 'text', NULL, '2026-04-17 17:08:05', 1),
+(25, 60, 5, 15, 'num_suffix_rp', 'PARQUET', 'numerotation', 'Suffixe numéro RP', NULL, 'text', NULL, '2026-04-17 17:08:05', 1),
+(26, 60, 5, 15, 'num_suffix_ri', 'INSTR', 'numerotation', 'Suffixe numéro RI', NULL, 'text', NULL, '2026-04-17 17:08:05', 1),
+(27, 60, 5, 15, 'theme_couleur_primaire', '#0a2342', 'affichage', 'Couleur primaire', NULL, 'color', NULL, '2026-04-17 17:08:05', 1),
+(28, 60, 5, 15, 'items_par_page', '20', 'affichage', 'Éléments par page', NULL, 'number', NULL, '2026-04-17 17:08:05', 1);
 
 -- --------------------------------------------------------
 
@@ -1319,7 +1739,49 @@ CREATE TABLE `parties` (
 --
 
 INSERT INTO `parties` (`id`, `dossier_id`, `type_partie`, `nom`, `prenom`, `date_naissance`, `nationalite`, `profession`, `adresse`, `telephone`, `notes`, `created_at`) VALUES
-(1, 3, '', 'SCP', 'ARZIKA', NULL, 'Nigérienne', '', '', 'KIMBA', NULL, '2026-04-18 05:41:55');
+(1, 3, '', 'SCP', 'ARZIKA', NULL, 'Nigérienne', '', '', 'KIMBA', NULL, '2026-04-18 05:41:55'),
+(2, 3, 'prevenu', 'SANI', 'SIDIKOU', '1990-04-22', 'Nigérienne', 'COMMERCANTE', 'BOBIEL', NULL, NULL, '2026-04-22 17:18:20');
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `plaintes`
+--
+
+CREATE TABLE `plaintes` (
+  `id` int(11) NOT NULL,
+  `numero_plainte` varchar(60) NOT NULL COMMENT 'Numéro de référence unique',
+  `date_plainte` date NOT NULL,
+  `date_reception` date NOT NULL DEFAULT curdate(),
+  `plaignant_nom` varchar(150) NOT NULL,
+  `plaignant_prenom` varchar(100) DEFAULT NULL,
+  `plaignant_telephone` varchar(30) DEFAULT NULL,
+  `plaignant_adresse` text DEFAULT NULL,
+  `plaignant_email` varchar(150) DEFAULT NULL,
+  `plaignant_qualite` enum('personne_physique','personne_morale','administration','autre') DEFAULT 'personne_physique',
+  `mis_en_cause_nom` varchar(200) DEFAULT NULL,
+  `mis_en_cause_adresse` text DEFAULT NULL,
+  `nature_plainte` varchar(255) NOT NULL,
+  `description_faits` text DEFAULT NULL,
+  `lieu_faits` varchar(255) DEFAULT NULL,
+  `date_faits` date DEFAULT NULL,
+  `pieces_jointes` varchar(255) DEFAULT NULL COMMENT 'Chemin fichier joint',
+  `statut` enum('deposee','en_examen','transmise_pv','classee','irrecevable') NOT NULL DEFAULT 'deposee',
+  `pv_id` int(11) DEFAULT NULL COMMENT 'PV créé suite à la plainte',
+  `motif_classement` text DEFAULT NULL,
+  `substitut_id` int(11) DEFAULT NULL COMMENT 'Substitut chargé',
+  `observations` text DEFAULT NULL,
+  `created_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Gestion des plaintes reçues au parquet';
+
+--
+-- Déchargement des données de la table `plaintes`
+--
+
+INSERT INTO `plaintes` (`id`, `numero_plainte`, `date_plainte`, `date_reception`, `plaignant_nom`, `plaignant_prenom`, `plaignant_telephone`, `plaignant_adresse`, `plaignant_email`, `plaignant_qualite`, `mis_en_cause_nom`, `mis_en_cause_adresse`, `nature_plainte`, `description_faits`, `lieu_faits`, `date_faits`, `pieces_jointes`, `statut`, `pv_id`, `motif_classement`, `substitut_id`, `observations`, `created_by`, `created_at`, `updated_at`) VALUES
+(1, 'PLT-2026-0001', '2026-04-19', '2026-04-19', 'DIALLO', 'MOUSSA', '99999999', 'NIAMEY', '', 'personne_physique', 'ALI', 'BOBIEL', 'VOL ESCROQUERIE', '', '', '2026-04-15', 'uploads/plaintes/plt_6e6469c4d5aa52b6_1776588283.pdf', 'deposee', NULL, NULL, NULL, '', 11, '2026-04-19 08:44:43', '2026-04-19 08:44:43');
 
 -- --------------------------------------------------------
 
@@ -1361,8 +1823,11 @@ CREATE TABLE `pv` (
   `unite_enquete_id` int(11) DEFAULT NULL,
   `date_pv` date NOT NULL,
   `date_reception` date NOT NULL,
-  `type_affaire` enum('civile','penale','commerciale') NOT NULL DEFAULT 'penale',
+  `type_affaire` enum('droit_commun_mineur','droit_commun_majeur','pole_antiterro_mineur','pole_antiterro_majeur','pole_economique','civile','penale','commerciale') NOT NULL DEFAULT 'droit_commun_majeur',
   `infraction_id` int(11) DEFAULT NULL,
+  `qualification_substitut_id` int(11) DEFAULT NULL COMMENT 'Qualification retenue par le substitut',
+  `qualification_details` text DEFAULT NULL COMMENT 'Précisions sur la qualification (complicité, circonstances aggravantes…)',
+  `lois_applicables` text DEFAULT NULL COMMENT 'Références légales applicables, saisies uniquement par le substitut',
   `est_antiterroriste` tinyint(1) DEFAULT 0,
   `region_id` int(11) DEFAULT NULL,
   `departement_id` int(11) DEFAULT NULL,
@@ -1377,17 +1842,40 @@ CREATE TABLE `pv` (
   `date_affectation_substitut` date DEFAULT NULL,
   `created_by` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `numero_rp` varchar(60) DEFAULT NULL COMMENT 'Registre du Parquet (saisi manuellement)',
+  `numero_ordre` varchar(60) DEFAULT NULL COMMENT 'Numéro d ordre du PV (saisi manuellement)',
+  `mode_poursuite` enum('RI','CD','FD','CRPC','autre') DEFAULT NULL COMMENT 'Mode de poursuite décidé par le substitut'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Déchargement des données de la table `pv`
 --
 
-INSERT INTO `pv` (`id`, `numero_pv`, `numero_rg`, `unite_enquete_id`, `date_pv`, `date_reception`, `type_affaire`, `infraction_id`, `est_antiterroriste`, `region_id`, `departement_id`, `commune_id`, `description_faits`, `statut`, `motif_classement`, `date_classement`, `motif_declassement`, `date_declassement`, `substitut_id`, `date_affectation_substitut`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, '234/2026', 'RG N°001/2026/TGI-NY', 4, '2026-04-17', '2026-04-17', 'penale', NULL, 1, 6, 37, 14, '', 'transfere_instruction', NULL, NULL, NULL, NULL, 5, '2026-04-17', 1, '2026-04-17 16:05:28', '2026-04-17 16:09:56'),
-(2, '239/2026', 'RG N°003/2026/TGI-NY', 5, '2026-04-17', '2026-04-17', 'penale', NULL, 1, 6, 46, 17, 'test', 'transfere_instruction', NULL, NULL, NULL, NULL, 6, '2026-04-17', 1, '2026-04-17 17:02:43', '2026-04-17 20:53:43'),
-(3, '247/2026', 'RG N°005/2026/TGI-NY', 6, '2026-04-17', '2026-04-17', 'penale', 30, 0, NULL, NULL, NULL, '', 'transfere_instruction', NULL, NULL, NULL, NULL, 7, '2026-04-17', 1, '2026-04-17 21:00:34', '2026-04-17 21:01:24');
+INSERT INTO `pv` (`id`, `numero_pv`, `numero_rg`, `unite_enquete_id`, `date_pv`, `date_reception`, `type_affaire`, `infraction_id`, `qualification_substitut_id`, `qualification_details`, `lois_applicables`, `est_antiterroriste`, `region_id`, `departement_id`, `commune_id`, `description_faits`, `statut`, `motif_classement`, `date_classement`, `motif_declassement`, `date_declassement`, `substitut_id`, `date_affectation_substitut`, `created_by`, `created_at`, `updated_at`, `numero_rp`, `numero_ordre`, `mode_poursuite`) VALUES
+(1, '234/2026', 'RG N°001/2026/TGI-NY', 4, '2026-04-17', '2026-04-17', 'penale', NULL, NULL, NULL, NULL, 1, 6, 37, 14, '', 'transfere_instruction', NULL, NULL, NULL, NULL, 5, '2026-04-17', 1, '2026-04-17 16:05:28', '2026-04-17 16:09:56', NULL, NULL, NULL),
+(2, '239/2026', 'RG N°003/2026/TGI-NY', 5, '2026-04-17', '2026-04-17', 'penale', NULL, NULL, NULL, NULL, 1, 6, 46, 17, 'test', 'transfere_instruction', NULL, NULL, NULL, NULL, 6, '2026-04-17', 1, '2026-04-17 17:02:43', '2026-04-17 20:53:43', NULL, NULL, NULL),
+(3, '247/2026', 'RG N°005/2026/TGI-NY', 6, '2026-04-17', '2026-04-17', 'penale', 30, NULL, NULL, NULL, 0, NULL, NULL, NULL, '', 'transfere_instruction', NULL, NULL, NULL, NULL, 7, '2026-04-17', 1, '2026-04-17 21:00:34', '2026-04-17 21:01:24', NULL, NULL, NULL),
+(4, '234/2026', 'RG N°007/2026/TGI-NY', 6, '2026-04-19', '2026-04-19', 'pole_antiterro_majeur', 23, NULL, NULL, NULL, 1, 6, 54, 198, '8989', 'en_traitement', NULL, NULL, NULL, NULL, 5, '2026-04-22', 11, '2026-04-19 08:45:58', '2026-04-22 16:10:32', '99', '007', NULL),
+(5, 'PV N°504', 'RG N°008/2026/TGI-NY', 8, '2025-03-26', '2024-04-22', 'droit_commun_majeur', 17, NULL, NULL, NULL, 0, NULL, NULL, NULL, 'ESCROQUERIE FAUX ET USAGE DE FAUX', 'en_traitement', NULL, NULL, NULL, NULL, 6, '2026-04-22', 11, '2026-04-22 16:31:59', '2026-04-22 16:39:50', 'TMP01', 'SOUS LE N°055', NULL),
+(6, '', 'RG N°009/2026/TGI-NY', NULL, '2026-04-22', '2026-04-22', 'penale', NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, '', 'en_traitement', NULL, NULL, NULL, NULL, 7, '2026-04-22', 11, '2026-04-22 16:38:16', '2026-04-22 16:56:28', NULL, NULL, NULL),
+(7, 'PV N°505', 'RG N°010/2026/TGI-NY', 6, '2026-04-22', '2026-04-22', 'droit_commun_majeur', 32, NULL, NULL, NULL, 0, NULL, NULL, NULL, '', 'en_traitement', NULL, NULL, NULL, NULL, 5, '2026-04-22', 11, '2026-04-22 16:44:58', '2026-04-22 16:59:34', 'TMP02', 'SOUS LE N°056', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `pv_infractions`
+--
+
+CREATE TABLE `pv_infractions` (
+  `id` int(11) NOT NULL,
+  `pv_id` int(11) NOT NULL,
+  `infraction_id` int(11) NOT NULL,
+  `type` enum('unite','substitut') NOT NULL DEFAULT 'unite' COMMENT 'unite=saisie unité enquête, substitut=qualification substitut',
+  `est_complicite` tinyint(1) DEFAULT 0 COMMENT '1 = complicité',
+  `notes` varchar(500) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Infractions multiples par PV (deux niveaux : unité + substitut)';
 
 -- --------------------------------------------------------
 
@@ -1405,7 +1893,26 @@ CREATE TABLE `pv_primo_intervenants` (
 --
 
 INSERT INTO `pv_primo_intervenants` (`pv_id`, `primo_intervenant_id`) VALUES
-(1, 2);
+(1, 2),
+(4, 2);
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `rapports`
+--
+
+CREATE TABLE `rapports` (
+  `id` int(11) NOT NULL,
+  `type` enum('quotidien','hebdomadaire','mensuel','annuel','personnalise') NOT NULL DEFAULT 'quotidien',
+  `titre` varchar(255) NOT NULL,
+  `date_debut` date NOT NULL,
+  `date_fin` date NOT NULL,
+  `contenu_json` longtext DEFAULT NULL COMMENT 'Données du rapport en JSON',
+  `fichier` varchar(255) DEFAULT NULL COMMENT 'Chemin du fichier PDF généré',
+  `genere_par` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Rapports de fin de journée / périodiques générés depuis le dashboard';
 
 -- --------------------------------------------------------
 
@@ -1424,14 +1931,14 @@ CREATE TABLE `regions` (
 --
 
 INSERT INTO `regions` (`id`, `nom`, `code`) VALUES
-(1, 'Agadez', 'AGZ'),
-(2, 'Diffa', 'DIF'),
-(3, 'Dosso', 'DOS'),
-(4, 'Maradi', 'MAR'),
-(5, 'Tahoua', 'TAH'),
-(6, 'Tillabéri', 'TIL'),
-(7, 'Zinder', 'ZND'),
-(8, 'Niamey', 'NIA');
+(1, 'Agadez', '1'),
+(2, 'Diffa', '2'),
+(3, 'Dosso', '3'),
+(4, 'Maradi', '4'),
+(5, 'Tahoua', '5'),
+(6, 'Tillabéri', '6'),
+(7, 'Zinder', '7'),
+(8, 'Niamey', '8');
 
 -- --------------------------------------------------------
 
@@ -1496,6 +2003,7 @@ CREATE TABLE `scelles` (
   `numero_scelle` varchar(50) NOT NULL,
   `dossier_id` int(11) NOT NULL,
   `categorie` enum('arme','drogue','document','argent','electronique','vehicule','autre') NOT NULL,
+  `categorie_autre_detail` varchar(200) DEFAULT NULL COMMENT 'Précision si catégorie = autre',
   `description` text NOT NULL,
   `date_depot` date NOT NULL,
   `lieu_conservation` varchar(200) DEFAULT 'Greffe du TGI-NY',
@@ -1515,9 +2023,25 @@ CREATE TABLE `scelles` (
 -- Déchargement des données de la table `scelles`
 --
 
-INSERT INTO `scelles` (`id`, `numero_scelle`, `dossier_id`, `categorie`, `description`, `date_depot`, `lieu_conservation`, `observations`, `statut`, `date_restitution`, `beneficiaire_restitution`, `date_destruction`, `motif_destruction`, `pv_destruction`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 'SCL-2026-0001', 2, 'drogue', 'uuuuuuu', '2026-04-18', '', '', 'depose', NULL, NULL, NULL, NULL, NULL, 1, '2026-04-17 23:07:23', '2026-04-17 23:07:23'),
-(3, 'SCL-2026-0002', 2, 'drogue', 'ggggg', '2026-04-19', '', '', 'detruit', NULL, NULL, '2026-04-19', 'dddd', NULL, 1, '2026-04-19 06:21:35', '2026-04-19 06:22:32');
+INSERT INTO `scelles` (`id`, `numero_scelle`, `dossier_id`, `categorie`, `categorie_autre_detail`, `description`, `date_depot`, `lieu_conservation`, `observations`, `statut`, `date_restitution`, `beneficiaire_restitution`, `date_destruction`, `motif_destruction`, `pv_destruction`, `created_by`, `created_at`, `updated_at`) VALUES
+(1, 'SCL-2026-0001', 2, 'drogue', NULL, 'uuuuuuu', '2026-04-18', '', '', 'depose', NULL, NULL, NULL, NULL, NULL, 1, '2026-04-17 23:07:23', '2026-04-17 23:07:23'),
+(3, 'SCL-2026-0002', 2, 'drogue', NULL, 'ggggg', '2026-04-19', '', '', 'detruit', NULL, NULL, '2026-04-19', 'dddd', NULL, 1, '2026-04-19 06:21:35', '2026-04-19 06:22:32');
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `security_logs`
+--
+
+CREATE TABLE `security_logs` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) DEFAULT NULL,
+  `action` varchar(100) NOT NULL,
+  `ip_address` varchar(45) DEFAULT NULL,
+  `user_agent` varchar(500) DEFAULT NULL,
+  `details` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Journal de sécurité : connexions, tentatives échouées, actions sensibles';
 
 -- --------------------------------------------------------
 
@@ -1580,11 +2104,11 @@ INSERT INTO `users` (`id`, `role_id`, `fonction_parquet_id`, `nom`, `prenom`, `e
 (4, 4, NULL, 'MOUSSA', 'Ibrahim', 'procureur@tgi-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'PROC-001', 1, '2026-04-17 16:04:24', '2026-04-17 16:04:24'),
 (5, 5, NULL, 'ADAMOU', 'Fatouma', 'substitut1@tgi-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'SUB-001', 1, '2026-04-17 16:04:24', '2026-04-17 16:04:24'),
 (6, 5, NULL, 'CHAIBOU', 'Moustapha', 'substitut2@tgi-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'SUB-002', 1, '2026-04-17 16:04:24', '2026-04-17 16:04:24'),
-(7, 5, NULL, 'MAHAMADOU', 'Salissou', 'substitut3@tgi-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'SUB-003', 1, '2026-04-17 16:04:24', '2026-04-17 16:04:24'),
+(7, 5, NULL, 'MAHAMADOU', 'Salissou', 'substitut3@tgi-niamey.ne', '$2y$12$6RD5DqKtkTyAJnb8EMAHNONJdSzknzOGRpCKSxdBpsAo0gbBFyxU.', '', 'SUB-003', 1, '2026-04-17 16:04:24', '2026-04-22 16:57:04'),
 (8, 6, NULL, 'SAIDOU', 'Aïssatou', 'juge.instr1@tgi-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'JI-001', 1, '2026-04-17 16:04:24', '2026-04-17 16:04:24'),
 (9, 6, NULL, 'HAMIDOU', 'Mariama', 'juge.instr2@tgi-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'JI-002', 1, '2026-04-17 16:04:24', '2026-04-17 16:04:24'),
 (10, 7, NULL, 'YACOUBA', 'Hassane', 'juge.siege@tgi-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'JS-001', 1, '2026-04-17 16:04:24', '2026-04-17 16:04:24'),
-(11, 8, NULL, 'ISSA', 'Rahila', 'greffier@tgi-niamey.ne', '$2y$12$rZsYuSsaEp5vuBXThvHv2e5Y47YFcMo0Lvhm7yRb6BmfmH2UXXtSe', '', 'GRF-001', 1, '2026-04-17 16:04:24', '2026-04-19 06:27:01'),
+(11, 8, NULL, 'ISSA', 'Rahila', 'greffier@tgi-niamey.ne', '$2y$12$clSJyB3Ayv7Uo8/Og2MKkucpN7ScLqTCzMsiI3D115uFg5.JkIpsS', '', 'GRF-001', 1, '2026-04-17 16:04:24', '2026-04-19 08:42:23'),
 (12, 9, NULL, 'MAHAMANE', 'Alio', 'avocat@barreau-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'AVO-001', 1, '2026-04-17 16:04:24', '2026-04-17 16:04:24');
 
 -- --------------------------------------------------------
@@ -1733,7 +2257,8 @@ ALTER TABLE `detenus`
   ADD KEY `created_by` (`created_by`),
   ADD KEY `idx_detenus_dossier` (`dossier_id`),
   ADD KEY `idx_detenus_statut` (`statut`),
-  ADD KEY `idx_detenus_maison` (`maison_arret_id`);
+  ADD KEY `idx_detenus_maison` (`maison_arret_id`),
+  ADD KEY `idx_detenus_jugement` (`jugement_id`);
 
 --
 -- Index pour la table `documents`
@@ -1754,6 +2279,8 @@ ALTER TABLE `dossiers`
   ADD UNIQUE KEY `numero_rg` (`numero_rg`),
   ADD UNIQUE KEY `numero_rp` (`numero_rp`),
   ADD UNIQUE KEY `numero_ri` (`numero_ri`),
+  ADD UNIQUE KEY `uk_numero_ri` (`numero_ri`),
+  ADD UNIQUE KEY `uk_numero_rp_dossier` (`numero_rp`),
   ADD KEY `declasse_par` (`declasse_par`),
   ADD KEY `region_id` (`region_id`),
   ADD KEY `departement_id` (`departement_id`),
@@ -1764,7 +2291,24 @@ ALTER TABLE `dossiers`
   ADD KEY `idx_dossiers_cabinet` (`cabinet_id`),
   ADD KEY `idx_dossiers_substitut` (`substitut_id`),
   ADD KEY `idx_dossiers_pv` (`pv_id`),
-  ADD KEY `idx_type_affaire` (`type_affaire`);
+  ADD KEY `idx_type_affaire` (`type_affaire`),
+  ADD KEY `idx_dossiers_created_by` (`created_by`);
+
+--
+-- Index pour la table `dossier_avocats`
+--
+ALTER TABLE `dossier_avocats`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uk_dos_avo` (`dossier_id`,`avocat_id`),
+  ADD KEY `idx_da_avocat` (`avocat_id`);
+
+--
+-- Index pour la table `dossier_pvs`
+--
+ALTER TABLE `dossier_pvs`
+  ADD PRIMARY KEY (`dossier_id`,`pv_id`),
+  ADD KEY `idx_dossier_pvs_dossier` (`dossier_id`),
+  ADD KEY `idx_dossier_pvs_pv` (`pv_id`);
 
 --
 -- Index pour la table `droits_utilisateurs`
@@ -1842,6 +2386,15 @@ ALTER TABLE `mandats`
   ADD KEY `idx_mandats_statut` (`statut`);
 
 --
+-- Index pour la table `mec_infractions`
+--
+ALTER TABLE `mec_infractions`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_mec_infr_type` (`mec_id`,`infraction_id`,`type`),
+  ADD KEY `idx_mec_infractions_mec` (`mec_id`),
+  ADD KEY `idx_mec_infractions_infr` (`infraction_id`);
+
+--
 -- Index pour la table `membres_audience`
 --
 ALTER TABLE `membres_audience`
@@ -1856,6 +2409,18 @@ ALTER TABLE `menus`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `code` (`code`),
   ADD KEY `parent_id` (`parent_id`);
+
+--
+-- Index pour la table `mises_en_cause`
+--
+ALTER TABLE `mises_en_cause`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_mec_pv` (`pv_id`),
+  ADD KEY `idx_mec_statut` (`statut`),
+  ADD KEY `idx_mec_decision` (`decision_substitut`),
+  ADD KEY `fk_mec_user` (`created_by`),
+  ADD KEY `idx_mec_created_by` (`created_by`),
+  ADD KEY `idx_mec_substitut` (`substitut_id`);
 
 --
 -- Index pour la table `mouvements_dossier`
@@ -1891,6 +2456,18 @@ ALTER TABLE `parties`
   ADD KEY `dossier_id` (`dossier_id`);
 
 --
+-- Index pour la table `plaintes`
+--
+ALTER TABLE `plaintes`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uk_numero_plainte` (`numero_plainte`),
+  ADD KEY `idx_plainte_statut` (`statut`),
+  ADD KEY `idx_plainte_date` (`date_plainte`),
+  ADD KEY `idx_plainte_pv` (`pv_id`),
+  ADD KEY `fk_plainte_sub` (`substitut_id`),
+  ADD KEY `fk_plainte_user` (`created_by`);
+
+--
 -- Index pour la table `primo_intervenants`
 --
 ALTER TABLE `primo_intervenants`
@@ -1902,6 +2479,7 @@ ALTER TABLE `primo_intervenants`
 ALTER TABLE `pv`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `numero_rg` (`numero_rg`),
+  ADD UNIQUE KEY `uk_numero_rp` (`numero_rp`),
   ADD KEY `region_id` (`region_id`),
   ADD KEY `departement_id` (`departement_id`),
   ADD KEY `created_by` (`created_by`),
@@ -1910,7 +2488,20 @@ ALTER TABLE `pv`
   ADD KEY `idx_pv_antiterro` (`est_antiterroriste`),
   ADD KEY `idx_pv_commune` (`commune_id`),
   ADD KEY `idx_pv_unite` (`unite_enquete_id`),
-  ADD KEY `fk_pv_infraction` (`infraction_id`);
+  ADD KEY `fk_pv_infraction` (`infraction_id`),
+  ADD KEY `fk_pv_qualification_substitut` (`qualification_substitut_id`),
+  ADD KEY `idx_pv_created_by` (`created_by`),
+  ADD KEY `idx_pv_substitut` (`substitut_id`),
+  ADD KEY `idx_pv_date_reception` (`date_reception`);
+
+--
+-- Index pour la table `pv_infractions`
+--
+ALTER TABLE `pv_infractions`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_pv_infr_type` (`pv_id`,`infraction_id`,`type`),
+  ADD KEY `idx_pv_infractions_pv` (`pv_id`),
+  ADD KEY `idx_pv_infractions_infr` (`infraction_id`);
 
 --
 -- Index pour la table `pv_primo_intervenants`
@@ -1918,6 +2509,15 @@ ALTER TABLE `pv`
 ALTER TABLE `pv_primo_intervenants`
   ADD PRIMARY KEY (`pv_id`,`primo_intervenant_id`),
   ADD KEY `primo_intervenant_id` (`primo_intervenant_id`);
+
+--
+-- Index pour la table `rapports`
+--
+ALTER TABLE `rapports`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_rapports_type` (`type`),
+  ADD KEY `idx_rapports_date` (`date_debut`),
+  ADD KEY `idx_rapports_user` (`genere_par`);
 
 --
 -- Index pour la table `regions`
@@ -1946,6 +2546,15 @@ ALTER TABLE `scelles`
   ADD UNIQUE KEY `uk_numero_scelle` (`numero_scelle`),
   ADD KEY `fk_sc_dossier` (`dossier_id`),
   ADD KEY `fk_sc_created_by` (`created_by`);
+
+--
+-- Index pour la table `security_logs`
+--
+ALTER TABLE `security_logs`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_seclog_user` (`user_id`),
+  ADD KEY `idx_seclog_action` (`action`),
+  ADD KEY `idx_seclog_created` (`created_at`);
 
 --
 -- Index pour la table `unites_enquete`
@@ -2028,7 +2637,7 @@ ALTER TABLE `commissions_rogatoires`
 -- AUTO_INCREMENT pour la table `communes`
 --
 ALTER TABLE `communes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=267;
 
 --
 -- AUTO_INCREMENT pour la table `communes_geo`
@@ -2046,7 +2655,7 @@ ALTER TABLE `controles_judiciaires`
 -- AUTO_INCREMENT pour la table `departements`
 --
 ALTER TABLE `departements`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=58;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=69;
 
 --
 -- AUTO_INCREMENT pour la table `detenus`
@@ -2067,10 +2676,16 @@ ALTER TABLE `dossiers`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
+-- AUTO_INCREMENT pour la table `dossier_avocats`
+--
+ALTER TABLE `dossier_avocats`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT pour la table `droits_utilisateurs`
 --
 ALTER TABLE `droits_utilisateurs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=135;
 
 --
 -- AUTO_INCREMENT pour la table `expertises_judiciaires`
@@ -2082,7 +2697,7 @@ ALTER TABLE `expertises_judiciaires`
 -- AUTO_INCREMENT pour la table `fonctionnalites`
 --
 ALTER TABLE `fonctionnalites`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=27;
 
 --
 -- AUTO_INCREMENT pour la table `fonctions_parquet`
@@ -2094,7 +2709,7 @@ ALTER TABLE `fonctions_parquet`
 -- AUTO_INCREMENT pour la table `infractions`
 --
 ALTER TABLE `infractions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=38;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=40;
 
 --
 -- AUTO_INCREMENT pour la table `jugements`
@@ -2112,7 +2727,13 @@ ALTER TABLE `maisons_arret`
 -- AUTO_INCREMENT pour la table `mandats`
 --
 ALTER TABLE `mandats`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT pour la table `mec_infractions`
+--
+ALTER TABLE `mec_infractions`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT pour la table `membres_audience`
@@ -2124,7 +2745,13 @@ ALTER TABLE `membres_audience`
 -- AUTO_INCREMENT pour la table `menus`
 --
 ALTER TABLE `menus`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
+
+--
+-- AUTO_INCREMENT pour la table `mises_en_cause`
+--
+ALTER TABLE `mises_en_cause`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT pour la table `mouvements_dossier`
@@ -2148,6 +2775,12 @@ ALTER TABLE `parametres_tribunal`
 -- AUTO_INCREMENT pour la table `parties`
 --
 ALTER TABLE `parties`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT pour la table `plaintes`
+--
+ALTER TABLE `plaintes`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
@@ -2160,7 +2793,19 @@ ALTER TABLE `primo_intervenants`
 -- AUTO_INCREMENT pour la table `pv`
 --
 ALTER TABLE `pv`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+
+--
+-- AUTO_INCREMENT pour la table `pv_infractions`
+--
+ALTER TABLE `pv_infractions`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT pour la table `rapports`
+--
+ALTER TABLE `rapports`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT pour la table `regions`
@@ -2185,6 +2830,12 @@ ALTER TABLE `salles_audience`
 --
 ALTER TABLE `scelles`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT pour la table `security_logs`
+--
+ALTER TABLE `security_logs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT pour la table `unites_enquete`
@@ -2309,6 +2960,13 @@ ALTER TABLE `dossiers`
   ADD CONSTRAINT `dossiers_ibfk_9` FOREIGN KEY (`juge_siege_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 --
+-- Contraintes pour la table `dossier_pvs`
+--
+ALTER TABLE `dossier_pvs`
+  ADD CONSTRAINT `fk_dossierpvs_dossier` FOREIGN KEY (`dossier_id`) REFERENCES `dossiers` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_dossierpvs_pv` FOREIGN KEY (`pv_id`) REFERENCES `pv` (`id`) ON DELETE CASCADE;
+
+--
 -- Contraintes pour la table `droits_utilisateurs`
 --
 ALTER TABLE `droits_utilisateurs`
@@ -2359,6 +3017,13 @@ ALTER TABLE `mandats`
   ADD CONSTRAINT `mandats_ibfk_5` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 --
+-- Contraintes pour la table `mec_infractions`
+--
+ALTER TABLE `mec_infractions`
+  ADD CONSTRAINT `fk_mecinf_infr` FOREIGN KEY (`infraction_id`) REFERENCES `infractions` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_mecinf_mec` FOREIGN KEY (`mec_id`) REFERENCES `mises_en_cause` (`id`) ON DELETE CASCADE;
+
+--
 -- Contraintes pour la table `membres_audience`
 --
 ALTER TABLE `membres_audience`
@@ -2370,6 +3035,13 @@ ALTER TABLE `membres_audience`
 --
 ALTER TABLE `menus`
   ADD CONSTRAINT `menus_ibfk_1` FOREIGN KEY (`parent_id`) REFERENCES `menus` (`id`) ON DELETE SET NULL;
+
+--
+-- Contraintes pour la table `mises_en_cause`
+--
+ALTER TABLE `mises_en_cause`
+  ADD CONSTRAINT `fk_mec_pv` FOREIGN KEY (`pv_id`) REFERENCES `pv` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_mec_user` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 --
 -- Contraintes pour la table `mouvements_dossier`
@@ -2399,16 +3071,32 @@ ALTER TABLE `parties`
   ADD CONSTRAINT `parties_ibfk_1` FOREIGN KEY (`dossier_id`) REFERENCES `dossiers` (`id`) ON DELETE CASCADE;
 
 --
+-- Contraintes pour la table `plaintes`
+--
+ALTER TABLE `plaintes`
+  ADD CONSTRAINT `fk_plainte_pv` FOREIGN KEY (`pv_id`) REFERENCES `pv` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_plainte_sub` FOREIGN KEY (`substitut_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_plainte_user` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
 -- Contraintes pour la table `pv`
 --
 ALTER TABLE `pv`
   ADD CONSTRAINT `fk_pv_infraction` FOREIGN KEY (`infraction_id`) REFERENCES `infractions` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_pv_qualification_substitut` FOREIGN KEY (`qualification_substitut_id`) REFERENCES `infractions` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `pv_ibfk_1` FOREIGN KEY (`unite_enquete_id`) REFERENCES `unites_enquete` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `pv_ibfk_2` FOREIGN KEY (`region_id`) REFERENCES `regions` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `pv_ibfk_3` FOREIGN KEY (`departement_id`) REFERENCES `departements` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `pv_ibfk_4` FOREIGN KEY (`commune_id`) REFERENCES `communes` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `pv_ibfk_5` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `pv_ibfk_6` FOREIGN KEY (`substitut_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Contraintes pour la table `pv_infractions`
+--
+ALTER TABLE `pv_infractions`
+  ADD CONSTRAINT `fk_pvinf_infr` FOREIGN KEY (`infraction_id`) REFERENCES `infractions` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_pvinf_pv` FOREIGN KEY (`pv_id`) REFERENCES `pv` (`id`) ON DELETE CASCADE;
 
 --
 -- Contraintes pour la table `pv_primo_intervenants`
@@ -2449,973 +3137,3 @@ COMMIT;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
-
--- ============================================================
--- Migration 002 — Mises en cause, plaintes, jugement_id
--- ============================================================
--- ============================================================
--- Migration 002 — Mises en cause, Plaintes, Améliorations PV
--- Branche : nasser — Avril 2026
--- À appliquer après tribunal_tgi_ny_maj.sql
--- ============================================================
-
--- ────────────────────────────────────────────────────────────
--- 1. TABLE : mises_en_cause
--- ────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS `mises_en_cause` (
-  `id`                    int(11) NOT NULL AUTO_INCREMENT,
-  `pv_id`                 int(11) NOT NULL COMMENT 'PV concerné',
-  `nom`                   varchar(100) NOT NULL,
-  `prenom`                varchar(100) DEFAULT NULL,
-  `alias`                 varchar(100) DEFAULT NULL COMMENT 'Alias / surnom',
-  `nom_mere`              varchar(150) DEFAULT NULL,
-  `date_naissance`        date DEFAULT NULL,
-  `lieu_naissance`        varchar(200) DEFAULT NULL,
-  `nationalite`           varchar(100) DEFAULT 'Nigérienne',
-  `sexe`                  enum('M','F','Inconnu') DEFAULT 'M',
-  `profession`            varchar(150) DEFAULT NULL,
-  `adresse`               text DEFAULT NULL,
-  `telephone`             varchar(30) DEFAULT NULL,
-  `statut`                enum('mise_en_cause','prevenu','temoin','autre') NOT NULL DEFAULT 'mise_en_cause',
-  `statut_autre_detail`   varchar(200) DEFAULT NULL COMMENT 'Précision si statut=autre',
-  `photo`                 varchar(255) DEFAULT NULL,
-  `personne_contacter_nom`       varchar(200) DEFAULT NULL COMMENT 'Personne à contacter',
-  `personne_contacter_tel`       varchar(30) DEFAULT NULL,
-  `personne_contacter_lien`      varchar(100) DEFAULT NULL COMMENT 'Lien (père, mère, époux...)',
-  `est_connu_archives`    tinyint(1) DEFAULT 0 COMMENT '1 = déjà connu dans les archives',
-  `nb_affaires_precedentes` int(11) DEFAULT 0 COMMENT 'Nombre d affaires antérieures',
-  `notes_antecedents`     text DEFAULT NULL,
-  -- Décision du substitut sur la poursuite
-  `decision_substitut`    enum('poursuivi','non_poursuivi','en_attente') DEFAULT 'en_attente',
-  `motif_non_poursuite`   text DEFAULT NULL,
-  `date_decision`         date DEFAULT NULL,
-  `created_by`            int(11) DEFAULT NULL,
-  `created_at`            timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at`            timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  PRIMARY KEY (`id`),
-  KEY `idx_mec_pv` (`pv_id`),
-  KEY `idx_mec_statut` (`statut`),
-  KEY `idx_mec_decision` (`decision_substitut`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-  COMMENT='Mises en cause saisies au moment de l enregistrement du PV';
--- ────────────────────────────────────────────────────────────
--- 2. TABLE : plaintes
--- ────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS `plaintes` (
-  `id`                   int(11) NOT NULL AUTO_INCREMENT,
-  `numero_plainte`       varchar(60) NOT NULL COMMENT 'Numéro de référence unique',
-  `date_plainte`         date NOT NULL,
-  `date_reception`       date NOT NULL DEFAULT (CURDATE()),
-  -- Plaignant
-  `plaignant_nom`        varchar(150) NOT NULL,
-  `plaignant_prenom`     varchar(100) DEFAULT NULL,
-  `plaignant_telephone`  varchar(30) DEFAULT NULL,
-  `plaignant_adresse`    text DEFAULT NULL,
-  `plaignant_email`      varchar(150) DEFAULT NULL,
-  `plaignant_qualite`    enum('personne_physique','personne_morale','administration','autre') DEFAULT 'personne_physique',
-  -- Mis en cause dans la plainte
-  `mis_en_cause_nom`     varchar(200) DEFAULT NULL,
-  `mis_en_cause_adresse` text DEFAULT NULL,
-  -- Nature et faits
-  `nature_plainte`       varchar(255) NOT NULL,
-  `description_faits`    text DEFAULT NULL,
-  `lieu_faits`           varchar(255) DEFAULT NULL,
-  `date_faits`           date DEFAULT NULL,
-  `pieces_jointes`       varchar(255) DEFAULT NULL COMMENT 'Chemin fichier joint',
-  -- Traitement
-  `statut`               enum('deposee','en_examen','transmise_pv','classee','irrecevable') NOT NULL DEFAULT 'deposee',
-  `pv_id`                int(11) DEFAULT NULL COMMENT 'PV créé suite à la plainte',
-  `motif_classement`     text DEFAULT NULL,
-  `substitut_id`         int(11) DEFAULT NULL COMMENT 'Substitut chargé',
-  `observations`         text DEFAULT NULL,
-  `created_by`           int(11) DEFAULT NULL,
-  `created_at`           timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at`           timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_numero_plainte` (`numero_plainte`),
-  KEY `idx_plainte_statut` (`statut`),
-  KEY `idx_plainte_date` (`date_plainte`),
-  KEY `idx_plainte_pv` (`pv_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Gestion des plaintes reçues au parquet';
-
--- ────────────────────────────────────────────────────────────
--- 3. MODIFICATION : table pv — nouveaux types d'affaire + champs RP manuel
--- ────────────────────────────────────────────────────────────
--- 3a. Ajouter les nouveaux types d'affaire (5 pôles)
-ALTER TABLE `pv`
-  MODIFY COLUMN `type_affaire`
-    enum(
-      'droit_commun_mineur',
-      'droit_commun_majeur',
-      'pole_antiterro_mineur',
-      'pole_antiterro_majeur',
-      'pole_economique',
-      'civile',
-      'penale',
-      'commerciale'
-    ) NOT NULL DEFAULT 'droit_commun_majeur';
-
--- 3b. Ajouter le numéro RP (registre du parquet) saisi manuellement + numéro d'ordre
-ALTER TABLE `pv`
-  ADD COLUMN IF NOT EXISTS `numero_rp`     varchar(60) DEFAULT NULL COMMENT 'Registre du Parquet (saisi manuellement)',
-  ADD COLUMN IF NOT EXISTS `numero_ordre`  varchar(60) DEFAULT NULL COMMENT 'Numéro d ordre du PV (saisi manuellement)',
-  ADD COLUMN IF NOT EXISTS `mode_poursuite` enum('RI','CD','FD','CRPC','autre') DEFAULT NULL COMMENT 'Mode de poursuite décidé par le substitut';
-
--- Contrainte d'unicité sur le RP dans la table PV
-ALTER TABLE `pv`
-  ADD UNIQUE KEY IF NOT EXISTS `uk_numero_rp` (`numero_rp`);
-
--- ────────────────────────────────────────────────────────────
--- 4. MODIFICATION : table dossiers — numéro RI unique + saisi au transfert
--- ────────────────────────────────────────────────────────────
--- Contrainte d'unicité sur numero_ri
-ALTER TABLE `dossiers`
-  ADD UNIQUE KEY IF NOT EXISTS `uk_numero_ri` (`numero_ri`),
-  ADD UNIQUE KEY IF NOT EXISTS `uk_numero_rp_dossier` (`numero_rp`);
-
--- ────────────────────────────────────────────────────────────
--- 5. AJOUT MENUS manquants (droits) + fonctionnalités
--- ────────────────────────────────────────────────────────────
-INSERT IGNORE INTO `menus` (`code`, `libelle`, `icone`, `url`, `parent_id`, `ordre`, `actif`) VALUES
-('plaintes',             'Plaintes',                'bi-megaphone',        '/plaintes',              NULL, 25, 1),
-('avocats',              'Barreau / Avocats',        'bi-person-badge',     '/avocats',               NULL, 26, 1),
-('casier_judiciaire',    'Casier judiciaire',        'bi-person-vcard',     '/casier-judiciaire',     NULL, 27, 1),
-('voies_recours',        'Voies de recours',         'bi-arrow-repeat',     '/voies-recours',         NULL, 28, 1),
-('ordonnances',          'Ordonnances JI',           'bi-file-earmark-text','/ordonnances',           NULL, 29, 1),
-('controles_judiciaires','Contrôles judiciaires',    'bi-shield-check',     '/controles-judiciaires', NULL, 30, 1),
-('expertises',           'Expertises',               'bi-microscope',       '/expertises',            NULL, 31, 1),
-('commissions_rogatoires','Commissions rogatoires',  'bi-send',             '/commissions-rogatoires',NULL, 32, 1),
-('scelles',              'Scellés',                  'bi-archive',          '/scelles',               NULL, 33, 1);
-
--- Fonctionnalités supplémentaires
-INSERT IGNORE INTO `fonctionnalites` (`code`, `libelle`, `menu_id`, `actif`) VALUES
-('plainte_creer',        'Déposer une plainte',         (SELECT id FROM menus WHERE code='plaintes' LIMIT 1), 1),
-('plainte_traiter',      'Traiter une plainte',         (SELECT id FROM menus WHERE code='plaintes' LIMIT 1), 1),
-('mec_creer',            'Saisir une mise en cause',    (SELECT id FROM menus WHERE code='pv' LIMIT 1),      1),
-('mec_decision',         'Décider poursuite/non poursuite', (SELECT id FROM menus WHERE code='pv' LIMIT 1), 1);
-
--- ────────────────────────────────────────────────────────────
--- 6. FOREIGN KEYS (ajout progressif, ignore si déjà existant)
--- ────────────────────────────────────────────────────────────
-ALTER TABLE `mises_en_cause`
-  ADD CONSTRAINT `fk_mec_pv`      FOREIGN KEY (`pv_id`)       REFERENCES `pv`    (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_mec_user`    FOREIGN KEY (`created_by`)  REFERENCES `users` (`id`) ON DELETE SET NULL;
-
-ALTER TABLE `plaintes`
-  ADD CONSTRAINT `fk_plainte_pv`   FOREIGN KEY (`pv_id`)        REFERENCES `pv`    (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `fk_plainte_sub`  FOREIGN KEY (`substitut_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `fk_plainte_user` FOREIGN KEY (`created_by`)   REFERENCES `users` (`id`) ON DELETE SET NULL;
-
-
--- ────────────────────────────────────────────────────────────
--- 7. AJOUT CHAMPS MANQUANTS : table avocats
--- (la table existante n'a pas ces champs, le contrôleur en a besoin)
--- ────────────────────────────────────────────────────────────
-ALTER TABLE `avocats`
-  ADD COLUMN IF NOT EXISTS `date_naissance`  date DEFAULT NULL,
-  ADD COLUMN IF NOT EXISTS `lieu_naissance`  varchar(150) DEFAULT NULL,
-  ADD COLUMN IF NOT EXISTS `nationalite`     varchar(100) DEFAULT 'Nigérienne',
-  ADD COLUMN IF NOT EXISTS `sexe`            enum('M','F') DEFAULT 'M',
-  ADD COLUMN IF NOT EXISTS `specialite`      varchar(200) DEFAULT NULL,
-  ADD COLUMN IF NOT EXISTS `notes`           text DEFAULT NULL,
-  ADD COLUMN IF NOT EXISTS `created_by`      int(11) DEFAULT NULL;
-
--- La table dossier_avocats dans le code != avocat_dossier dans la DB
--- Alias pour compatibilité : créer dossier_avocats comme vue ou renommer
--- On crée une nouvelle table dossier_avocats compatible avec le contrôleur
-CREATE TABLE IF NOT EXISTS `dossier_avocats` (
-  `id`           int(11) NOT NULL AUTO_INCREMENT,
-  `dossier_id`   int(11) NOT NULL,
-  `avocat_id`    int(11) NOT NULL,
-  `partie_id`    int(11) DEFAULT NULL,
-  `role_avocat`  varchar(100) DEFAULT 'défenseur',
-  `date_mandat`  date DEFAULT NULL,
-  `notes`        text DEFAULT NULL,
-  `actif`        tinyint(1) DEFAULT 1,
-  `created_at`   timestamp NOT NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_dos_avo` (`dossier_id`, `avocat_id`),
-  KEY `idx_da_avocat` (`avocat_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
--- ═══════════════════════════════════════════════════════════════════════════
--- CORRECTIF : Ajouter jugement_id dans detenus (si absent)
--- ═══════════════════════════════════════════════════════════════════════════
-ALTER TABLE `detenus`
-  ADD COLUMN IF NOT EXISTS `jugement_id` int(11) DEFAULT NULL AFTER `dossier_id`;
-
-ALTER TABLE `detenus`
-  ADD INDEX IF NOT EXISTS `idx_detenus_jugement` (`jugement_id`);
-
--- Ajout de la clé étrangère (optionnel, peut échouer si jugements n'existe pas encore)
--- ALTER TABLE `detenus` ADD CONSTRAINT `fk_detenus_jugement` FOREIGN KEY (`jugement_id`) REFERENCES `jugements`(`id`) ON DELETE SET NULL;
-
--- ============================================================
--- Migration 003 — Données géographiques complètes Niger
--- ============================================================
--- ============================================================
--- Migration 003 — Données géographiques complètes du Niger
--- Source : RENALOC_COMMUNE_NIGER.xlsx (INS Niger)
--- Codification : Région (1 chiffre), Département (3 chiffres), Commune (4 chiffres)
--- ============================================================
-
--- Vider et repeupler les tables géographiques
-SET FOREIGN_KEY_CHECKS = 0;
-TRUNCATE TABLE communes;
-TRUNCATE TABLE departements;
-TRUNCATE TABLE regions;
-SET FOREIGN_KEY_CHECKS = 1;
-
--- ============================================================
--- RÉGIONS (8 régions + Niamey CUN)
--- Code INS : 1=Agadez, 2=Diffa, 3=Dosso, 4=Maradi,
---            5=Tahoua, 6=Tillabéri, 7=Zinder, 8=Niamey
--- ============================================================
-INSERT INTO `regions` (`id`, `nom`, `code`) VALUES
-(1, 'Agadez',    '1'),
-(2, 'Diffa',     '2'),
-(3, 'Dosso',     '3'),
-(4, 'Maradi',    '4'),
-(5, 'Tahoua',    '5'),
-(6, 'Tillabéri', '6'),
-(7, 'Zinder',    '7'),
-(8, 'Niamey',    '8');
-
--- ============================================================
--- DÉPARTEMENTS (63 départements + CUN Niamey)
--- Code INS : 3 chiffres — premier = code région
--- Source RENALOC : ADERBISSINAT=101, AGADEZ=102, ARLIT=103,
---   BILMA=104, IFEROUANE=105, INGALL=106, TASSARA=107,
---   TCHINTABARADEN=108, TCHIROZERINE=109
---   BOSSO=201, DIFFA=202, GOUDOUMARIA=203, MAINE SOROA=204,
---   N'GOURTI=205, N'GUIGMI=206
---   BOBOYE=301, DIOUNDIOU=302, DOGONDOUTCHI=303, DOSSO=304,
---   FALMEY=305, GAYA=306, LOGA=307, TIBIRI=308
---   AGUIE=401, DAKORO=402, GAZAOUA=403, GUIDAN ROUMDJI=404,
---   MADAROUNFA=405, MAYAHI=406, TESSAOUA=407, MARADI=408
---   ABALAK=501, BAGAROUA=502, BIRNI N'KONNI=503, BOUZA=504,
---   ILLELA=505, KEITA=506, MADAOUA=507, MALBAZA=508,
---   TAHOUA=509, TAKEITA=510, TILLIA=511, TAHOUA COMMUNE=512
---   ABALA=601, AYOROU=602, BALLEYARA=603, BANIBANGOU=604,
---   BANKILARE=605, FILINGUE=606, GOTHEYE=607, KOLLO=608,
---   OUALLAM=609, SAY=610, TERA=611, TILLABERI=612, TORODI=613
---   BELBEDJI=701, BERMO=702, DAMAGARAM TAKAYA=703, DUNGASS=704,
---   GOURE=705, KANTCHE=706, MAGARIA=707, MIRRIAH=708,
---   TANOUT=709, TESKER=710, ZINDER=711
---   NIAMEY=801
--- ============================================================
-INSERT INTO `departements` (`id`, `region_id`, `nom`, `code`) VALUES
--- AGADEZ
-(1,  1, 'Aderbissinat',      '101'),
-(2,  1, 'Agadez',            '102'),
-(3,  1, 'Arlit',             '103'),
-(4,  1, 'Bilma',             '104'),
-(5,  1, 'Iferouane',         '105'),
-(6,  1, 'Ingall',            '106'),
-(7,  1, 'Tassara',           '107'),
-(8,  1, 'Tchintabaraden',    '108'),
-(9,  1, 'Tchirozerine',      '109'),
--- DIFFA
-(10, 2, 'Bosso',             '201'),
-(11, 2, 'Diffa',             '202'),
-(12, 2, 'Goudoumaria',       '203'),
-(13, 2, 'Maïné Soroa',       '204'),
-(14, 2, 'N''Gourti',         '205'),
-(15, 2, 'N''Guigmi',         '206'),
--- DOSSO
-(16, 3, 'Boboye',            '301'),
-(17, 3, 'Dioundiou',         '302'),
-(18, 3, 'Dogondoutchi',      '303'),
-(19, 3, 'Dosso',             '304'),
-(20, 3, 'Falmey',            '305'),
-(21, 3, 'Gaya',              '306'),
-(22, 3, 'Loga',              '307'),
-(23, 3, 'Tibiri',            '308'),
--- MARADI
-(24, 4, 'Aguié',             '401'),
-(25, 4, 'Dakoro',            '402'),
-(26, 4, 'Gazaoua',           '403'),
-(27, 4, 'Guidan Roumdji',    '404'),
-(28, 4, 'Madarounfa',        '405'),
-(29, 4, 'Mayahi',            '406'),
-(30, 4, 'Tessaoua',          '407'),
-(31, 4, 'Maradi',            '408'),
--- TAHOUA
-(32, 5, 'Abalak',            '501'),
-(33, 5, 'Bagaroua',          '502'),
-(34, 5, 'Birni N''Konni',    '503'),
-(35, 5, 'Bouza',             '504'),
-(36, 5, 'Illéla',            '505'),
-(37, 5, 'Keita',             '506'),
-(38, 5, 'Madaoua',           '507'),
-(39, 5, 'Malbaza',           '508'),
-(40, 5, 'Tahoua',            '509'),
-(41, 5, 'Takanamatt',        '510'),
-(42, 5, 'Tillia',            '511'),
-(43, 5, 'Ville de Tahoua',   '512'),
--- TILLABÉRI
-(44, 6, 'Abala',             '601'),
-(45, 6, 'Ayorou',            '602'),
-(46, 6, 'Balleyara',         '603'),
-(47, 6, 'Banibangou',        '604'),
-(48, 6, 'Bankilaré',         '605'),
-(49, 6, 'Filingué',          '606'),
-(50, 6, 'Gothèye',           '607'),
-(51, 6, 'Kollo',             '608'),
-(52, 6, 'Ouallam',           '609'),
-(53, 6, 'Say',               '610'),
-(54, 6, 'Téra',              '611'),
-(55, 6, 'Tillabéri',         '612'),
-(56, 6, 'Torodi',            '613'),
--- ZINDER
-(57, 7, 'Belbédji',          '701'),
-(58, 7, 'Bermo',             '702'),
-(59, 7, 'Damagaram Takaya',  '703'),
-(60, 7, 'Dungass',           '704'),
-(61, 7, 'Gouré',             '705'),
-(62, 7, 'Kantché',           '706'),
-(63, 7, 'Magaria',           '707'),
-(64, 7, 'Mirriah',           '708'),
-(65, 7, 'Tanout',            '709'),
-(66, 7, 'Tesker',            '710'),
-(67, 7, 'Zinder',            '711'),
--- NIAMEY
-(68, 8, 'Niamey',            '801');
-
--- ============================================================
--- COMMUNES (265 communes)
--- Code INS : 4 chiffres — premiers 3 = code département
--- ============================================================
-INSERT INTO `communes` (`id`, `departement_id`, `nom`, `code`) VALUES
--- AGADEZ / Aderbissinat (dep 1)
-(1,  1, 'Aderbissinat',             '1011'),
--- AGADEZ / Agadez (dep 2)
-(2,  2, 'Agadez',                   '1021'),
--- AGADEZ / Arlit (dep 3)
-(3,  3, 'Arlit',                    '1031'),
-(4,  3, 'Dannet',                   '1032'),
-(5,  3, 'Gougaram',                 '1033'),
--- AGADEZ / Bilma (dep 4)
-(6,  4, 'Bilma',                    '1041'),
-(7,  4, 'Dirkou',                   '1042'),
-(8,  4, 'Djado',                    '1043'),
-(9,  4, 'Fachi',                    '1044'),
--- AGADEZ / Iferouane (dep 5)
-(10, 5, 'Iferouane',                '1051'),
-(11, 5, 'Timia',                    '1052'),
--- AGADEZ / Ingall (dep 6)
-(12, 6, 'Ingall',                   '1061'),
--- AGADEZ / Tassara (dep 7)
-(13, 7, 'Tassara',                  '1071'),
--- AGADEZ / Tchintabaraden (dep 8)
-(14, 8, 'Kao',                      '1081'),
-(15, 8, 'Tchintabaraden',           '1082'),
--- AGADEZ / Tchirozerine (dep 9)
-(16, 9, 'Dabaga',                   '1091'),
-(17, 9, 'Tabelot',                  '1092'),
-(18, 9, 'Tchirozerine',             '1093'),
--- DIFFA / Bosso (dep 10)
-(19, 10, 'Bosso',                   '2011'),
-(20, 10, 'Toumour',                 '2012'),
--- DIFFA / Diffa (dep 11)
-(21, 11, 'Chétimari',               '2021'),
-(22, 11, 'Diffa',                   '2022'),
-(23, 11, 'Gueskérou',               '2023'),
--- DIFFA / Goudoumaria (dep 12)
-(24, 12, 'Goudoumaria',             '2031'),
--- DIFFA / Maïné Soroa (dep 13)
-(25, 13, 'Foulatari',               '2041'),
-(26, 13, 'Maïné Soroa',             '2042'),
-(27, 13, 'N''Gelbeyli',             '2043'),
--- DIFFA / N'Gourti (dep 14)
-(28, 14, 'N''Gourti',               '2051'),
--- DIFFA / N'Guigmi (dep 15)
-(29, 15, 'Kabelawa',                '2061'),
-(30, 15, 'N''Guigmi',               '2062'),
--- DOSSO / Boboye (dep 16)
-(31, 16, 'Birni N''Gaouré',         '3011'),
-(32, 16, 'Fabidji',                 '3012'),
-(33, 16, 'Fakara',                  '3013'),
-(34, 16, 'Harika',                  '3014'),
-(35, 16, 'Kankandi',                '3015'),
-(36, 16, 'Kiota',                   '3016'),
-(37, 16, 'Koygolo',                 '3017'),
-(38, 16, 'N''Gonga',                '3018'),
--- DOSSO / Dioundiou (dep 17)
-(39, 17, 'Dioundiou',               '3021'),
-(40, 17, 'Kara Kara',               '3022'),
-(41, 17, 'Zabori',                  '3023'),
--- DOSSO / Dogondoutchi (dep 18)
-(42, 18, 'Dan Kassari',             '3031'),
-(43, 18, 'Dogon Kiria',             '3032'),
-(44, 18, 'Dogondoutchi',            '3033'),
-(45, 18, 'Kiéché',                  '3034'),
-(46, 18, 'Matankari',               '3035'),
-(47, 18, 'Soucoucoutane',           '3036'),
--- DOSSO / Dosso (dep 19)
-(48, 19, 'Dosso',                   '3041'),
-(49, 19, 'Farrey',                  '3042'),
-(50, 19, 'Garankedeye',             '3043'),
-(51, 19, 'Goberi',                  '3044'),
-(52, 19, 'Gorouol Bangou',          '3045'),
-(53, 19, 'Kargui Bangou',           '3046'),
-(54, 19, 'Mokko',                   '3047'),
-(55, 19, 'Sakadamna',               '3048'),
-(56, 19, 'Sambera',                 '3049'),
-(57, 19, 'Tessa',                   '3050'),
-(58, 19, 'Tombo Koarey',            '3051'),
--- DOSSO / Falmey (dep 20)
-(59, 20, 'Falmey',                  '3051'),
-(60, 20, 'Guilladjé',               '3052'),
--- DOSSO / Gaya (dep 21)
-(61, 21, 'Bana',                    '3061'),
-(62, 21, 'Bengou',                  '3062'),
-(63, 21, 'Gaya',                    '3063'),
-(64, 21, 'Tanda',                   '3064'),
-(65, 21, 'Tounouga',                '3065'),
-(66, 21, 'Yélou',                   '3066'),
--- DOSSO / Loga (dep 22)
-(67, 22, 'Falwel',                  '3071'),
-(68, 22, 'Loga',                    '3072'),
-(69, 22, 'Sokorbe',                 '3073'),
--- DOSSO / Tibiri (dep 23)
-(70, 23, 'Doumega',                 '3081'),
-(71, 23, 'Guéchémé',                '3082'),
-(72, 23, 'Koré Maïroua',            '3083'),
-(73, 23, 'Tibiri',                  '3084'),
--- MARADI / Aguié (dep 24)
-(74, 24, 'Aguié',                   '4011'),
-(75, 24, 'Tchadoua',                '4012'),
--- MARADI / Dakoro (dep 25)
-(76, 25, 'Adjékoria',               '4021'),
-(77, 25, 'Azagor',                  '4022'),
-(78, 25, 'Bader Goula',             '4023'),
-(79, 25, 'Birnin Lallé',            '4024'),
-(80, 25, 'Dakoro',                  '4025'),
-(81, 25, 'Dan Goulbi',              '4026'),
-(82, 25, 'Korahanné',               '4027'),
-(83, 25, 'Kornaka',                 '4028'),
-(84, 25, 'Maïyara',                 '4029'),
-(85, 25, 'Roumbou',                 '4030'),
-(86, 25, 'Sabon Machi',             '4031'),
-(87, 25, 'Tagriss',                 '4032'),
--- MARADI / Gazaoua (dep 26)
-(88, 26, 'Gangara',                 '4031'),
-(89, 26, 'Gazaoua',                 '4032'),
--- MARADI / Guidan Roumdji (dep 27)
-(90, 27, 'Chadakori',               '4041'),
-(91, 27, 'Guidan Roumdji',          '4042'),
-(92, 27, 'Guidan Sori',             '4043'),
-(93, 27, 'Saé Saboua',              '4044'),
-(94, 27, 'Tibiri',                  '4045'),
--- MARADI / Madarounfa (dep 28)
-(95, 28, 'Dan Issa',                '4051'),
-(96, 28, 'Djirataoua',              '4052'),
-(97, 28, 'Gabi',                    '4053'),
-(98, 28, 'Madarounfa',              '4054'),
-(99, 28, 'Safo',                    '4055'),
-(100,28, 'Serkin Yamma',            '4056'),
--- MARADI / Mayahi (dep 29)
-(101,29, 'Attantané',               '4061'),
-(102,29, 'El Allassane Maïrerey',   '4062'),
-(103,29, 'Guidan Amoumoune',        '4063'),
-(104,29, 'Issawane',                '4064'),
-(105,29, 'Kanembakaché',            '4065'),
-(106,29, 'Mayahi',                  '4066'),
-(107,29, 'Serkin Haoussa',          '4067'),
-(108,29, 'Tchaké',                  '4068'),
--- MARADI / Tessaoua (dep 30)
-(109,30, 'Baoudéta',                '4071'),
-(110,30, 'Hawandawaki',             '4072'),
-(111,30, 'Koona',                   '4073'),
-(112,30, 'Korgom',                  '4074'),
-(113,30, 'Maïjirgui',               '4075'),
-(114,30, 'Ourafane',                '4076'),
-(115,30, 'Tessaoua',                '4077'),
--- MARADI / Maradi (dep 31)
-(116,31, 'Maradi 1',                '4081'),
-(117,31, 'Maradi 2',                '4082'),
-(118,31, 'Maradi 3',                '4083'),
--- TAHOUA / Abalak (dep 32)
-(119,32, 'Abalak',                  '5011'),
-(120,32, 'Akoubounou',              '5012'),
-(121,32, 'Azèye',                   '5013'),
-(122,32, 'Tabalak',                 '5014'),
-(123,32, 'Tamaya',                  '5015'),
--- TAHOUA / Bagaroua (dep 33)
-(124,33, 'Bagaroua',                '5021'),
--- TAHOUA / Birni N'Konni (dep 34)
-(125,34, 'Allela',                  '5031'),
-(126,34, 'Bazaga',                  '5032'),
-(127,34, 'Birni N''Konni',          '5033'),
-(128,34, 'Tsernaoua',               '5034'),
--- TAHOUA / Bouza (dep 35)
-(129,35, 'Allakeye',                '5041'),
-(130,35, 'Baban Katami',            '5042'),
-(131,35, 'Bouza',                   '5043'),
-(132,35, 'Déoulé',                  '5044'),
-(133,35, 'Karofane',                '5045'),
-(134,35, 'Tabotaki',                '5046'),
-(135,35, 'Tama',                    '5047'),
--- TAHOUA / Illéla (dep 36)
-(136,36, 'Badaguichiri',            '5051'),
-(137,36, 'Illéla',                  '5052'),
-(138,36, 'Tajaé',                   '5053'),
--- TAHOUA / Keita (dep 37)
-(139,37, 'Garhanga',                '5061'),
-(140,37, 'Ibohamane',               '5062'),
-(141,37, 'Keita',                   '5063'),
-(142,37, 'Tamaské',                 '5064'),
--- TAHOUA / Madaoua (dep 38)
-(143,38, 'Azarori',                 '5071'),
-(144,38, 'Bangui',                  '5072'),
-(145,38, 'Galma Koudawatché',       '5073'),
-(146,38, 'Madaoua',                 '5074'),
-(147,38, 'Ourno',                   '5075'),
-(148,38, 'Sabon Guida',             '5076'),
--- TAHOUA / Malbaza (dep 39)
-(149,39, 'Dogueraoua',              '5081'),
-(150,39, 'Malbaza',                 '5082'),
--- TAHOUA / Tahoua (dep 40)
-(151,40, 'Afala',                   '5091'),
-(152,40, 'Bambeye',                 '5092'),
-(153,40, 'Barmou',                  '5093'),
-(154,40, 'Kalfou',                  '5094'),
-(155,40, 'Takanamatt',              '5095'),
-(156,40, 'Tébaram',                 '5096'),
--- TAHOUA / Takanamatt (dep 41)
-(157,41, 'Dakoussa',                '5101'),
-(158,41, 'Garagoumsa',              '5102'),
-(159,41, 'Tirmini',                 '5103'),
--- TAHOUA / Tillia (dep 42)
-(160,42, 'Tillia',                  '5111'),
--- TAHOUA / Ville de Tahoua (dep 43)
-(161,43, 'Tahoua Commune 1',        '5121'),
-(162,43, 'Tahoua Commune 2',        '5122'),
--- TILLABÉRI / Abala (dep 44)
-(163,44, 'Abala',                   '6011'),
-(164,44, 'Sanam',                   '6012'),
--- TILLABÉRI / Ayorou (dep 45)
-(165,45, 'Ayorou',                  '6021'),
-(166,45, 'Inatès',                  '6022'),
--- TILLABÉRI / Balleyara (dep 46)
-(167,46, 'Tagazar',                 '6031'),
--- TILLABÉRI / Banibangou (dep 47)
-(168,47, 'Banibangou',              '6041'),
--- TILLABÉRI / Bankilaré (dep 48)
-(169,48, 'Bankilaré',               '6051'),
--- TILLABÉRI / Filingué (dep 49)
-(170,49, 'Damana',                  '6061'),
-(171,49, 'Filingué',                '6062'),
-(172,49, 'Imanan',                  '6063'),
-(173,49, 'Kourféye Centre',         '6064'),
--- TILLABÉRI / Gothèye (dep 50)
-(174,50, 'Dargol',                  '6071'),
-(175,50, 'Gothèye',                 '6072'),
--- TILLABÉRI / Kollo (dep 51)
-(176,51, 'Bitinkodji',              '6081'),
-(177,51, 'Dantchandou',             '6082'),
-(178,51, 'Hamdallaye',              '6083'),
-(179,51, 'Karma',                   '6084'),
-(180,51, 'Kirtachi',                '6085'),
-(181,51, 'Kollo',                   '6086'),
-(182,51, 'Kouré',                   '6087'),
-(183,51, 'Liboré',                  '6088'),
-(184,51, 'N''Dounga',               '6089'),
-(185,51, 'Namaro',                  '6090'),
-(186,51, 'Youri',                   '6091'),
--- TILLABÉRI / Ouallam (dep 52)
-(187,52, 'Dingazi Banda',           '6091'),
-(188,52, 'Ouallam',                 '6092'),
-(189,52, 'Simiri',                  '6093'),
-(190,52, 'Tondikiwindi',            '6094'),
--- TILLABÉRI / Say (dep 53)
-(191,53, 'Ouro Gueladio',           '6101'),
-(192,53, 'Say',                     '6102'),
-(193,53, 'Tamou',                   '6103'),
--- TILLABÉRI / Téra (dep 54)
-(194,54, 'Diagourou',               '6111'),
-(195,54, 'Goroual',                 '6112'),
-(196,54, 'Kokorou',                 '6113'),
-(197,54, 'Méhana',                  '6114'),
-(198,54, 'Téra',                    '6115'),
--- TILLABÉRI / Tillabéri (dep 55)
-(199,55, 'Anzourou',                '6121'),
-(200,55, 'Bibiyergou',              '6122'),
-(201,55, 'Dessa',                   '6123'),
-(202,55, 'Kourteye',                '6124'),
-(203,55, 'Sakoïra',                 '6125'),
-(204,55, 'Sindar',                  '6126'),
-(205,55, 'Tillabéri',               '6127'),
--- TILLABÉRI / Torodi (dep 56)
-(206,56, 'Makalondi',               '6131'),
-(207,56, 'Torodi',                  '6132'),
--- ZINDER / Belbédji (dep 57)
-(208,57, 'Tarka',                   '7011'),
--- ZINDER / Bermo (dep 58)
-(209,58, 'Bermo',                   '7021'),
-(210,58, 'Gadabédji',               '7022'),
--- ZINDER / Damagaram Takaya (dep 59)
-(211,59, 'Alberkaram',              '7031'),
-(212,59, 'Damagaram Takaya',        '7032'),
-(213,59, 'Guidimouni',              '7033'),
-(214,59, 'Kagna Wame',              '7034'),
-(215,59, 'Mazamni',                 '7035'),
-(216,59, 'Moa',                     '7036'),
--- ZINDER / Dungass (dep 60)
-(217,60, 'Dogo Dogo',               '7041'),
-(218,60, 'Dungass',                 '7042'),
-(219,60, 'Gouchi',                  '7043'),
-(220,60, 'Mallaoua',                '7044'),
--- ZINDER / Gouré (dep 61)
-(221,61, 'Alakos',                  '7051'),
-(222,61, 'Bouné',                   '7052'),
-(223,61, 'Gamou',                   '7053'),
-(224,61, 'Gouré',                   '7054'),
-(225,61, 'Guidiguir',               '7055'),
-(226,61, 'Kellé',                   '7056'),
--- ZINDER / Kantché (dep 62)
-(227,62, 'Dan Barto',               '7061'),
-(228,62, 'Daoutché',                '7062'),
-(229,62, 'Doungou',                 '7063'),
-(230,62, 'Ichernaoua',              '7064'),
-(231,62, 'Kantché',                 '7065'),
-(232,62, 'Kourni',                  '7066'),
-(233,62, 'Matamèye',                '7067'),
-(234,62, 'Tsouni',                  '7068'),
-(235,62, 'Yaouri',                  '7069'),
--- ZINDER / Magaria (dep 63)
-(236,63, 'Bandé',                   '7071'),
-(237,63, 'Dan Tchio',               '7072'),
-(238,63, 'Kouaya',                  '7073'),
-(239,63, 'Magaria',                 '7074'),
-(240,63, 'Sassoumdoum',             '7075'),
-(241,63, 'Wacha',                   '7076'),
-(242,63, 'Yékoua',                  '7077'),
--- ZINDER / Mirriah (dep 64)
-(243,64, 'Dala Koleram',            '7081'),
-(244,64, 'Dogo',                    '7082'),
-(245,64, 'Droum',                   '7083'),
-(246,64, 'Gaffati',                 '7084'),
-(247,64, 'Gouna',                   '7085'),
-(248,64, 'Hamdara',                 '7086'),
-(249,64, 'Mirriah',                 '7087'),
-(250,64, 'Zermou',                  '7088'),
--- ZINDER / Tanout (dep 65)
-(251,65, 'Falenko',                 '7091'),
-(252,65, 'Gangara',                 '7092'),
-(253,65, 'Olléléwa',                '7093'),
-(254,65, 'Tanout',                  '7094'),
-(255,65, 'Tenhya',                  '7095'),
--- ZINDER / Tesker (dep 66)
-(256,66, 'Tesker',                  '7101'),
--- ZINDER / Zinder (dep 67)
-(257,67, 'Zinder 1',                '7111'),
-(258,67, 'Zinder 2',                '7112'),
-(259,67, 'Zinder 3',                '7113'),
-(260,67, 'Zinder 4',                '7114'),
-(261,67, 'Zinder 5',                '7115'),
--- NIAMEY / Niamey (dep 68)
-(262,68, 'Niamey 1',                '8011'),
-(263,68, 'Niamey 2',                '8012'),
-(264,68, 'Niamey 3',                '8013'),
-(265,68, 'Niamey 4',                '8014'),
-(266,68, 'Niamey 5',                '8015');
-
-SELECT CONCAT('Migration 003 OK — ', COUNT(*), ' communes chargées') AS status FROM communes;
--- ============================================================
--- MIGRATION 004 — Nouvelles fonctionnalités v2.3 (CORRIGÉE)
--- Date    : 2026-04-25
--- Auteur  : ak_main / AI Developer
--- Notes   : - Compatible MySQL 5.7+ / MariaDB 10.x
---          - Idempotente (réexécutable sans erreur)
---          - Les FK sont posées via une procédure car
---            "ADD CONSTRAINT IF NOT EXISTS" n'est pas fiable.
--- ============================================================
-
-SET @OLD_FOREIGN_KEY_CHECKS = @@FOREIGN_KEY_CHECKS;
-SET FOREIGN_KEY_CHECKS = 1;
-
--- ────────────────────────────────────────────────────────────
--- HELPERS : procédures idempotentes pour FK
--- ────────────────────────────────────────────────────────────
-DROP PROCEDURE IF EXISTS add_fk_if_not_exists;
-DROP PROCEDURE IF EXISTS drop_fk_if_exists;
-
-DELIMITER $$
-
-CREATE PROCEDURE add_fk_if_not_exists(
-    IN p_table       VARCHAR(64),
-    IN p_constraint  VARCHAR(64),
-    IN p_definition  TEXT
-)
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.TABLE_CONSTRAINTS
-        WHERE CONSTRAINT_SCHEMA = DATABASE()
-          AND TABLE_NAME        = p_table
-          AND CONSTRAINT_NAME   = p_constraint
-          AND CONSTRAINT_TYPE   = 'FOREIGN KEY'
-    ) THEN
-        SET @sql = CONCAT('ALTER TABLE `', p_table, '` ADD CONSTRAINT `',
-                          p_constraint, '` ', p_definition);
-        PREPARE stmt FROM @sql;
-        EXECUTE stmt;
-        DEALLOCATE PREPARE stmt;
-    END IF;
-END$$
-
-CREATE PROCEDURE drop_fk_if_exists(
-    IN p_table       VARCHAR(64),
-    IN p_constraint  VARCHAR(64)
-)
-BEGIN
-    IF EXISTS (
-        SELECT 1 FROM information_schema.TABLE_CONSTRAINTS
-        WHERE CONSTRAINT_SCHEMA = DATABASE()
-          AND TABLE_NAME        = p_table
-          AND CONSTRAINT_NAME   = p_constraint
-          AND CONSTRAINT_TYPE   = 'FOREIGN KEY'
-    ) THEN
-        SET @sql = CONCAT('ALTER TABLE `', p_table, '` DROP FOREIGN KEY `', p_constraint, '`');
-        PREPARE stmt FROM @sql;
-        EXECUTE stmt;
-        DEALLOCATE PREPARE stmt;
-    END IF;
-END$$
-
-DELIMITER ;
-
--- ────────────────────────────────────────────────────────────
--- 1. Qualification d'infractions à deux niveaux
--- ────────────────────────────────────────────────────────────
-ALTER TABLE `pv`
-    ADD COLUMN IF NOT EXISTS `qualification_substitut_id` int(11) DEFAULT NULL
-        COMMENT 'Qualification retenue par le substitut' AFTER `infraction_id`,
-    ADD COLUMN IF NOT EXISTS `qualification_details` text DEFAULT NULL
-        COMMENT 'Précisions sur la qualification (complicité, circonstances aggravantes…)' AFTER `qualification_substitut_id`,
-    ADD COLUMN IF NOT EXISTS `lois_applicables` text DEFAULT NULL
-        COMMENT 'Références légales applicables, saisies uniquement par le substitut' AFTER `qualification_details`;
-
--- Nettoyage préventif : éviter les valeurs orphelines avant pose FK
-UPDATE `pv` p
-   LEFT JOIN `infractions` i ON i.id = p.qualification_substitut_id
-   SET p.qualification_substitut_id = NULL
- WHERE p.qualification_substitut_id IS NOT NULL
-   AND i.id IS NULL;
-
--- FK
-CALL add_fk_if_not_exists(
-    'pv',
-    'fk_pv_qualification_substitut',
-    'FOREIGN KEY (`qualification_substitut_id`) REFERENCES `infractions` (`id`) ON DELETE SET NULL'
-);
-
--- ────────────────────────────────────────────────────────────
--- 2. Infractions multiples par PV (unité d'enquête)
--- ────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS `pv_infractions` (
-    `id`             int(11) NOT NULL AUTO_INCREMENT,
-    `pv_id`          int(11) NOT NULL,
-    `infraction_id`  int(11) NOT NULL,
-    `type`           enum('unite','substitut') NOT NULL DEFAULT 'unite'
-                     COMMENT 'unite=saisie unité enquête, substitut=qualification substitut',
-    `est_complicite` tinyint(1) DEFAULT 0 COMMENT '1 = complicité',
-    `notes`          varchar(500) DEFAULT NULL,
-    `created_at`     timestamp NOT NULL DEFAULT current_timestamp(),
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uq_pv_infr_type` (`pv_id`, `infraction_id`, `type`),
-    KEY `idx_pv_infractions_pv`   (`pv_id`),
-    KEY `idx_pv_infractions_infr` (`infraction_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-  COMMENT='Infractions multiples par PV (deux niveaux : unité + substitut)';
-
--- ────────────────────────────────────────────────────────────
--- 3. Infractions par mise en cause
--- ────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS `mec_infractions` (
-    `id`             int(11) NOT NULL AUTO_INCREMENT,
-    `mec_id`         int(11) NOT NULL COMMENT 'mises_en_cause.id',
-    `infraction_id`  int(11) NOT NULL,
-    `type`           enum('unite','substitut') NOT NULL DEFAULT 'unite',
-    `est_complicite` tinyint(1) DEFAULT 0,
-    `notes`          varchar(500) DEFAULT NULL,
-    `created_at`     timestamp NOT NULL DEFAULT current_timestamp(),
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uq_mec_infr_type` (`mec_id`, `infraction_id`, `type`),
-    KEY `idx_mec_infractions_mec`  (`mec_id`),
-    KEY `idx_mec_infractions_infr` (`infraction_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-  COMMENT='Infractions retenues par mis en cause';
-
--- ────────────────────────────────────────────────────────────
--- 4. Jonction PV multiples → Dossier
--- ────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS `dossier_pvs` (
-    `dossier_id`    int(11) NOT NULL,
-    `pv_id`         int(11) NOT NULL,
-    `date_jonction` timestamp NOT NULL DEFAULT current_timestamp(),
-    `joint_par`     int(11) DEFAULT NULL COMMENT 'user_id du substitut ayant fait la jonction',
-    PRIMARY KEY (`dossier_id`, `pv_id`),
-    KEY `idx_dossier_pvs_dossier` (`dossier_id`),
-    KEY `idx_dossier_pvs_pv`      (`pv_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-  COMMENT='Jonction plusieurs PVs → un dossier (fusion par le substitut)';
-
--- Migration des associations existantes (uniquement celles dont le PV existe encore)
-INSERT IGNORE INTO `dossier_pvs` (`dossier_id`, `pv_id`)
-    SELECT d.`id`, d.`pv_id`
-      FROM `dossiers` d
-      INNER JOIN `pv` p ON p.id = d.pv_id
-     WHERE d.`pv_id` IS NOT NULL;
-
--- ────────────────────────────────────────────────────────────
--- 5. Scellés : précision pour catégorie "autre"
--- ────────────────────────────────────────────────────────────
-ALTER TABLE `scelles`
-    ADD COLUMN IF NOT EXISTS `categorie_autre_detail` varchar(200) DEFAULT NULL
-        COMMENT 'Précision si catégorie = autre' AFTER `categorie`;
-
--- ────────────────────────────────────────────────────────────
--- 6. Documents PV : rôle de l'uploadeur
--- ────────────────────────────────────────────────────────────
-ALTER TABLE `documents`
-    ADD COLUMN IF NOT EXISTS `uploaded_by_role` varchar(50) DEFAULT NULL
-        COMMENT 'Role de l utilisateur qui a uploadé' AFTER `uploaded_by`;
-
--- ────────────────────────────────────────────────────────────
--- 7. Rapports générés (journal de bord / fin de journée)
--- ────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS `rapports` (
-    `id`           int(11) NOT NULL AUTO_INCREMENT,
-    `type`         enum('quotidien','hebdomadaire','mensuel','annuel','personnalise') NOT NULL DEFAULT 'quotidien',
-    `titre`        varchar(255) NOT NULL,
-    `date_debut`   date NOT NULL,
-    `date_fin`     date NOT NULL,
-    `contenu_json` longtext DEFAULT NULL COMMENT 'Données du rapport en JSON',
-    `fichier`      varchar(255) DEFAULT NULL COMMENT 'Chemin du fichier PDF généré',
-    `genere_par`   int(11) DEFAULT NULL,
-    `created_at`   timestamp NOT NULL DEFAULT current_timestamp(),
-    PRIMARY KEY (`id`),
-    KEY `idx_rapports_type` (`type`),
-    KEY `idx_rapports_date` (`date_debut`),
-    KEY `idx_rapports_user` (`genere_par`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-  COMMENT='Rapports de fin de journée / périodiques générés depuis le dashboard';
-
--- ────────────────────────────────────────────────────────────
--- 8. Visibilité : substitut_id sur mises_en_cause
--- ────────────────────────────────────────────────────────────
-ALTER TABLE `mises_en_cause`
-    ADD COLUMN IF NOT EXISTS `substitut_id` int(11) DEFAULT NULL
-        COMMENT 'Substitut chargé de ce mis en cause (hérite du PV)' AFTER `created_by`;
-
--- ────────────────────────────────────────────────────────────
--- 9. Index de performance
--- ────────────────────────────────────────────────────────────
-ALTER TABLE `pv`
-    ADD INDEX IF NOT EXISTS `idx_pv_created_by`     (`created_by`),
-    ADD INDEX IF NOT EXISTS `idx_pv_substitut`      (`substitut_id`),
-    ADD INDEX IF NOT EXISTS `idx_pv_date_reception` (`date_reception`);
-
-ALTER TABLE `dossiers`
-    ADD INDEX IF NOT EXISTS `idx_dossiers_created_by` (`created_by`),
-    ADD INDEX IF NOT EXISTS `idx_dossiers_substitut`  (`substitut_id`);
-
-ALTER TABLE `mises_en_cause`
-    ADD INDEX IF NOT EXISTS `idx_mec_created_by` (`created_by`),
-    ADD INDEX IF NOT EXISTS `idx_mec_substitut`  (`substitut_id`);
-
--- ────────────────────────────────────────────────────────────
--- 10. Paramètres sécurité / session
--- ────────────────────────────────────────────────────────────
-ALTER TABLE `parametres_tribunal`
-    ADD COLUMN IF NOT EXISTS `session_timeout_minutes` int(11) DEFAULT 60
-        COMMENT 'Durée de session en minutes' AFTER `id`,
-    ADD COLUMN IF NOT EXISTS `max_login_attempts` int(11) DEFAULT 5
-        COMMENT 'Tentatives de connexion max avant blocage' AFTER `session_timeout_minutes`,
-    ADD COLUMN IF NOT EXISTS `lockout_minutes` int(11) DEFAULT 15
-        COMMENT 'Durée de blocage en minutes' AFTER `max_login_attempts`;
-
--- ────────────────────────────────────────────────────────────
--- 11. Journalisation de sécurité (logs d'accès)
--- ────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS `security_logs` (
-    `id`         int(11) NOT NULL AUTO_INCREMENT,
-    `user_id`    int(11) DEFAULT NULL,
-    `action`     varchar(100) NOT NULL,
-    `ip_address` varchar(45) DEFAULT NULL,
-    `user_agent` varchar(500) DEFAULT NULL,
-    `details`    text DEFAULT NULL,
-    `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-    PRIMARY KEY (`id`),
-    KEY `idx_seclog_user`    (`user_id`),
-    KEY `idx_seclog_action`  (`action`),
-    KEY `idx_seclog_created` (`created_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-  COMMENT='Journal de sécurité : connexions, tentatives échouées, actions sensibles';
-
--- ────────────────────────────────────────────────────────────
--- 12. Mise à jour des contraintes d'intégrité (FK idempotentes)
--- ────────────────────────────────────────────────────────────
-
--- Nettoyage préventif des orphelins (sécurise la pose des FK)
-DELETE pi FROM `pv_infractions` pi
-   LEFT JOIN `pv`          p ON p.id = pi.pv_id
-   LEFT JOIN `infractions` i ON i.id = pi.infraction_id
- WHERE p.id IS NULL OR i.id IS NULL;
-
-DELETE mi FROM `mec_infractions` mi
-   LEFT JOIN `mises_en_cause` m ON m.id = mi.mec_id
-   LEFT JOIN `infractions`    i ON i.id = mi.infraction_id
- WHERE m.id IS NULL OR i.id IS NULL;
-
-DELETE dp FROM `dossier_pvs` dp
-   LEFT JOIN `dossiers` d ON d.id = dp.dossier_id
-   LEFT JOIN `pv`       p ON p.id = dp.pv_id
- WHERE d.id IS NULL OR p.id IS NULL;
-
--- FK sur pv_infractions
-CALL add_fk_if_not_exists(
-    'pv_infractions', 'fk_pvinf_pv',
-    'FOREIGN KEY (`pv_id`) REFERENCES `pv` (`id`) ON DELETE CASCADE'
-);
-CALL add_fk_if_not_exists(
-    'pv_infractions', 'fk_pvinf_infr',
-    'FOREIGN KEY (`infraction_id`) REFERENCES `infractions` (`id`) ON DELETE CASCADE'
-);
-
--- FK sur mec_infractions
-CALL add_fk_if_not_exists(
-    'mec_infractions', 'fk_mecinf_mec',
-    'FOREIGN KEY (`mec_id`) REFERENCES `mises_en_cause` (`id`) ON DELETE CASCADE'
-);
-CALL add_fk_if_not_exists(
-    'mec_infractions', 'fk_mecinf_infr',
-    'FOREIGN KEY (`infraction_id`) REFERENCES `infractions` (`id`) ON DELETE CASCADE'
-);
-
--- FK sur dossier_pvs
-CALL add_fk_if_not_exists(
-    'dossier_pvs', 'fk_dossierpvs_dossier',
-    'FOREIGN KEY (`dossier_id`) REFERENCES `dossiers` (`id`) ON DELETE CASCADE'
-);
-CALL add_fk_if_not_exists(
-    'dossier_pvs', 'fk_dossierpvs_pv',
-    'FOREIGN KEY (`pv_id`) REFERENCES `pv` (`id`) ON DELETE CASCADE'
-);
-
--- ────────────────────────────────────────────────────────────
--- Nettoyage des helpers
--- ────────────────────────────────────────────────────────────
-DROP PROCEDURE IF EXISTS add_fk_if_not_exists;
-DROP PROCEDURE IF EXISTS drop_fk_if_exists;
-
-SET FOREIGN_KEY_CHECKS = @OLD_FOREIGN_KEY_CHECKS;
-
--- ────────────────────────────────────────────────────────────
--- Confirmation
--- ────────────────────────────────────────────────────────────
-SELECT 'Migration 004 appliquée avec succès' AS statut;
-
