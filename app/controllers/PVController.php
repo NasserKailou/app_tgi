@@ -14,8 +14,10 @@ class PVController extends Controller {
         $antiterro = $_GET['antiterro'] ?? '';
 
         if ($search) {
-            $where[]  = "(p.numero_rg LIKE :q OR p.numero_pv LIKE :q OR p.description_faits LIKE :q)";
-            $params['q'] = "%{$search}%";
+            $where[]  = "(p.numero_rg LIKE :q1 OR p.numero_pv LIKE :q2 OR p.description_faits LIKE :q3)";
+            $params['q1'] = "%{$search}%";
+            $params['q2'] = "%{$search}%";
+            $params['q3'] = "%{$search}%";
         }
         if ($statut) {
             $where[] = "p.statut = :statut";

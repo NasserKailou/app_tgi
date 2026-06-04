@@ -17,8 +17,10 @@ class CommissionRogatoireController extends Controller
         $params  = [];
 
         if ($search) {
-            $where[]      = "(cr.numero_cr LIKE :q OR d.numero_rg LIKE :q OR cr.autorite_destinataire LIKE :q)";
-            $params[':q'] = "%{$search}%";
+            $where[]       = "(cr.numero_cr LIKE :q1 OR d.numero_rg LIKE :q2 OR cr.autorite_destinataire LIKE :q3)";
+            $params[':q1'] = "%{$search}%";
+            $params[':q2'] = "%{$search}%";
+            $params[':q3'] = "%{$search}%";
         }
         if ($statut) { $where[] = 'cr.statut=:statut'; $params[':statut'] = $statut; }
         $wSQL = $where ? 'WHERE ' . implode(' AND ', $where) : '';

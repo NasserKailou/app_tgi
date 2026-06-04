@@ -77,6 +77,8 @@ $router->post('/dossiers/affecter-instruction/{id}', 'DossierController@affecter
 $router->post('/dossiers/envoyer-audience/{id}', 'DossierController@envoyerAudience');
 $router->post('/dossiers/partie/add/{id}',       'DossierController@addPartie');
 $router->post('/dossiers/partie/delete/{id}',    'DossierController@deletePartie');
+$router->get('/dossiers/partie/edit/{id}',       'DossierController@editPartie');
+$router->post('/dossiers/partie/update/{id}',    'DossierController@updatePartie');
 $router->post('/dossiers/classer/{id}',         'DossierController@classerDossier');
 $router->post('/dossiers/declasser/{id}',       'DossierController@declasserDossier');
 

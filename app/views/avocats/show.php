@@ -20,9 +20,8 @@
                     <div class="col-md-4"><small class="text-muted d-block">Date inscription</small><strong><?=$avocat['date_inscription']?date('d/m/Y',strtotime($avocat['date_inscription'])):'—'?></strong></div>
                     <div class="col-md-4"><small class="text-muted d-block">Téléphone</small><strong><?=htmlspecialchars($avocat['telephone']??'—')?></strong></div>
                     <div class="col-md-4"><small class="text-muted d-block">Email</small><strong><?=htmlspecialchars($avocat['email']??'—')?></strong></div>
-                    <div class="col-md-6"><small class="text-muted d-block">Spécialité</small><p class="mb-0"><?=htmlspecialchars($avocat['specialite']??'—')?></p></div>
-                    <div class="col-md-6"><small class="text-muted d-block">Adresse</small><p class="mb-0"><?=nl2br(htmlspecialchars($avocat['adresse']??'—'))?></p></div>
-                    <?php if($avocat['notes']): ?><div class="col-12"><small class="text-muted d-block">Notes</small><p class="mb-0 small fst-italic"><?=nl2br(htmlspecialchars($avocat['notes']))?></p></div><?php endif; ?>
+                    <div class="col-12"><small class="text-muted d-block">Adresse</small><p class="mb-0"><?=nl2br(htmlspecialchars($avocat['adresse']??'—'))?></p></div>
+                    <?php if(!empty($avocat['observations'])): ?><div class="col-12"><small class="text-muted d-block">Notes</small><p class="mb-0 small fst-italic"><?=nl2br(htmlspecialchars($avocat['observations']))?></p></div><?php endif; ?>
                 </div>
             </div>
         </div>
@@ -49,6 +48,15 @@
                 <?php $sc=['actif'=>'success','suspendu'=>'warning','radié'=>'danger','honoraire'=>'info'][$avocat['statut']]??'secondary'; ?>
                 <span class="badge bg-<?=$sc?> mb-2"><?=ucfirst($avocat['statut'])?></span>
                 <p class="text-muted small mb-0"><?=htmlspecialchars($avocat['barreau'])?></p>
+                <?php if(Auth::hasRole(['admin','president'])): ?>
+                <form method="POST" action="<?=BASE_URL?>/avocats/toggle/<?=$avocat['id']?>" class="mt-3">
+                    <?=CSRF::field()?>
+                    <button type="submit" class="btn btn-sm btn-outline-<?=$avocat['statut']==='actif'?'warning':'success'?>" onclick="return confirm('Changer le statut de cet avocat ?')">
+                        <i class="bi bi-<?=$avocat['statut']==='actif'?'pause':'play'?>-circle me-1"></i>
+                        <?=$avocat['statut']==='actif'?'Suspendre':'Réactiver'?>
+                    </button>
+                </form>
+                <?php endif; ?>
             </div>
         </div>
     </div>
