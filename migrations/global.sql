@@ -10,13 +10,18 @@
 --
 -- ============================================================================
 -- TGI-NY | Tribunal de Grande Instance Hors Classe de Niamey
--- Base de données complète — Sauvegarde globale v3.6
--- Généré le : 2026-04-17 — Migrations 001 à 013 intégrées
+-- Base de données complète — Sauvegarde globale v3.7
+-- Généré le : 2026-04-18 — Migrations 001 à 014 intégrées
 -- ============================================================================
 -- RESTAURATION : mysql -u root -p tribunal_tgi_ny < global.sql
 -- Ou via phpMyAdmin : Importer ce fichier
 -- Mot de passe par défaut de tous les comptes : Admin@2026
 -- Hash bcrypt : $2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym
+-- Correctifs v3.7 :
+--   - TABLE detenus : ajout colonne jugement_id (FK → jugements)
+--   - TABLE avocats : ajout colonnes date_naissance, lieu_naissance,
+--                     nationalite, sexe, specialite, notes, created_by
+--   - TABLE avocat_dossier : ajout colonnes partie_id, actif, notes
 -- ============================================================================
 --
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
@@ -523,6 +528,8 @@ INSERT INTO `departements` (`id`, `region_id`, `nom`, `code`) VALUES
 CREATE TABLE `detenus` (
   `id` int(11) NOT NULL,
   `numero_ecrou` varchar(50) DEFAULT NULL,
+  `dossier_id` int(11) DEFAULT NULL,
+  `jugement_id` int(11) DEFAULT NULL,
   `nom` varchar(100) NOT NULL,
   `prenom` varchar(100) NOT NULL,
   `surnom_alias` varchar(100) DEFAULT NULL,
@@ -537,7 +544,6 @@ CREATE TABLE `detenus` (
   `nationalite` varchar(100) DEFAULT 'Nigérienne',
   `profession` varchar(150) DEFAULT NULL,
   `adresse` text DEFAULT NULL,
-  `dossier_id` int(11) DEFAULT NULL,
   `type_detention` enum('provisoire','condamne','prevenu','inculpe','detenu_provisoire','mis_en_examen','autre') DEFAULT 'provisoire',
   `date_incarceration` date DEFAULT NULL,
   `date_liberation_prevue` date DEFAULT NULL,
@@ -1394,6 +1400,7 @@ ALTER TABLE `detenus`
   ADD UNIQUE KEY `numero_ecrou` (`numero_ecrou`),
   ADD KEY `created_by` (`created_by`),
   ADD KEY `idx_detenus_dossier` (`dossier_id`),
+  ADD KEY `idx_detenus_jugement` (`jugement_id`),
   ADD KEY `idx_detenus_statut` (`statut`),
   ADD KEY `idx_detenus_maison` (`maison_arret_id`);
 
@@ -1815,7 +1822,8 @@ ALTER TABLE `departements`
 ALTER TABLE `detenus`
   ADD CONSTRAINT `detenus_ibfk_1` FOREIGN KEY (`dossier_id`) REFERENCES `dossiers` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `detenus_ibfk_2` FOREIGN KEY (`maison_arret_id`) REFERENCES `maisons_arret` (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `detenus_ibfk_3` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+  ADD CONSTRAINT `detenus_ibfk_3` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `detenus_ibfk_4` FOREIGN KEY (`jugement_id`) REFERENCES `jugements` (`id`) ON DELETE SET NULL;
 
 --
 -- Contraintes pour la table `documents`
@@ -1965,14 +1973,21 @@ CREATE TABLE IF NOT EXISTS `avocats` (
   `matricule`       varchar(30)  NOT NULL,
   `nom`             varchar(100) NOT NULL,
   `prenom`          varchar(100) NOT NULL,
+  `date_naissance`  date         DEFAULT NULL,
+  `lieu_naissance`  varchar(150) DEFAULT NULL,
+  `nationalite`     varchar(100) DEFAULT 'Nigérienne',
+  `sexe`            enum('M','F') DEFAULT 'M',
   `barreau`         varchar(100) NOT NULL DEFAULT 'Barreau de Niamey',
   `numero_ordre`    varchar(50)  DEFAULT NULL,
   `telephone`       varchar(30)  DEFAULT NULL,
   `email`           varchar(150) DEFAULT NULL,
   `adresse`         text         DEFAULT NULL,
+  `specialite`      varchar(150) DEFAULT NULL,
   `date_inscription` date        DEFAULT NULL,
   `statut`          enum('actif','suspendu','radié','honoraire') NOT NULL DEFAULT 'actif',
+  `notes`           text         DEFAULT NULL,
   `observations`    text         DEFAULT NULL,
+  `created_by`      int(11)      DEFAULT NULL,
   `created_at`      timestamp    NOT NULL DEFAULT current_timestamp(),
   `updated_at`      timestamp    NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
@@ -1989,7 +2004,10 @@ CREATE TABLE IF NOT EXISTS `avocat_dossier` (
   `id`          int(11)      NOT NULL AUTO_INCREMENT,
   `avocat_id`   int(11)      NOT NULL,
   `dossier_id`  int(11)      NOT NULL,
+  `partie_id`   int(11)      DEFAULT NULL,
   `role_avocat` enum('defense','partie_civile','expert','autre') NOT NULL DEFAULT 'defense',
+  `actif`       tinyint(1)   NOT NULL DEFAULT 1,
+  `notes`       text         DEFAULT NULL,
   `date_mandat` date         DEFAULT NULL,
   `observations` text        DEFAULT NULL,
   `created_at`  timestamp    NOT NULL DEFAULT current_timestamp(),

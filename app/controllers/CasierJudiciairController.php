@@ -18,10 +18,10 @@ class CasierJudiciairController extends Controller
                 "SELECT p.*,
                     (SELECT COUNT(*) FROM casier_judiciaire_condamnations c WHERE c.personne_id=p.id) AS nb_condamnations
                  FROM casier_judiciaire_personnes p
-                 WHERE p.nom LIKE :q OR p.prenom LIKE :q OR p.nin LIKE :q
+                 WHERE p.nom LIKE :q1 OR p.prenom LIKE :q2 OR p.nin LIKE :q3
                  ORDER BY p.nom, p.prenom LIMIT 50"
             );
-            $stmt->execute([':q' => "%{$search}%"]);
+            $stmt->execute([':q1' => "%{$search}%", ':q2' => "%{$search}%", ':q3' => "%{$search}%"]);
             $personnes = $stmt->fetchAll();
             $total     = count($personnes);
         }

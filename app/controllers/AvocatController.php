@@ -26,8 +26,11 @@ class AvocatController extends Controller
         $where  = [];
         $params = [];
         if ($search) {
-            $where[]       = "(a.nom LIKE :q OR a.prenom LIKE :q OR a.numero_ordre LIKE :q OR a.telephone LIKE :q)";
-            $params[':q']  = "%{$search}%";
+            $where[]       = "(a.nom LIKE :q1 OR a.prenom LIKE :q2 OR a.numero_ordre LIKE :q3 OR a.telephone LIKE :q4)";
+            $params[':q1'] = "%{$search}%";
+            $params[':q2'] = "%{$search}%";
+            $params[':q3'] = "%{$search}%";
+            $params[':q4'] = "%{$search}%";
         }
         if ($statut) {
             $where[]           = 'a.statut = :statut';
@@ -44,7 +47,7 @@ class AvocatController extends Controller
         $offset = ($page - 1) * $perPage;
         $stmt   = $this->db->prepare(
             "SELECT a.*,
-                    (SELECT COUNT(*) FROM dossier_avocats da WHERE da.avocat_id = a.id AND da.actif=1) AS nb_dossiers
+                    (SELECT COUNT(*) FROM avocat_dossier ad WHERE ad.avocat_id = a.id) AS nb_dossiers
              FROM avocats a $whereSQL
              ORDER BY a.nom, a.prenom
              LIMIT $perPage OFFSET $offset"
@@ -82,32 +85,24 @@ class AvocatController extends Controller
 
         $stmt = $this->db->prepare(
             "INSERT INTO avocats
-                (matricule,nom,prenom,date_naissance,lieu_naissance,nationalite,sexe,
-                 telephone,email,adresse,barreau,numero_ordre,date_inscription,
-                 specialite,statut,notes,created_by)
+                (matricule,nom,prenom,telephone,email,adresse,
+                 barreau,numero_ordre,date_inscription,statut,observations)
              VALUES
-                (:mat,:nom,:prenom,:dn,:ln,:nat,:sexe,
-                 :tel,:email,:adr,:bar,:ord,:dins,
-                 :spe,:statut,:notes,:by)"
+                (:mat,:nom,:prenom,:tel,:email,:adr,
+                 :bar,:ord,:dins,:statut,:obs)"
         );
         $stmt->execute([
             ':mat'    => $matricule,
             ':nom'    => $this->sanitize($_POST['nom'] ?? ''),
             ':prenom' => $this->sanitize($_POST['prenom'] ?? ''),
-            ':dn'     => $_POST['date_naissance'] ?: null,
-            ':ln'     => $this->sanitize($_POST['lieu_naissance'] ?? ''),
-            ':nat'    => $this->sanitize($_POST['nationalite'] ?? 'Nigérienne'),
-            ':sexe'   => $_POST['sexe'] ?? 'M',
             ':tel'    => $this->sanitize($_POST['telephone'] ?? ''),
             ':email'  => strtolower(trim($_POST['email'] ?? '')),
             ':adr'    => $this->sanitize($_POST['adresse'] ?? ''),
             ':bar'    => $this->sanitize($_POST['barreau'] ?? 'Barreau de Niamey'),
             ':ord'    => $this->sanitize($_POST['numero_ordre'] ?? ''),
             ':dins'   => $_POST['date_inscription'] ?: null,
-            ':spe'    => $this->sanitize($_POST['specialite'] ?? ''),
             ':statut' => $_POST['statut'] ?? 'actif',
-            ':notes'  => $this->sanitize($_POST['notes'] ?? ''),
-            ':by'     => Auth::userId(),
+            ':obs'    => $this->sanitize($_POST['notes'] ?? ''),
         ]);
         $id = (int)$this->db->lastInsertId();
         $this->flash('success', "Avocat enregistré : {$matricule}");
@@ -123,11 +118,11 @@ class AvocatController extends Controller
         $flash = $this->getFlash();
 
         $stmt = $this->db->prepare(
-            "SELECT da.*, d.numero_rg, d.statut as dossier_statut, d.type_affaire, d.objet
-             FROM dossier_avocats da
-             JOIN dossiers d ON d.id = da.dossier_id
-             WHERE da.avocat_id = ?
-             ORDER BY da.created_at DESC"
+            "SELECT ad.*, d.numero_rg, d.statut as dossier_statut, d.type_affaire, d.objet
+             FROM avocat_dossier ad
+             JOIN dossiers d ON d.id = ad.dossier_id
+             WHERE ad.avocat_id = ?
+             ORDER BY ad.created_at DESC"
         );
         $stmt->execute([(int)$id]);
         $dossiers = $stmt->fetchAll();
@@ -154,27 +149,21 @@ class AvocatController extends Controller
 
         $this->db->prepare(
             "UPDATE avocats SET
-                nom=:nom, prenom=:prenom, date_naissance=:dn, lieu_naissance=:ln,
-                nationalite=:nat, sexe=:sexe, telephone=:tel, email=:email,
+                nom=:nom, prenom=:prenom, telephone=:tel, email=:email,
                 adresse=:adr, barreau=:bar, numero_ordre=:ord, date_inscription=:dins,
-                specialite=:spe, statut=:statut, notes=:notes
+                statut=:statut, observations=:obs
              WHERE id=:id"
         )->execute([
             ':nom'    => $this->sanitize($_POST['nom'] ?? ''),
             ':prenom' => $this->sanitize($_POST['prenom'] ?? ''),
-            ':dn'     => $_POST['date_naissance'] ?: null,
-            ':ln'     => $this->sanitize($_POST['lieu_naissance'] ?? ''),
-            ':nat'    => $this->sanitize($_POST['nationalite'] ?? 'Nigérienne'),
-            ':sexe'   => $_POST['sexe'] ?? 'M',
             ':tel'    => $this->sanitize($_POST['telephone'] ?? ''),
             ':email'  => strtolower(trim($_POST['email'] ?? '')),
             ':adr'    => $this->sanitize($_POST['adresse'] ?? ''),
             ':bar'    => $this->sanitize($_POST['barreau'] ?? 'Barreau de Niamey'),
             ':ord'    => $this->sanitize($_POST['numero_ordre'] ?? ''),
             ':dins'   => $_POST['date_inscription'] ?: null,
-            ':spe'    => $this->sanitize($_POST['specialite'] ?? ''),
             ':statut' => $_POST['statut'] ?? 'actif',
-            ':notes'  => $this->sanitize($_POST['notes'] ?? ''),
+            ':obs'    => $this->sanitize($_POST['notes'] ?? ''),
             ':id'     => (int)$id,
         ]);
         $this->flash('success', 'Dossier avocat mis à jour.');
@@ -205,17 +194,16 @@ class AvocatController extends Controller
         if (!$avocatId) { $this->flash('error','Sélectionner un avocat.'); $this->redirect('/dossiers/show/'.$dossierId); return; }
 
         $stmt = $this->db->prepare(
-            "INSERT IGNORE INTO dossier_avocats
-                (dossier_id, avocat_id, partie_id, role_avocat, date_mandat, notes)
-             VALUES (:did,:aid,:pid,:role,:dm,:notes)"
+            "INSERT IGNORE INTO avocat_dossier
+                (dossier_id, avocat_id, role_avocat, date_mandat, observations)
+             VALUES (:did,:aid,:role,:dm,:obs)"
         );
         $stmt->execute([
-            ':did'   => $dossierId,
-            ':aid'   => $avocatId,
-            ':pid'   => $_POST['partie_id'] ?: null,
-            ':role'  => $_POST['role_avocat'] ?? 'défenseur',
-            ':dm'    => $_POST['date_mandat'] ?: date('Y-m-d'),
-            ':notes' => $this->sanitize($_POST['notes'] ?? ''),
+            ':did'  => $dossierId,
+            ':aid'  => $avocatId,
+            ':role' => $_POST['role_avocat'] ?? 'defense',
+            ':dm'   => $_POST['date_mandat'] ?: date('Y-m-d'),
+            ':obs'  => $this->sanitize($_POST['notes'] ?? ''),
         ]);
         $this->flash('success', 'Avocat ajouté au dossier.');
         $this->redirect('/dossiers/show/'.$dossierId);
@@ -227,7 +215,7 @@ class AvocatController extends Controller
         Auth::requireLogin();
         CSRF::check();
         $dossierId = (int)($_POST['dossier_id'] ?? 0);
-        $this->db->prepare("DELETE FROM dossier_avocats WHERE id=?")->execute([(int)$id]);
+        $this->db->prepare("DELETE FROM avocat_dossier WHERE id=?")->execute([(int)$id]);
         $this->flash('success', 'Avocat retiré du dossier.');
         $this->redirect('/dossiers/show/'.$dossierId);
     }
@@ -237,14 +225,14 @@ class AvocatController extends Controller
     {
         Auth::requireLogin();
         $q = trim($_GET['q'] ?? '');
-        if (strlen($q) < 2) { $this->json(['success'=>true,'data']=[]); return; }
+        if (strlen($q) < 2) { $this->json(['success' => true, 'data' => []]); return; }
         $stmt = $this->db->prepare(
             "SELECT id, matricule, nom, prenom, barreau, numero_ordre, statut
              FROM avocats
-             WHERE (nom LIKE :q OR prenom LIKE :q OR matricule LIKE :q OR numero_ordre LIKE :q)
+             WHERE (nom LIKE :q1 OR prenom LIKE :q2 OR matricule LIKE :q3 OR numero_ordre LIKE :q4)
              ORDER BY nom, prenom LIMIT 20"
         );
-        $stmt->execute([':q' => "%{$q}%"]);
+        $stmt->execute([':q1' => "%{$q}%", ':q2' => "%{$q}%", ':q3' => "%{$q}%", ':q4' => "%{$q}%"]);
         $this->json(['success'=>true,'data'=>$stmt->fetchAll()]);
     }
 

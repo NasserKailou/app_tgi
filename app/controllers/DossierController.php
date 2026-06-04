@@ -13,8 +13,11 @@ class DossierController extends Controller {
         $type   = $_GET['type'] ?? '';
 
         if ($search) {
-            $where[] = "(d.numero_rg LIKE :q OR d.numero_rp LIKE :q OR d.numero_ri LIKE :q OR d.objet LIKE :q)";
-            $params['q'] = "%{$search}%";
+            $where[] = "(d.numero_rg LIKE :q1 OR d.numero_rp LIKE :q2 OR d.numero_ri LIKE :q3 OR d.objet LIKE :q4)";
+            $params['q1'] = "%{$search}%";
+            $params['q2'] = "%{$search}%";
+            $params['q3'] = "%{$search}%";
+            $params['q4'] = "%{$search}%";
         }
         if ($statut) { $where[] = "d.statut=:statut"; $params['statut'] = $statut; }
         if ($type)   { $where[] = "d.type_affaire=:type"; $params['type'] = $type; }
@@ -106,7 +109,6 @@ class DossierController extends Controller {
         $flash   = $this->getFlash();
         $user    = Auth::currentUser();
 
-        $parties   = $this->db->prepare("SELECT * FROM parties WHERE dossier_id=? ORDER BY type_partie,nom")->execute([(int)$id]) ? $this->db->prepare("SELECT * FROM parties WHERE dossier_id=? ORDER BY type_partie,nom") : null;
         $partiesStmt = $this->db->prepare("SELECT * FROM parties WHERE dossier_id=? ORDER BY type_partie,nom");
         $partiesStmt->execute([(int)$id]);
         $parties = $partiesStmt->fetchAll();
@@ -133,7 +135,15 @@ class DossierController extends Controller {
         $juges     = $jugesStmt->fetchAll();
         $greffiers = $this->db->query("SELECT u.* FROM users u JOIN roles r ON u.role_id=r.id WHERE r.code='greffier' AND u.actif=1")->fetchAll();
 
-        $this->view('dossiers/show', compact('dossier','parties','audiences','jugements','mouvements','detenus','cabinets','salles','juges','greffiers','flash','user'));
+        // Scellés liés au dossier
+        $scelles = [];
+        try {
+            $scelStmt = $this->db->prepare("SELECT * FROM scelles WHERE dossier_id=? ORDER BY created_at DESC");
+            $scelStmt->execute([(int)$id]);
+            $scelles = $scelStmt->fetchAll();
+        } catch (\Exception $e) { $scelles = []; }
+
+        $this->view('dossiers/show', compact('dossier','parties','audiences','jugements','mouvements','detenus','scelles','cabinets','salles','juges','greffiers','flash','user'));
     }
 
     public function edit(string $id): void {
@@ -212,6 +222,47 @@ class DossierController extends Controller {
         ]);
         $this->flash('success', 'Partie ajoutée.');
         $this->redirect('/dossiers/show/' . $id);
+    }
+
+    public function editPartie(string $id): void {
+        Auth::requireLogin();
+        Auth::requireRole(['admin','greffier','procureur','substitut_procureur','juge_instruction','president']);
+        $stmt = $this->db->prepare("SELECT * FROM parties WHERE id=?");
+        $stmt->execute([(int)$id]);
+        $partie = $stmt->fetch();
+        if (!$partie) { $this->redirect('/dossiers'); }
+        $user  = Auth::currentUser();
+        $flash = $this->getFlash();
+        $this->view('dossiers/edit_partie', compact('partie','flash','user'));
+    }
+
+    public function updatePartie(string $id): void {
+        Auth::requireLogin();
+        CSRF::check();
+        Auth::requireRole(['admin','greffier','procureur','substitut_procureur','juge_instruction','president']);
+        $stmt = $this->db->prepare("SELECT dossier_id FROM parties WHERE id=?");
+        $stmt->execute([(int)$id]);
+        $row = $stmt->fetch();
+        if (!$row) { $this->redirect('/dossiers'); }
+        $dossierId = (int)$row['dossier_id'];
+        $this->db->prepare(
+            "UPDATE parties SET type_partie=:tp, nom=:nom, prenom=:prenom,
+             date_naissance=:dn, nationalite=:nat, profession=:prof,
+             adresse=:adr, telephone=:tel
+             WHERE id=:id"
+        )->execute([
+            ':tp'   => $_POST['type_partie'],
+            ':nom'  => $this->sanitize($_POST['nom']),
+            ':prenom'=> $this->sanitize($_POST['prenom'] ?? ''),
+            ':dn'   => $_POST['date_naissance'] ?: null,
+            ':nat'  => $this->sanitize($_POST['nationalite'] ?? 'Nigérienne'),
+            ':prof' => $this->sanitize($_POST['profession'] ?? ''),
+            ':adr'  => $this->sanitize($_POST['adresse'] ?? ''),
+            ':tel'  => $this->sanitize($_POST['telephone'] ?? ''),
+            ':id'   => (int)$id,
+        ]);
+        $this->flash('success', 'Partie mise à jour.');
+        $this->redirect('/dossiers/show/' . $dossierId);
     }
 
     public function deletePartie(string $id): void {

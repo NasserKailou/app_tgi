@@ -16,8 +16,10 @@ class ScelleController extends Controller
         $params  = [];
 
         if ($search) {
-            $where[]      = "(s.numero_scelle LIKE :q OR s.description LIKE :q OR d.numero_rg LIKE :q)";
-            $params[':q'] = "%{$search}%";
+            $where[]      = "(s.numero_scelle LIKE :q1 OR s.description LIKE :q2 OR d.numero_rg LIKE :q3)";
+            $params[':q1'] = "%{$search}%";
+            $params[':q2'] = "%{$search}%";
+            $params[':q3'] = "%{$search}%";
         }
         if ($statut) { $where[] = 's.statut=:statut'; $params[':statut'] = $statut; }
         $wSQL = $where ? 'WHERE ' . implode(' AND ', $where) : '';
@@ -127,8 +129,8 @@ class ScelleController extends Controller
         Auth::requireRole(['admin', 'greffier', 'president', 'juge_instruction']);
         CSRF::check();
         $this->db->prepare(
-            "UPDATE scelles SET statut='restitue', date_restitution=CURDATE(), beneficiaire_restitution=:ben WHERE id=?"
-        )->execute([$_POST['beneficiaire'] ?? 'Non précisé', (int)$id]);
+            "UPDATE scelles SET statut='restitue', date_restitution=CURDATE(), beneficiaire_restitution=:ben WHERE id=:id"
+        )->execute([':ben' => $_POST['beneficiaire'] ?? 'Non précisé', ':id' => (int)$id]);
         $this->flash('success', 'Scellé restitué.');
         $this->redirect('/scelles/show/' . $id);
     }
