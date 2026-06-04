@@ -130,6 +130,12 @@ $router->post('/dossiers/declasser/{id}',       'DossierController@declasserDoss
 $router->get('/mandats',                      'MandatController@index');
 $router->get('/mandats/create',               'MandatController@create');
 $router->post('/mandats/store',               'MandatController@store');
+// ─── Nouvelles routes : modification et suppression ─────────────
+$router->get ('/mandats/edit/{id}',   'MandatController@edit');
+$router->post('/mandats/update/{id}', 'MandatController@update');
+$router->post('/mandats/delete/{id}', 'MandatController@delete');
+
+// ─────────────────────────────────────────────────────────────────
 $router->get('/mandats/show/{id}',            'MandatController@show');
 $router->get('/mandats/print/{id}',           'MandatController@printMandat');
 $router->post('/mandats/update-statut/{id}',  'MandatController@updateStatut');

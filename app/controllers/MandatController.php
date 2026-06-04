@@ -6,6 +6,9 @@
  *   GET  /mandats/create             → create()
  *   POST /mandats/store              → store()
  *   GET  /mandats/show/{id}          → show()
+ *   GET  /mandats/edit/{id}          → edit()
+ *   POST /mandats/update/{id}        → update()
+ *   POST /mandats/delete/{id}        → delete()
  *   GET  /mandats/print/{id}         → printMandat()
  *   POST /mandats/update-statut/{id} → updateStatut()
  *   GET  /api/mandat-person-search   → apiSearch()
@@ -98,98 +101,122 @@ class MandatController extends Controller
     }
 
     // ─────────────────────────────────────────────────────────────
-    // POST /mandats/store
-    // ─────────────────────────────────────────────────────────────
-    public function store(): void
-    {
-        Auth::requireLogin();
-        Auth::requireRole(['admin','procureur','juge_instruction','president']);
-        CSRF::check();
+// POST /mandats/store
+// ─────────────────────────────────────────────────────────────
+public function store(): void
+{
+    Auth::requireLogin();
+    Auth::requireRole(['admin','procureur','juge_instruction','president']);
+    CSRF::check();
 
-        $type       = $_POST['type_mandat']      ?? '';
-        $dossierId  = (int)($_POST['dossier_id'] ?? 0) ?: null;
-        $motif      = $this->sanitize($_POST['motif'] ?? '');
-        $infraction = $this->sanitize($_POST['infraction_libelle'] ?? '');
-        $lieu       = $this->sanitize($_POST['lieu_execution']     ?? '');
-        $dateEmis   = $_POST['date_emission']    ?? date('Y-m-d');
-        $dateExp    = $_POST['date_expiration']  ?? null;
+    $type       = $_POST['type_mandat']      ?? '';
+    $dossierId  = (int)($_POST['dossier_id'] ?? 0) ?: null;
+    $motif      = $this->sanitize($_POST['motif'] ?? '');
+    $infraction = $this->sanitize($_POST['infraction_libelle'] ?? '');
+    $lieu       = $this->sanitize($_POST['lieu_execution']     ?? '');
+    $dateEmis   = $_POST['date_emission']    ?? date('Y-m-d');
+    $dateExp    = $_POST['date_expiration']  ?? null;
+    $dateExhibe = $_POST['date_exhibe']      ?? null;
+    $flagrant   = !empty($_POST['flagrant_delit']) ? 1 : 0;
 
-        // Cible : détenu, partie, ou nouvelle personne
-        $detenuId  = (int)($_POST['detenu_id']  ?? 0) ?: null;
-        $partieId  = (int)($_POST['partie_id']  ?? 0) ?: null;
-        $nvNom     = $this->sanitize($_POST['nouveau_nom']         ?? '');
-        $nvPrenom  = $this->sanitize($_POST['nouveau_prenom']      ?? '');
-        $nvDdn     = $_POST['nouveau_ddn']       ?? null;
-        $nvNat     = $this->sanitize($_POST['nouveau_nationalite'] ?? 'Nigérienne');
-        $nvAddr    = $this->sanitize($_POST['nouveau_adresse']     ?? '');
-        $nvProf    = $this->sanitize($_POST['nouveau_profession']  ?? '');
+    // Cible : détenu, partie, ou nouvelle personne
+    $detenuId  = (int)($_POST['detenu_id']  ?? 0) ?: null;
+    $partieId  = (int)($_POST['partie_id']  ?? 0) ?: null;
+    $nvNom     = $this->sanitize($_POST['nouveau_nom']            ?? '');
+    $nvPrenom  = $this->sanitize($_POST['nouveau_prenom']         ?? '');
+    $nvDdn     = $_POST['nouveau_ddn']                            ?? null;
+    $nvLieuN   = $this->sanitize($_POST['nouveau_lieu_naissance'] ?? '');
+    $nvPere    = $this->sanitize($_POST['nouveau_pere']           ?? '');
+    $nvMere    = $this->sanitize($_POST['nouveau_mere']           ?? '');
+    $sexe      = in_array($_POST['sexe'] ?? '', ['M','F'], true) ? $_POST['sexe'] : null;
+    $nvNat     = $this->sanitize($_POST['nouveau_nationalite']    ?? 'Nigérienne');
+    $nvAddr    = $this->sanitize($_POST['nouveau_adresse']        ?? '');
+    $nvProf    = $this->sanitize($_POST['nouveau_profession']     ?? '');
+    $sitFam    = $this->sanitize($_POST['situation_famille']      ?? '');
+    $servMil   = $this->sanitize($_POST['service_militaire']      ?? '');
+    $condamn   = $this->sanitize($_POST['condamnations']          ?? '');
 
-        if (!$type || !$motif) {
-            $this->flash('error', 'Le type et le motif sont obligatoires.');
-            $this->redirect('/mandats/create');
-            return;
-        }
-
-        // Générer le numéro
-        $num = (new Numerotation($this->db))->genererMandat();
-
-        $stmt = $this->db->prepare(
-            "INSERT INTO mandats
-                (numero, type_mandat, dossier_id,
-                 detenu_id, partie_id,
-                 nouveau_nom, nouveau_prenom, nouveau_ddn, nouveau_nationalite, nouveau_adresse, nouveau_profession,
-                 motif, infraction_libelle, lieu_execution,
-                 emetteur_id, date_emission, date_expiration,
-                 statut, created_by)
-             VALUES
-                (:num, :type, :dos,
-                 :det, :par,
-                 :nvn, :nvp, :nvd, :nvnat, :nvaddr, :nvprof,
-                 :motif, :inf, :lieu,
-                 :emit, :demis, :dexp,
-                 'emis', :cb)"
-        );
-        $stmt->execute([
-            ':num'   => $num,
-            ':type'  => $type,
-            ':dos'   => $dossierId,
-            ':det'   => $detenuId,
-            ':par'   => $partieId,
-            ':nvn'   => $nvNom    ?: null,
-            ':nvp'   => $nvPrenom ?: null,
-            ':nvd'   => $nvDdn    ?: null,
-            ':nvnat' => $nvNat    ?: 'Nigérienne',
-            ':nvaddr'=> $nvAddr   ?: null,
-            ':nvprof'=> $nvProf   ?: null,
-            ':motif' => $motif,
-            ':inf'   => $infraction ?: null,
-            ':lieu'  => $lieu       ?: null,
-            ':emit'  => Auth::userId(),
-            ':demis' => $dateEmis,
-            ':dexp'  => $dateExp  ?: null,
-            ':cb'    => Auth::userId(),
-        ]);
-        $newId = (int)$this->db->lastInsertId();
-
-        // Si nouveau + dossier → créer automatiquement une partie dans le dossier
-        if ($dossierId && $nvNom && !$detenuId && !$partieId) {
-            $this->db->prepare(
-                "INSERT INTO parties (dossier_id,type_partie,nom,prenom,date_naissance,nationalite,profession,adresse)
-                 VALUES (:dos,'prevenu',:n,:p,:d,:nat,:prof,:addr)"
-            )->execute([
-                ':dos'  => $dossierId,
-                ':n'    => $nvNom,
-                ':p'    => $nvPrenom ?: null,
-                ':d'    => $nvDdn    ?: null,
-                ':nat'  => $nvNat,
-                ':prof' => $nvProf   ?: null,
-                ':addr' => $nvAddr   ?: null,
-            ]);
-        }
-
-        $this->flash('success', "Mandat $num émis avec succès.");
-        $this->redirect('/mandats/show/' . $newId);
+    if (!$type || !$motif) {
+        $this->flash('error', 'Le type et le motif sont obligatoires.');
+        $this->redirect('/mandats/create');
+        return;
     }
+
+    // Générer le numéro
+    $num = (new Numerotation($this->db))->genererMandat();
+
+    $stmt = $this->db->prepare(
+        "INSERT INTO mandats
+            (numero, type_mandat, dossier_id,
+             detenu_id, partie_id,
+             nouveau_nom, nouveau_prenom, nouveau_ddn, nouveau_lieu_naissance,
+             nouveau_pere, nouveau_mere, sexe,
+             nouveau_nationalite, nouveau_adresse, nouveau_profession,
+             situation_famille, service_militaire, condamnations,
+             motif, infraction_libelle, lieu_execution,
+             emetteur_id, date_emission, date_expiration, date_exhibe, flagrant_delit,
+             statut, created_by)
+         VALUES
+            (:num, :type, :dos,
+             :det, :par,
+             :nvn, :nvp, :nvd, :nvln,
+             :nvpere, :nvmere, :sexe,
+             :nvnat, :nvaddr, :nvprof,
+             :sitfam, :servmil, :condamn,
+             :motif, :inf, :lieu,
+             :emit, :demis, :dexp, :dexhibe, :flagrant,
+             'emis', :cb)"
+    );
+    $stmt->execute([
+        ':num'      => $num,
+        ':type'     => $type,
+        ':dos'      => $dossierId,
+        ':det'      => $detenuId,
+        ':par'      => $partieId,
+        ':nvn'      => $nvNom    ?: null,
+        ':nvp'      => $nvPrenom ?: null,
+        ':nvd'      => $nvDdn    ?: null,
+        ':nvln'     => $nvLieuN  ?: null,
+        ':nvpere'   => $nvPere   ?: null,
+        ':nvmere'   => $nvMere   ?: null,
+        ':sexe'     => $sexe,
+        ':nvnat'    => $nvNat    ?: 'Nigérienne',
+        ':nvaddr'   => $nvAddr   ?: null,
+        ':nvprof'   => $nvProf   ?: null,
+        ':sitfam'   => $sitFam   ?: null,
+        ':servmil'  => $servMil  ?: null,
+        ':condamn'  => $condamn  ?: null,
+        ':motif'    => $motif,
+        ':inf'      => $infraction ?: null,
+        ':lieu'     => $lieu       ?: null,
+        ':emit'     => Auth::userId(),
+        ':demis'    => $dateEmis,
+        ':dexp'     => $dateExp    ?: null,
+        ':dexhibe'  => $dateExhibe ?: null,
+        ':flagrant' => $flagrant,
+        ':cb'       => Auth::userId(),
+    ]);
+    $newId = (int)$this->db->lastInsertId();
+
+    // Si nouveau + dossier → créer automatiquement une partie dans le dossier
+    if ($dossierId && $nvNom && !$detenuId && !$partieId) {
+        $this->db->prepare(
+            "INSERT INTO parties (dossier_id,type_partie,nom,prenom,date_naissance,nationalite,profession,adresse)
+             VALUES (:dos,'prevenu',:n,:p,:d,:nat,:prof,:addr)"
+        )->execute([
+            ':dos'  => $dossierId,
+            ':n'    => $nvNom,
+            ':p'    => $nvPrenom ?: null,
+            ':d'    => $nvDdn    ?: null,
+            ':nat'  => $nvNat,
+            ':prof' => $nvProf   ?: null,
+            ':addr' => $nvAddr   ?: null,
+        ]);
+    }
+
+    $this->flash('success', "Mandat $num émis avec succès.");
+    $this->redirect('/mandats/show/' . $newId);
+}
 
     // ─────────────────────────────────────────────────────────────
     // GET /mandats/show/{id}
@@ -201,6 +228,219 @@ class MandatController extends Controller
         $mandat = $this->getMandatDetail((int)$id);
         if (!$mandat) { $this->redirect('/mandats'); return; }
         $this->view('mandats/show', compact('mandat','flash'));
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // GET /mandats/edit/{id}  — Formulaire de modification
+    // ─────────────────────────────────────────────────────────────
+    public function edit(string $id): void
+    {
+        Auth::requireLogin();
+        Auth::requireRole(['admin','procureur','juge_instruction','president']);
+
+        $id     = (int)$id;
+        $mandat = $this->getMandatDetail($id);
+        if (!$mandat) {
+            $this->flash('error', 'Mandat introuvable.');
+            $this->redirect('/mandats');
+            return;
+        }
+
+        // Droit de modifier : admin/procureur OU émetteur du mandat
+        $user    = Auth::currentUser();
+        $role    = $user['role_code'] ?? '';
+        $isAdmin = in_array($role, ['admin','procureur'], true);
+        $isOwner = (int)$mandat['emetteur_id'] === (int)($user['id'] ?? 0);
+        if (!$isAdmin && !$isOwner) {
+            $this->flash('error', "Vous n'avez pas le droit de modifier ce mandat.");
+            $this->redirect('/mandats/show/' . $id);
+            return;
+        }
+
+        // Blocage si statut figé
+        if (in_array($mandat['statut'], ['execute','revoque','annule','expire'], true)) {
+            $this->flash('error', "Impossible de modifier un mandat dont le statut est « {$mandat['statut']} ».");
+            $this->redirect('/mandats/show/' . $id);
+            return;
+        }
+
+        $dossiers = $this->db->query(
+            "SELECT id, numero_rg, objet FROM dossiers
+             WHERE statut NOT IN ('juge','classe')
+             ORDER BY numero_rg DESC LIMIT 200"
+        )->fetchAll();
+
+        $detenus = $this->db->query(
+            "SELECT id, CONCAT(prenom,' ',nom,' — N°écrou: ',numero_ecrou) AS label
+             FROM detenus WHERE statut='incarcere' ORDER BY nom, prenom LIMIT 500"
+        )->fetchAll();
+
+        $flash = $this->getFlash();
+        $this->view('mandats/edit', compact('mandat','dossiers','detenus','flash'));
+    }
+
+    // ─────────────────────────────────────────────────────────────
+// POST /mandats/update/{id}
+// ─────────────────────────────────────────────────────────────
+public function update(string $id): void
+{
+    Auth::requireLogin();
+    Auth::requireRole(['admin','procureur','juge_instruction','president']);
+    CSRF::check();
+
+    $id     = (int)$id;
+    $mandat = $this->getMandatDetail($id);
+    if (!$mandat) {
+        $this->flash('error', 'Mandat introuvable.');
+        $this->redirect('/mandats');
+        return;
+    }
+
+    $user    = Auth::currentUser();
+    $role    = $user['role_code'] ?? '';
+    $isAdmin = in_array($role, ['admin','procureur'], true);
+    $isOwner = (int)$mandat['emetteur_id'] === (int)($user['id'] ?? 0);
+    if (!$isAdmin && !$isOwner) {
+        $this->flash('error', "Vous n'avez pas le droit de modifier ce mandat.");
+        $this->redirect('/mandats/show/' . $id);
+        return;
+    }
+    if (in_array($mandat['statut'], ['execute','revoque','annule','expire'], true)) {
+        $this->flash('error', "Impossible de modifier un mandat dont le statut est « {$mandat['statut']} ».");
+        $this->redirect('/mandats/show/' . $id);
+        return;
+    }
+
+    $type       = $_POST['type_mandat']      ?? $mandat['type_mandat'];
+    $dossierId  = (int)($_POST['dossier_id'] ?? 0) ?: null;
+    $motif      = $this->sanitize($_POST['motif'] ?? '');
+    $infraction = $this->sanitize($_POST['infraction_libelle'] ?? '');
+    $lieu       = $this->sanitize($_POST['lieu_execution']     ?? '');
+    $dateEmis   = $_POST['date_emission']    ?? $mandat['date_emission'];
+    $dateExp    = $_POST['date_expiration']  ?? null;
+    $dateExhibe = $_POST['date_exhibe']      ?? null;
+    $flagrant   = !empty($_POST['flagrant_delit']) ? 1 : 0;
+
+    $detenuId  = (int)($_POST['detenu_id']  ?? 0) ?: null;
+    $partieId  = (int)($_POST['partie_id']  ?? 0) ?: null;
+    $nvNom     = $this->sanitize($_POST['nouveau_nom']            ?? '');
+    $nvPrenom  = $this->sanitize($_POST['nouveau_prenom']         ?? '');
+    $nvDdn     = $_POST['nouveau_ddn']                            ?? null;
+    $nvLieuN   = $this->sanitize($_POST['nouveau_lieu_naissance'] ?? '');
+    $nvPere    = $this->sanitize($_POST['nouveau_pere']           ?? '');
+    $nvMere    = $this->sanitize($_POST['nouveau_mere']           ?? '');
+    $sexe      = in_array($_POST['sexe'] ?? '', ['M','F'], true) ? $_POST['sexe'] : null;
+    $nvNat     = $this->sanitize($_POST['nouveau_nationalite']    ?? 'Nigérienne');
+    $nvAddr    = $this->sanitize($_POST['nouveau_adresse']        ?? '');
+    $nvProf    = $this->sanitize($_POST['nouveau_profession']     ?? '');
+    $sitFam    = $this->sanitize($_POST['situation_famille']      ?? '');
+    $servMil   = $this->sanitize($_POST['service_militaire']      ?? '');
+    $condamn   = $this->sanitize($_POST['condamnations']          ?? '');
+
+    if (!$type || !$motif) {
+        $this->flash('error', 'Le type et le motif sont obligatoires.');
+        $this->redirect('/mandats/edit/' . $id);
+        return;
+    }
+
+    $stmt = $this->db->prepare(
+        "UPDATE mandats SET
+            type_mandat            = :type,
+            dossier_id             = :dos,
+            detenu_id              = :det,
+            partie_id              = :par,
+            nouveau_nom            = :nvn,
+            nouveau_prenom         = :nvp,
+            nouveau_ddn            = :nvd,
+            nouveau_lieu_naissance = :nvln,
+            nouveau_pere           = :nvpere,
+            nouveau_mere           = :nvmere,
+            sexe                   = :sexe,
+            nouveau_nationalite    = :nvnat,
+            nouveau_adresse        = :nvaddr,
+            nouveau_profession     = :nvprof,
+            situation_famille      = :sitfam,
+            service_militaire      = :servmil,
+            condamnations          = :condamn,
+            motif                  = :motif,
+            infraction_libelle     = :inf,
+            lieu_execution         = :lieu,
+            date_emission          = :demis,
+            date_expiration        = :dexp,
+            date_exhibe            = :dexhibe,
+            flagrant_delit         = :flagrant,
+            updated_at             = NOW()
+         WHERE id = :id"
+    );
+    $stmt->execute([
+        ':type'     => $type,
+        ':dos'      => $dossierId,
+        ':det'      => $detenuId,
+        ':par'      => $partieId,
+        ':nvn'      => $nvNom    ?: null,
+        ':nvp'      => $nvPrenom ?: null,
+        ':nvd'      => $nvDdn    ?: null,
+        ':nvln'     => $nvLieuN  ?: null,
+        ':nvpere'   => $nvPere   ?: null,
+        ':nvmere'   => $nvMere   ?: null,
+        ':sexe'     => $sexe,
+        ':nvnat'    => $nvNat    ?: 'Nigérienne',
+        ':nvaddr'   => $nvAddr   ?: null,
+        ':nvprof'   => $nvProf   ?: null,
+        ':sitfam'   => $sitFam   ?: null,
+        ':servmil'  => $servMil  ?: null,
+        ':condamn'  => $condamn  ?: null,
+        ':motif'    => $motif,
+        ':inf'      => $infraction ?: null,
+        ':lieu'     => $lieu       ?: null,
+        ':demis'    => $dateEmis,
+        ':dexp'     => $dateExp    ?: null,
+        ':dexhibe'  => $dateExhibe ?: null,
+        ':flagrant' => $flagrant,
+        ':id'       => $id,
+    ]);
+
+    $this->flash('success', "Mandat {$mandat['numero']} mis à jour avec succès.");
+    $this->redirect('/mandats/show/' . $id);
+}
+
+    // ─────────────────────────────────────────────────────────────
+    // POST /mandats/delete/{id}  — Suppression
+    // ─────────────────────────────────────────────────────────────
+    public function delete(string $id): void
+    {
+        Auth::requireLogin();
+        Auth::requireRole(['admin','procureur']);
+        CSRF::check();
+
+        $id   = (int)$id;
+        $stmt = $this->db->prepare("SELECT id, numero, statut FROM mandats WHERE id = :id");
+        $stmt->execute([':id' => $id]);
+        $mandat = $stmt->fetch();
+
+        if (!$mandat) {
+            $this->flash('error', 'Mandat introuvable.');
+            $this->redirect('/mandats');
+            return;
+        }
+
+        // Un mandat exécuté ne peut pas être supprimé (trace légale)
+        if ($mandat['statut'] === 'execute') {
+            $this->flash('error', "Impossible de supprimer un mandat déjà exécuté.");
+            $this->redirect('/mandats/show/' . $id);
+            return;
+        }
+
+        try {
+            $this->db->prepare("DELETE FROM mandats WHERE id = :id")
+                     ->execute([':id' => $id]);
+            $this->flash('success', "Mandat {$mandat['numero']} supprimé avec succès.");
+        } catch (Throwable $e) {
+            error_log('[MandatController::delete] ' . $e->getMessage());
+            $this->flash('error', "Erreur lors de la suppression : " . $e->getMessage());
+        }
+
+        $this->redirect('/mandats');
     }
 
     // ─────────────────────────────────────────────────────────────

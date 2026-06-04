@@ -14,3 +14,5 @@ RewriteCond %{REQUEST_URI} !^/public/
 
 # ── Tout rediriger vers public/index.php ──
 RewriteRule ^(.*)$ public/index.php [L]
+
+Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://code.highcharts.com; script-src-elem 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://code.highcharts.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; img-src 'self' data: https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org; font-src 'self' data: https://cdn.jsdelivr.net; connect-src 'self';"

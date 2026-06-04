@@ -1,221 +1,446 @@
 <?php
-/* app/views/mandats/print.php — Document imprimable officiel avec QR code et en-têtes paramétrables */
-$typeLabels = [
-    'arret'       => 'MANDAT D\'ARRÊT',
-    'depot'       => 'MANDAT DE DÉPÔT',
-    'amener'      => 'MANDAT D\'AMENER',
-    'comparution' => 'MANDAT DE COMPARUTION',
-    'perquisition'=> 'MANDAT DE PERQUISITION',
-    'liberation'  => 'MANDAT DE LIBÉRATION',
-];
-$tl = $typeLabels[$mandat['type_mandat']] ?? strtoupper($mandat['type_mandat']);
-if ($mandat['detenu_label'])     $cible = $mandat['detenu_label'];
-elseif ($mandat['partie_label']) $cible = $mandat['partie_label'];
-elseif ($mandat['nouveau_nom'])  $cible = trim($mandat['nouveau_prenom'] . ' ' . $mandat['nouveau_nom']);
-else                              $cible = 'INCONNU';
+/* app/views/mandats/print.php — Mandat officiel TGI Niamey (1 page A4) */
 
-// Paramètres tribunal depuis la table (fallback si table non dispo)
+// ─── Libellés selon le type de mandat ─────────────────────────────────
+$typeLabels = [
+    'arret'        => 'MANDAT D\'ARRÊT',
+    'depot'        => 'MANDAT DE DÉPÔT',
+    'amener'       => 'MANDAT D\'AMENER',
+    'comparution'  => 'MANDAT DE COMPARUTION',
+    'perquisition' => 'MANDAT DE PERQUISITION',
+    'liberation'   => 'MANDAT DE LIBÉRATION',
+];
+$typeArticles = [
+    'arret'        => "l'article 122 du Code de Procédure Pénale",
+    'depot'        => "l'article 65 du Code de Procédure Pénal",
+    'amener'       => "l'article 121 du Code de Procédure Pénale",
+    'comparution'  => "l'article 120 du Code de Procédure Pénale",
+    'perquisition' => "les articles 56 et suivants du Code de Procédure Pénale",
+    'liberation'   => "les dispositions du Code de Procédure Pénale",
+];
+$tl         = $typeLabels[$mandat['type_mandat']]   ?? strtoupper($mandat['type_mandat']);
+$article    = $typeArticles[$mandat['type_mandat']] ?? "l'article 65 du Code de Procédure Pénal";
+$isDepot    = ($mandat['type_mandat'] === 'depot');
+$isFlagrant = !empty($mandat['flagrant_delit']) || $isDepot;
+
+// ─── Cible ────────────────────────────────────────────────────────────
+if (!empty($mandat['detenu_label']))      $cible = $mandat['detenu_label'];
+elseif (!empty($mandat['partie_label']))  $cible = $mandat['partie_label'];
+elseif (!empty($mandat['nouveau_nom']))   $cible = trim(($mandat['nouveau_prenom'] ?? '') . ' ' . $mandat['nouveau_nom']);
+else                                      $cible = '';
+
+$ddn         = $mandat['nouveau_ddn']            ?? '';
+$lieuNais    = $mandat['nouveau_lieu_naissance'] ?? '';
+$nationalite = $mandat['nouveau_nationalite']    ?? 'Nigérienne';
+$profession  = $mandat['nouveau_profession']     ?? '';
+$domicile    = $mandat['nouveau_adresse']        ?? '';
+$sitFamille  = $mandat['situation_famille']      ?? '';
+$condamn     = $mandat['condamnations']          ?? '';
+$serviceMil  = $mandat['service_militaire']      ?? '';
+$infraction  = $mandat['infraction_libelle']     ?? '';
+$motif       = $mandat['motif']                  ?? '';
+$lieuExec    = $mandat['lieu_execution']         ?? "la Maison d'Arrêt de Niamey";
+$numeroRP    = $mandat['numero']                 ?? '';
+$numeroRG    = $mandat['numero_rg']              ?? '';
+$sexeF       = (($mandat['sexe'] ?? '') === 'F');
+
+// ─── Paramètres tribunal ──────────────────────────────────────────────
 try {
     $db = Database::getInstance()->getPDO();
     $prows = $db->query("SELECT cle, valeur FROM parametres_tribunal")->fetchAll(\PDO::FETCH_KEY_PAIR);
-} catch (\Exception $e) {
-    $prows = [];
-}
-$p = function(string $cle, string $default = '') use ($prows): string {
-    return $prows[$cle] ?? $default;
-};
+} catch (\Exception $e) { $prows = []; }
+$p = function (string $cle, string $def = '') use ($prows): string { return $prows[$cle] ?? $def; };
 
 $entete1  = $p('doc_entete_ligne1', 'REPUBLIQUE DU NIGER');
-$entete2  = $p('doc_entete_ligne2', 'MINISTÈRE DE LA JUSTICE');
-$entete3  = $p('doc_entete_ligne3', 'Tribunal de Grande Instance Hors Classe de Niamey');
-$piedPage = $p('doc_pied_page', 'Document officiel — TGI-NY — Niamey — République du Niger');
-$devise   = $p('tribunal_devise', 'Fraternité — Travail — Progrès');
-$adresse  = $p('tribunal_adresse', 'Avenue de la Mairie — B.P. 466 — Niamey, République du Niger');
+$entete2  = $p('doc_entete_ligne2', "COUR D'APPEL DE NIAMEY");
+$entete3  = $p('doc_entete_ligne3', 'TRIBUNAL DE GRANDE INSTANCE HORS CLASSE DE NIAMEY');
+$entete4  = $p('doc_entete_ligne4', 'CABINET DU PROCUREUR DE LA REPUBLIQUE');
+$piedPage = $p('doc_pied_page', 'Document officiel — TGI-NY — Niamey');
 $qrActif  = $p('doc_qr_code_actif', '1') === '1';
 $qrBase   = rtrim($p('doc_qr_code_base_url', BASE_URL), '/');
 $qrUrl    = $qrBase . '/mandats/show/' . $mandat['id'];
+
+// ─── Helper : valeur ou pointillés ────────────────────────────────────
+$dot = function (?string $v, int $n = 30): string {
+    $v = trim((string)$v);
+    return $v === '' ? str_repeat('.', $n) : htmlspecialchars($v);
+};
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title><?= $tl ?> — <?= htmlspecialchars($mandat['numero']) ?></title>
+<title><?= $tl ?> — <?= htmlspecialchars($numeroRP) ?></title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Times New Roman',serif;font-size:12pt;color:#000;background:#fff;padding:15mm 20mm}
-.header{text-align:center;border-bottom:3px double #000;padding-bottom:12px;margin-bottom:20px}
-.republic{font-size:12pt;font-weight:bold;letter-spacing:2px;text-transform:uppercase}
-.devise{font-size:9pt;font-style:italic;margin:4px 0}
-.tribunal{font-size:13pt;font-weight:bold;margin:8px 0}
-.pole{font-size:10pt;color:#555;margin-bottom:6px}
-.doc-title{text-align:center;margin:20px 0 18px}
-.doc-title h1{font-size:18pt;font-weight:bold;text-transform:uppercase;border:3px solid #000;padding:8px 24px;display:inline-block;letter-spacing:3px}
-.doc-title .numero{font-size:12pt;margin-top:6px;font-weight:bold}
-.section{margin:12px 0}
-.section h3{font-size:10pt;font-weight:bold;text-transform:uppercase;border-bottom:1px solid #000;padding-bottom:3px;margin-bottom:8px;letter-spacing:1px}
-.field-row{display:flex;margin:5px 0;line-height:1.6}
-.field-label{font-weight:bold;min-width:180px;flex-shrink:0}
-.field-value{flex:1;border-bottom:1px dotted #999;padding-left:5px}
-.motif-box{border:1px solid #000;padding:10px;margin:8px 0;min-height:70px;line-height:1.8;text-align:justify}
-.signatures{margin-top:35px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px}
-.sig-block{text-align:center}
-.sig-block .sig-title{font-weight:bold;text-transform:uppercase;font-size:9.5pt;border-top:1px solid #000;padding-top:8px;margin-top:55px}
-.sig-block .sig-name{font-size:8pt;color:#555;margin-top:4px}
-.footer{margin-top:25px;padding-top:8px;border-top:1px solid #000;font-size:8pt;color:#555;text-align:center}
-.validity{background:#f5f5f5;border:1px solid #ccc;padding:8px;margin:12px 0;font-size:9.5pt}
-.qr-block{float:right;margin:0 0 10px 20px;text-align:center}
-.qr-block canvas, .qr-block img{display:block}
-.qr-block small{font-size:7pt;color:#888;display:block;margin-top:3px}
-.header-logos{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.header-logos img{height:60px;width:auto;object-fit:contain}
-.clearfix::after{content:'';display:block;clear:both}
-@media print{
-    body{padding:10mm 15mm}
-    @page{margin:8mm 12mm;size:A4}
-    .no-print{display:none}
+* { margin:0; padding:0; box-sizing:border-box; }
+
+@page { size: A4 portrait; margin: 8mm 12mm; }
+
+html, body { width: 100%; height: 100%; }
+
+body {
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 10.5pt;
+    color: #000;
+    background: #fff;
+    padding: 6mm 10mm;
+    line-height: 1.35;
+}
+
+/* ═══ En-tête ═══ */
+.entete { margin-bottom: 8px; }
+.entete .ligne {
+    font-weight: bold;
+    text-decoration: underline;
+    font-size: 9.5pt;
+    line-height: 1.4;
+}
+
+/* ═══ Titre ═══ */
+.titre-central { text-align: center; margin: 8px 0 6px; }
+.titre-central h1 {
+    font-size: 17pt;
+    font-weight: bold;
+    text-decoration: underline;
+    letter-spacing: 1px;
+    display: inline-block;
+    margin: 0;
+}
+.titre-central .sous-titre {
+    font-style: italic;
+    font-weight: bold;
+    font-size: 12pt;
+    margin-top: 1px;
+}
+.titre-central .au-nom {
+    font-weight: bold;
+    font-size: 10.5pt;
+    margin-top: 6px;
+    text-decoration: underline;
+}
+
+/* ═══ Corps ═══ */
+.corps { margin-top: 4px; }
+.corps p { margin-bottom: 4px; text-align: justify; }
+
+.nous-line { text-align: center; margin: 6px 0 2px; }
+.nous-line .label { font-weight: bold; }
+.nous-line .val {
+    display: inline-block;
+    min-width: 320px;
+    border-bottom: 1px solid #000;
+    padding: 0 4px;
+    text-align: center;
+}
+
+.center-small { text-align: center; font-size: 10pt; margin: 2px 0; }
+
+/* ═══ Layout 2 colonnes ═══ */
+.layout {
+    display: grid;
+    grid-template-columns: 165px 1fr;
+    gap: 0 12px;
+    margin-top: 6px;
+    page-break-inside: avoid;
+}
+
+.col-gauche {
+    font-size: 9.5pt;
+    line-height: 1.55;
+}
+.col-gauche .item { margin-bottom: 6px; }
+.col-gauche .item em { font-style: italic; display: block; }
+.col-gauche .underline {
+    display: inline-block;
+    min-width: 80px;
+    border-bottom: 1px solid #000;
+}
+
+/* ═══ Identité ═══ */
+.identite .ligne {
+    margin: 3px 0;
+    line-height: 1.6;
+}
+.identite .lbl  { font-weight: 600; }
+.identite .val  {
+    display: inline-block;
+    border-bottom: 1px solid #000;
+    padding: 0 3px;
+    min-height: 14px;
+    font-size: 10pt;
+}
+
+.w-large  { min-width: 240px; }
+.w-medium { min-width: 130px; }
+.w-small  { min-width: 90px;  }
+.w-tiny   { min-width: 50px;  }
+
+/* ═══ Flagrant ═══ */
+.flagrant-line {
+    margin: 8px 0 4px;
+    font-size: 10.5pt;
+}
+.flagrant-line .val {
+    display: inline-block;
+    border-bottom: 1px solid #000;
+    min-width: 320px;
+    padding: 0 3px;
+}
+
+/* ═══ Injonction ═══ */
+.injonction { margin: 6px 0; text-align: justify; font-size: 10pt; }
+.injonction p { margin-bottom: 4px; }
+
+/* ═══ Signature ═══ */
+.signature { margin-top: 10px; text-align: center; page-break-inside: avoid; }
+.signature .lieu-date {
+    text-align: left;
+    margin: 4px 0 18px;
+    font-style: italic;
+    font-size: 10pt;
+}
+.signature .lieu-date .val {
+    display: inline-block;
+    border-bottom: 1px solid #000;
+    min-width: 180px;
+    padding: 0 4px;
+}
+.signature .titre-sig {
+    font-weight: bold;
+    text-decoration: underline;
+    text-transform: uppercase;
+    font-size: 10.5pt;
+    margin-top: 30px;
+}
+.signature .nom-sig {
+    font-size: 9pt;
+    margin-top: 2px;
+    font-style: italic;
+}
+
+/* ═══ QR Code ═══ */
+.qr-block {
+    position: absolute;
+    top: 8mm;
+    right: 12mm;
+    text-align: center;
+    font-size: 7pt;
+}
+.qr-block canvas { display: block; }
+.qr-block small { color: #555; display: block; margin-top: 1px; font-size: 6.5pt; }
+
+/* ═══ Pied ═══ */
+.pied {
+    margin-top: 8px;
+    padding-top: 4px;
+    border-top: 1px solid #999;
+    font-size: 7.5pt;
+    color: #555;
+    text-align: center;
+}
+
+/* ═══ Impression ═══ */
+@media print {
+    body {
+        padding: 4mm 8mm;
+        font-size: 10pt;
+    }
+    .titre-central h1 { font-size: 16pt; }
+    .titre-central .sous-titre { font-size: 11.5pt; }
+    .qr-block { position: absolute; top: 4mm; right: 8mm; }
+    .no-print { display: none !important; }
+    /* éviter les sauts de page */
+    .layout, .signature, .injonction, .flagrant-line { page-break-inside: avoid; }
 }
 </style>
 </head>
-<body onload="initQR();window.setTimeout(function(){window.print();},400)">
+<body onload="initQR();window.setTimeout(function(){window.print();},500)">
 
-<div class="header">
-    <!-- Logos + République -->
-    <?php if (file_exists(ROOT_PATH . '/public/assets/img/logos_tgi.png')): ?>
-    <div class="header-logos">
-        <img src="<?= BASE_URL ?>/assets/img/logos_tgi.png" alt="Logos TGI" style="height:65px">
-        <div>
-            <div class="republic"><?= htmlspecialchars($entete1) ?></div>
-            <div class="devise"><?= htmlspecialchars($devise) ?></div>
-        </div>
-        <div style="width:65px"></div>
-    </div>
-    <?php else: ?>
-    <div class="republic"><?= htmlspecialchars($entete1) ?></div>
-    <div class="devise"><?= htmlspecialchars($devise) ?></div>
-    <?php endif; ?>
-    <div style="margin:6px 0;font-size:8pt"><?= htmlspecialchars($entete2) ?></div>
-    <div class="tribunal"><?= htmlspecialchars($entete3) ?></div>
-    <div class="pole">Pôle Judiciaire — TGI-NY</div>
-    <div style="font-size:8pt;margin-top:4px"><?= htmlspecialchars($adresse) ?></div>
+<!-- ═══════════════ EN-TÊTE ═══════════════ -->
+<div class="entete">
+    <div class="ligne"><?= htmlspecialchars($entete1) ?></div>
+    <div class="ligne"><?= htmlspecialchars($entete2) ?></div>
+    <div class="ligne"><?= htmlspecialchars($entete3) ?></div>
+    <div class="ligne"><?= htmlspecialchars($entete4) ?></div>
 </div>
 
-<!-- QR code -->
+<!-- ═══════════════ QR CODE ═══════════════ -->
 <?php if ($qrActif): ?>
-<div class="qr-block" id="qrBlock">
-    <canvas id="qrCanvas" width="80" height="80"></canvas>
+<div class="qr-block">
+    <canvas id="qrCanvas" width="60" height="60"></canvas>
     <small>Vérifier en ligne</small>
 </div>
 <?php endif; ?>
 
-<div class="doc-title clearfix">
-    <h1><?= $tl ?></h1>
-    <div class="numero"><?= htmlspecialchars($mandat['numero']) ?></div>
+<!-- ═══════════════ TITRE ═══════════════ -->
+<div class="titre-central">
+    <h1><?= $tl ?>.</h1>
+    <?php if ($isFlagrant): ?>
+        <div class="sous-titre">EN CAS DE FLAGRANT DELIT</div>
+    <?php endif; ?>
+    <div class="au-nom">REPUBLIQUE DU NIGER — AU NOM DU PEUPLE NIGERIEN</div>
 </div>
 
-<p style="text-align:center;font-style:italic;margin-bottom:15px">
-    Nous, <strong><?= htmlspecialchars($mandat['emetteur_nom']) ?></strong>,
-    <?= htmlspecialchars($mandat['emetteur_role'] ?? 'Magistrat') ?> auprès du Tribunal de Grande Instance Hors Classe de Niamey,
-</p>
+<!-- ═══════════════ CORPS ═══════════════ -->
+<div class="corps">
 
-<div class="section">
-    <h3>I — Identification de la personne concernée</h3>
-    <div class="field-row"><span class="field-label">Nom et Prénom(s) :</span><span class="field-value"><strong><?= htmlspecialchars($cible) ?></strong></span></div>
-    <?php if ($mandat['nouveau_ddn']): ?>
-    <div class="field-row"><span class="field-label">Date de naissance :</span><span class="field-value"><?= date('d/m/Y', strtotime($mandat['nouveau_ddn'])) ?></span></div>
-    <?php endif; ?>
-    <?php if ($mandat['nouveau_nationalite'] ?? $mandat['detenu_label']): ?>
-    <div class="field-row"><span class="field-label">Nationalité :</span><span class="field-value"><?= htmlspecialchars($mandat['nouveau_nationalite'] ?? 'Nigérienne') ?></span></div>
-    <?php endif; ?>
-    <?php if ($mandat['nouveau_profession']): ?>
-    <div class="field-row"><span class="field-label">Profession :</span><span class="field-value"><?= htmlspecialchars($mandat['nouveau_profession']) ?></span></div>
-    <?php endif; ?>
-    <?php if ($mandat['nouveau_adresse']): ?>
-    <div class="field-row"><span class="field-label">Adresse :</span><span class="field-value"><?= htmlspecialchars($mandat['nouveau_adresse']) ?></span></div>
-    <?php endif; ?>
-    <?php if ($mandat['numero_ecrou']): ?>
-    <div class="field-row"><span class="field-label">N° d'écrou :</span><span class="field-value"><?= htmlspecialchars($mandat['numero_ecrou']) ?></span></div>
-    <?php endif; ?>
-</div>
-
-<?php if ($mandat['infraction_libelle']): ?>
-<div class="section">
-    <h3>II — Infractions retenues</h3>
-    <div class="motif-box"><?= nl2br(htmlspecialchars($mandat['infraction_libelle'])) ?></div>
-</div>
-<?php endif; ?>
-
-<div class="section">
-    <h3>III — Motif du mandat</h3>
-    <div class="motif-box"><?= nl2br(htmlspecialchars($mandat['motif'])) ?></div>
-</div>
-
-<?php if ($mandat['lieu_execution']): ?>
-<div class="section">
-    <h3>IV — Lieu d'exécution</h3>
-    <div class="field-row"><span class="field-label">Lieu prévu :</span><span class="field-value"><?= htmlspecialchars($mandat['lieu_execution']) ?></span></div>
-</div>
-<?php endif; ?>
-
-<div class="validity">
-    <strong>📅 Date d'émission :</strong> <?= date('d/m/Y', strtotime($mandat['date_emission'])) ?>
-    <?php if ($mandat['date_expiration']): ?>
-    &nbsp;&nbsp;|&nbsp;&nbsp; <strong>⏳ Valable jusqu'au :</strong> <?= date('d/m/Y', strtotime($mandat['date_expiration'])) ?>
-    <?php else: ?>
-    &nbsp;&nbsp;|&nbsp;&nbsp; <strong>⏳ Validité :</strong> Illimitée
-    <?php endif; ?>
-    <?php if ($mandat['numero_rg']): ?>
-    &nbsp;&nbsp;|&nbsp;&nbsp; <strong>📁 Dossier :</strong> <?= htmlspecialchars($mandat['numero_rg']) ?>
-    <?php endif; ?>
-</div>
-
-<p style="margin:15px 0;text-align:justify">
-    En conséquence, nous ordonnons à tout Officier de Police Judiciaire et à tout agent de la force publique de
-    <?php if ($mandat['type_mandat'] === 'arret'): ?>procéder à l'arrestation immédiate de la personne sus-désignée et de la conduire devant nous.
-    <?php elseif ($mandat['type_mandat'] === 'depot'): ?>conduire la personne sus-désignée à <?= htmlspecialchars($mandat['lieu_execution'] ?? 'la maison d\'arrêt compétente') ?> pour y être incarcérée.
-    <?php elseif ($mandat['type_mandat'] === 'amener'): ?>amener devant nous la personne sus-désignée pour être entendue.
-    <?php elseif ($mandat['type_mandat'] === 'comparution'): ?>notifier à la personne sus-désignée l'ordre de comparaître devant ce tribunal.
-    <?php elseif ($mandat['type_mandat'] === 'perquisition'): ?>procéder aux perquisitions et saisies nécessaires au lieu indiqué.
-    <?php elseif ($mandat['type_mandat'] === 'liberation'): ?>procéder à la mise en liberté immédiate de la personne sus-désignée.
-    <?php endif; ?>
-</p>
-
-<div class="signatures">
-    <div class="sig-block">
-        <div style="height:50px"></div>
-        <div class="sig-title">Le Magistrat Émetteur</div>
-        <div class="sig-name"><?= htmlspecialchars($mandat['emetteur_nom']) ?><br><em><?= htmlspecialchars($mandat['emetteur_role'] ?? '') ?></em></div>
+    <div class="nous-line">
+        <span class="label">Nous</span>
+        <span class="val"><?= htmlspecialchars($mandat['emetteur_nom'] ?? '') ?></span>
     </div>
-    <div class="sig-block">
-        <div style="height:50px"></div>
-        <div class="sig-title">Le Procureur de la République</div>
-        <div class="sig-name">Tribunal de Grande Instance<br>Hors Classe de Niamey</div>
+
+    <p class="center-small">
+        <?= htmlspecialchars($mandat['emetteur_role'] ?? 'Procureur de la République') ?>
+        près le Tribunal de Grande Instance Hors Classe de Niamey,
+    </p>
+
+    <p class="center-small">En vertu de <?= $article ?> ;</p>
+
+    <p class="center-small">
+        Mandons et ordonnons à tous agents de la Force Publique de conduire à la
+        <?= htmlspecialchars($lieuExec) ?> de notre Siège en se conformant à la loi :
+    </p>
+
+    <!-- Bloc 2 colonnes -->
+    <div class="layout">
+
+        <div class="col-gauche">
+            <div class="item">
+                <strong>N°</strong>
+                <span class="underline"><?= htmlspecialchars($numeroRP) ?></span> /RP
+            </div>
+            <div class="item"><em>Le mandat ci-contre</em></div>
+            <div class="item"><em>A été exhibé au prévenu</em></div>
+            <div class="item">
+                <em>Par moi Procureur de</em>
+                <em>La République le</em>
+                <span class="underline">
+                    <?= !empty($mandat['date_exhibe']) ? date('d/m/Y', strtotime($mandat['date_exhibe'])) : '' ?>
+                </span>
+            </div>
+        </div>
+
+        <div class="identite">
+            <div class="ligne">
+                <span class="lbl">L<?= $sexeF ? 'a' : 'e' ?> nommé<?= $sexeF ? 'e' : '' ?> :</span>
+                <span class="val w-large"><?= $dot($cible, 40) ?></span>
+                <span class="lbl">Né<?= $sexeF ? 'e' : '' ?></span>
+                <span class="val w-tiny"><?= $ddn ? date('d/m/Y', strtotime($ddn)) : str_repeat('.', 10) ?></span>
+            </div>
+
+            <div class="ligne">
+                <span class="lbl">A</span>
+                <span class="val w-medium"><?= $dot($lieuNais, 18) ?></span>
+                <span class="lbl">De</span>
+                <span class="val w-medium"><?= $dot($mandat['nouveau_pere'] ?? '', 18) ?></span>
+            </div>
+
+            <div class="ligne">
+                <span class="lbl">Et de :</span>
+                <span class="val w-medium"><?= $dot($mandat['nouveau_mere'] ?? '', 18) ?></span>
+                <span class="lbl">Nationalité</span>
+                <span class="val w-medium"><?= $dot($nationalite, 16) ?></span>
+            </div>
+
+            <div class="ligne">
+                <span class="lbl">Profession :</span>
+                <span class="val w-medium"><?= $dot($profession, 18) ?></span>
+                <span class="lbl">Domicile</span>
+                <span class="val w-medium"><?= $dot($domicile, 18) ?></span>
+            </div>
+
+            <div class="ligne">
+                <span class="lbl">Situation de famille</span>
+                <span class="val w-large"><?= $dot($sitFamille, 35) ?></span>
+            </div>
+
+            <div class="ligne">
+                <span class="lbl">Condamnation</span>
+                <span class="val w-large"><?= $dot($condamn, 38) ?></span>
+            </div>
+
+            <div class="ligne">
+                <span class="lbl">Service militaire :</span>
+                <span class="val w-large"><?= $dot($serviceMil, 32) ?></span>
+            </div>
+        </div>
     </div>
-    <div class="sig-block">
-        <div style="height:50px"></div>
-        <div class="sig-title">Le Greffier en Chef</div>
-        <div class="sig-name">Tribunal de Grande Instance<br>Hors Classe de Niamey</div>
+
+    <!-- Flagrant délit / motif -->
+    <div class="flagrant-line">
+        <span class="lbl">Arrêté<?= $sexeF ? 'e' : '' ?></span>
+        <?php if ($isFlagrant): ?> en Flagrant Délit de <?php else: ?> pour <?php endif; ?>
+        <span class="val"><?= $dot($infraction ?: $motif, 50) ?></span>
     </div>
+
+    <!-- Injonction -->
+    <div class="injonction">
+        <?php if ($isDepot): ?>
+            <p>Enjoignons au Surveillant Chef de ladite Prison de le recevoir et de le tenir en
+               Dépôt jusqu'à ce qu'il en soit autrement ordonné.</p>
+            <p>Requérons tout dépositaire de la Force Publique auquel le présent Mandat
+               sera Exhibé de prêter main forte pour son exécution en cas de besoin.</p>
+        <?php elseif ($mandat['type_mandat'] === 'arret'): ?>
+            <p>Ordonnons à tout Officier de Police Judiciaire et à tout agent de la force publique de
+               procéder à l'arrestation immédiate de la personne sus-désignée et de la conduire devant nous.</p>
+            <p>Requérons tout dépositaire de la Force Publique auquel le présent Mandat
+               sera Exhibé de prêter main forte pour son exécution en cas de besoin.</p>
+        <?php elseif ($mandat['type_mandat'] === 'amener'): ?>
+            <p>Mandons et ordonnons à tout agent de la Force Publique d'amener devant nous la personne
+               sus-désignée pour être entendue.</p>
+        <?php elseif ($mandat['type_mandat'] === 'comparution'): ?>
+            <p>Notifions à la personne sus-désignée l'ordre de comparaître devant ce tribunal
+               aux jour et heure qui lui seront indiqués.</p>
+        <?php elseif ($mandat['type_mandat'] === 'perquisition'): ?>
+            <p>Mandons et ordonnons à tout Officier de Police Judiciaire de procéder aux perquisitions
+               et saisies nécessaires au lieu indiqué, dans le respect des formes prescrites par la loi.</p>
+        <?php elseif ($mandat['type_mandat'] === 'liberation'): ?>
+            <p>Ordonnons au Surveillant Chef de la Maison d'Arrêt de procéder à la mise en liberté
+               immédiate de la personne sus-désignée, sauf si elle est détenue pour autre cause.</p>
+        <?php endif; ?>
+        <p style="text-indent:18mm">
+            En foi de quoi le présent Mandat a été signé par nous Procureur de la
+            République et scellé de notre sceau.
+        </p>
+    </div>
+
+    <!-- Signature -->
+    <div class="signature">
+        <div class="lieu-date">
+            <strong>Fait au Parquet le</strong>
+            <span class="val">
+                <?= !empty($mandat['date_emission']) ? date('d/m/Y', strtotime($mandat['date_emission'])) : str_repeat('.', 22) ?>
+            </span>
+        </div>
+        <div class="titre-sig">
+            <?= htmlspecialchars($mandat['emetteur_role'] ?? 'LE PROCUREUR DE LA REPUBLIQUE') ?>
+        </div>
+        <?php if (!empty($mandat['emetteur_nom'])): ?>
+            <div class="nom-sig"><?= htmlspecialchars($mandat['emetteur_nom']) ?></div>
+        <?php endif; ?>
+    </div>
+
 </div>
 
-<div class="footer">
-    <?= htmlspecialchars($piedPage) ?> — <?= htmlspecialchars($mandat['numero']) ?> — Généré le <?= date('d/m/Y à H:i') ?>
-    — Ce document est valable uniquement avec le cachet et la signature originaux du tribunal.
+<!-- ═══════════════ PIED ═══════════════ -->
+<div class="pied">
+    <?= htmlspecialchars($piedPage) ?> —
+    <?= htmlspecialchars($numeroRP) ?>
+    <?= $numeroRG ? ' — Dossier ' . htmlspecialchars($numeroRG) : '' ?>
+    — Généré le <?= date('d/m/Y à H:i') ?>
 </div>
 
+<!-- ═══════════════ QR JS ═══════════════ -->
 <?php if ($qrActif): ?>
-<!-- QR Code via bibliothèque JS (pas de dépendance serveur) -->
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script>
 function initQR() {
-    var canvas = document.getElementById('qrCanvas');
-    if (!canvas) return;
-    QRCode.toCanvas(canvas, <?= json_encode($qrUrl) ?>, {
-        width: 80,
-        margin: 1,
+    var c = document.getElementById('qrCanvas');
+    if (!c) return;
+    QRCode.toCanvas(c, <?= json_encode($qrUrl) ?>, {
+        width: 60, margin: 1,
         color: { dark: '#000000', light: '#ffffff' }
-    }, function(err) {
-        if (err) console.error('QR error:', err);
-    });
+    }, function(err){ if(err) console.error('QR error:', err); });
 }
 </script>
 <?php else: ?>

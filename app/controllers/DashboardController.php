@@ -292,11 +292,19 @@ class DashboardController extends Controller {
         try {
             $pvParMois = $this->db->query($pvParMoisSQL)->fetchAll();
         } catch (\Exception $e) {
-            $pvParMois = $this->db->query(
-                "SELECT DATE_FORMAT(date_reception,'%Y-%m') as mois, type_affaire, COUNT(*) as nb
-                 FROM pv WHERE date_reception >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
-                 GROUP BY DATE_FORMAT(date_reception,'%Y-%m'), type_affaire ORDER BY mois"
-            )->fetchAll();
+           $pvParMois = $this->db->query(" SELECT DATE_FORMAT(date_reception, '%Y-%m') AS mois, type_affaire, COUNT(*) AS nb
+                FROM pv
+                WHERE date_reception >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+                AND type_affaire IS NOT NULL
+                AND type_affaire <> ''
+                GROUP BY mois, type_affaire
+                ORDER BY mois
+")->fetchAll(PDO::FETCH_ASSOC);
+
+$stats['pvParMois'] = $pvParMois;
+// L'ancien $stats['pvParMoisAntiT'] n'est plus nécessaire — la requête
+// ci-dessus retourne déjà toutes les modalités, y compris les pôles antiterroristes.
+
         }
 
         // Alertes non lues
