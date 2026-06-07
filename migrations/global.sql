@@ -10,7 +10,7 @@
 --
 -- ============================================================================
 -- TGI-NY | Tribunal de Grande Instance Hors Classe de Niamey
--- Base de données complète — Sauvegarde globale v3.8
+-- Base de données complète — Sauvegarde globale v3.9
 -- Généré le : 2026-04-18 — Migrations 001 à 014 intégrées
 -- ============================================================================
 -- RESTAURATION : mysql -u root -p tribunal_tgi_ny < global.sql
@@ -2373,7 +2373,17 @@ ALTER TABLE `documents`
   ADD KEY IF NOT EXISTS `idx_documents_pv_id` (`pv_id`);
 
 -- ============================================================================
--- FIN — Migration 015 intégrée — TGI-NY global.sql v3.8
+-- Migration 016 — cabinet_id sur users (juge_instruction)
+-- ============================================================================
+
+ALTER TABLE `users`
+  ADD COLUMN IF NOT EXISTS `cabinet_id` INT DEFAULT NULL
+    COMMENT 'Cabinet d''instruction auquel le juge est rattaché (juge_instruction uniquement)';
+
+CREATE INDEX IF NOT EXISTS `idx_users_cabinet_id` ON `users` (`cabinet_id`);
+
+-- ============================================================================
+-- FIN — Migration 016 intégrée — TGI-NY global.sql v3.9
 -- ============================================================================
 
 COMMIT;

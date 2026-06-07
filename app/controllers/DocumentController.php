@@ -52,11 +52,15 @@ class DocumentController extends Controller
             $this->json(['success' => false, 'message' => 'Dossier invalide.'], 400);
         }
 
-        // Vérifier que le dossier existe
-        $stmt = $this->db->prepare('SELECT id FROM dossiers WHERE id = :id');
+        // Vérifier que le dossier existe et que l'utilisateur y a accès
+        $stmt = $this->db->prepare('SELECT id, substitut_id, cabinet_id FROM dossiers WHERE id = :id');
         $stmt->execute([':id' => $dossierId]);
-        if (!$stmt->fetch()) {
+        $dossierRow = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$dossierRow) {
             $this->json(['success' => false, 'message' => 'Dossier introuvable.'], 404);
+        }
+        if (!AccessControl::canAccessDossier($dossierRow)) {
+            $this->json(['success' => false, 'message' => 'Accès refusé : vous n\'avez pas accès à ce dossier.'], 403);
         }
 
         // Vérifier présence du fichier
@@ -193,6 +197,13 @@ class DocumentController extends Controller
             $this->json(['success' => false, 'message' => 'Document introuvable.'], 404);
         }
 
+        // ── Contrôle d'accès : propriétaire ou rôle privilégié ───────
+        if (!AccessControl::canDeleteDocument($doc)) {
+            $this->json(['success' => false, 'message' => 'Accès refusé : vous n\'avez pas le droit de supprimer ce document.'], 403);
+            return;
+        }
+        // ─────────────────────────────────────────────────────────────
+
         // Suppression du fichier physique
         $cheminAbs = ROOT_PATH . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR
             . str_replace('/', DIRECTORY_SEPARATOR, $doc['chemin_fichier']);
@@ -229,6 +240,45 @@ class DocumentController extends Controller
             http_response_code(404);
             exit('Document introuvable.');
         }
+
+        // ── Contrôle d'accès : vérifier l'accès au dossier ou PV parent ─
+        $role   = Auth::roleCode();
+        $userId = Auth::userId();
+        $denied = false;
+
+        if ($role === 'substitut_procureur') {
+            // Le doc appartient à un dossier ou un PV
+            if (!empty($doc['dossier_id'])) {
+                $stmtD = $this->db->prepare('SELECT id, substitut_id, cabinet_id FROM dossiers WHERE id = ?');
+                $stmtD->execute([(int)$doc['dossier_id']]);
+                $parentRow = $stmtD->fetch(PDO::FETCH_ASSOC);
+                if (!$parentRow || !AccessControl::canAccessDossier($parentRow)) {
+                    $denied = true;
+                }
+            } elseif (!empty($doc['pv_id'])) {
+                $stmtP = $this->db->prepare('SELECT id, substitut_id FROM pv WHERE id = ?');
+                $stmtP->execute([(int)$doc['pv_id']]);
+                $parentRow = $stmtP->fetch(PDO::FETCH_ASSOC);
+                if (!$parentRow || !AccessControl::canAccessPV($parentRow)) {
+                    $denied = true;
+                }
+            }
+        } elseif ($role === 'juge_instruction') {
+            if (!empty($doc['dossier_id'])) {
+                $stmtD = $this->db->prepare('SELECT id, substitut_id, cabinet_id FROM dossiers WHERE id = ?');
+                $stmtD->execute([(int)$doc['dossier_id']]);
+                $parentRow = $stmtD->fetch(PDO::FETCH_ASSOC);
+                if (!$parentRow || !AccessControl::canAccessDossier($parentRow)) {
+                    $denied = true;
+                }
+            }
+        }
+
+        if ($denied) {
+            http_response_code(403);
+            exit('Accès refusé : vous n\'avez pas accès à ce document.');
+        }
+        // ─────────────────────────────────────────────────────────────
 
         // Normaliser les colonnes (compatibilité migration 001 vs 005)
         $doc['nom_original'] = $doc['nom_original'] ?? $doc['nom_fichier'] ?? $doc['nom_stockage'] ?? 'document';
@@ -290,6 +340,18 @@ class DocumentController extends Controller
         if ($dossierId <= 0) {
             $this->json(['success' => false, 'message' => 'Dossier invalide.'], 400);
         }
+
+        // ── Contrôle d'accès ─────────────────────────────────────────
+        $stmtAcc = $this->db->prepare('SELECT id, substitut_id, cabinet_id FROM dossiers WHERE id = :id');
+        $stmtAcc->execute([':id' => $dossierId]);
+        $dossierAcc = $stmtAcc->fetch(PDO::FETCH_ASSOC);
+        if (!$dossierAcc) {
+            $this->json(['success' => false, 'message' => 'Dossier introuvable.'], 404);
+        }
+        if (!AccessControl::canAccessDossier($dossierAcc)) {
+            $this->json(['success' => false, 'message' => 'Accès refusé.'], 403);
+        }
+        // ─────────────────────────────────────────────────────────────
 
         $stmt = $this->db->prepare(
             'SELECT d.id,

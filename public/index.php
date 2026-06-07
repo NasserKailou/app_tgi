@@ -15,6 +15,7 @@ require_once ROOT_PATH . '/app/helpers/Auth.php';
 require_once ROOT_PATH . '/app/helpers/CSRF.php';
 require_once ROOT_PATH . '/app/helpers/Numerotation.php';
 require_once ROOT_PATH . '/app/helpers/Alerte.php';
+require_once ROOT_PATH . '/app/helpers/AccessControl.php';
 
 // Autoloader
 spl_autoload_register(function (string $class): void {
