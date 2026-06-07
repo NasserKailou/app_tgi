@@ -18,8 +18,9 @@ class OrdonnanceController extends Controller
         $where  = [];
         $params = [];
         if ($search) {
-            $where[]      = "(o.numero_ordonnance LIKE :q OR d.numero_rg LIKE :q)";
-            $params[':q'] = "%{$search}%";
+            $where[]      = "(o.numero_ordonnance LIKE :q1 OR d.numero_rg LIKE :q2)";
+            $params[':q1'] = "%{$search}%";
+            $params[':q2'] = "%{$search}%";
         }
         if ($type)   { $where[] = 'o.type_ordonnance=:type';   $params[':type']   = $type; }
         if ($statut) { $where[] = 'o.statut=:statut';          $params[':statut'] = $statut; }

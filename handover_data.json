@@ -1,0 +1,211 @@
+{
+  "projet": "TGI-NY",
+  "version": "2.3",
+  "branche": "ak_main",
+  "date": "2026-04-27T09:59:42.486402",
+  "implementé": [
+    {
+      "id": "F01",
+      "titre": "Infractions à deux niveaux",
+      "description": "- Niveau 1 : infraction_id saisie par l'unité d'enquête (greffier)\n- Niveau 2 : qualification_substitut_id + infractions multiples (table pv_infractions)\n- Champ qualification_details pour précisions (complicité, récidive…)\n- Champ lois_applicables : texte libre, éditable uniquement par le substitut\n- Vue pv/show.php affiche clairement les deux niveaux avec badges couleur",
+      "fichiers": [
+        "app/controllers/PVController.php",
+        "app/views/pv/show.php",
+        "migrations/004_nouvelles_fonctionnalites.sql"
+      ],
+      "migration": "ALTER TABLE pv ADD COLUMN qualification_substitut_id, qualification_details, lois_applicables; CREATE TABLE pv_infractions;",
+      "credits_estimes": 150
+    },
+    {
+      "id": "F02",
+      "titre": "Infractions par mise en cause",
+      "description": "- Table mec_infractions : liaison MEC ↔ infractions (type 'unite' ou 'substitut')\n- Formulaire _form.php : checkboxes par catégorie (unité d'enquête)\n- Section réservée substitut pour la qualification détaillée par MEC\n- Sauvegarde dans MiseEnCauseController store/update",
+      "fichiers": [
+        "app/controllers/MiseEnCauseController.php",
+        "app/views/mises_en_cause/_form.php"
+      ],
+      "migration": "CREATE TABLE mec_infractions;",
+      "credits_estimes": 120
+    },
+    {
+      "id": "F03",
+      "titre": "PVs multiples par inculpé + fusion par RP",
+      "description": "- Table dossier_pvs : N PVs → 1 dossier (jointure)\n- PVs ayant le même numéro RP affichés dans pv/show.php (section 'PVs liés')\n- Substitut peut 'fusionner' un PV lié dans le dossier actuel\n- Recherche par RP dans l'index (?rp=XXX) retourne tous les PVs liés\n- PVController::fusionner() gère la jonction",
+      "fichiers": [
+        "app/controllers/PVController.php",
+        "app/views/pv/show.php",
+        "app/views/pv/index.php"
+      ],
+      "migration": "CREATE TABLE dossier_pvs; INSERT INTO dossier_pvs SELECT id, pv_id FROM dossiers;",
+      "credits_estimes": 180
+    },
+    {
+      "id": "F04",
+      "titre": "Pièces jointes par PV (substitut)",
+      "description": "- Route POST /pv/upload/{pvId} → PVController::uploadDocument()\n- Documents stockés dans public/uploads/documents/pv_{id}/\n- Affichage liste pièces jointes dans pv/show.php (section substitut uniquement)\n- Modal d'upload avec barre de progression AJAX\n- Réutilise la table documents existante avec colonne pv_id",
+      "fichiers": [
+        "app/controllers/PVController.php",
+        "app/views/pv/show.php"
+      ],
+      "migration": "ALTER TABLE documents ADD COLUMN uploaded_by_role varchar(50);",
+      "credits_estimes": 100
+    },
+    {
+      "id": "F05",
+      "titre": "Filtre de visibilité par utilisateur",
+      "description": "- Admin / Procureur : voient TOUT\n- Substitut : voit ses PV affectés (substitut_id) + ceux qu'il a créés\n- Greffier / autres : voient uniquement leurs propres saisies (created_by)\n- Méthode PVController::addVisibilityFilter() appliquée sur index\n- PVController::canAccessPV() bloque l'accès direct à un PV non autorisé\n- Idem pour DossierController (à vérifier/étendre)",
+      "fichiers": [
+        "app/controllers/PVController.php",
+        "app/helpers/Auth.php"
+      ],
+      "migration": "ALTER TABLE mises_en_cause ADD COLUMN substitut_id int(11);",
+      "credits_estimes": 90
+    },
+    {
+      "id": "F06",
+      "titre": "Graphique PV par mois et type (dashboard)",
+      "description": "- DashboardController::getStats() : pvParMois groupé par mois + type_affaire\n- Chart.js : barres empilées Pénale / Civile / Commerciale (12 derniers mois)\n- Antiterroriste visible via badge sur la liste des derniers PV\n- Le graphique 'Dossiers par statut' utilise pvStatuts correct",
+      "fichiers": [
+        "app/controllers/DashboardController.php",
+        "app/views/dashboard/index.php"
+      ],
+      "migration": "Aucune — données existantes",
+      "credits_estimes": 60
+    },
+    {
+      "id": "F07",
+      "titre": "Génération de rapport (fin de journée / période)",
+      "description": "- Formulaire dans dashboard : type (quotidien/hebdo/mensuel/annuel/personnalisé)\n  + dates de début et fin + auto-complétion selon le type\n- Route POST /dashboard/rapport → DashboardController::genererRapport()\n- Données agrégées : PVs, dossiers, audiences, jugements, scellés, contrôles…\n- Sauvegarde JSON dans table rapports\n- Vue dashboard/rapport.php : affichage HTML imprimable avec tableaux et stats\n- Accès réservé : admin, procureur, président, greffier",
+      "fichiers": [
+        "app/controllers/DashboardController.php",
+        "app/controllers/RapportController.php",
+        "app/views/dashboard/index.php",
+        "app/views/dashboard/rapport.php"
+      ],
+      "migration": "CREATE TABLE rapports (type, titre, date_debut, date_fin, contenu_json, fichier, genere_par);",
+      "credits_estimes": 120
+    },
+    {
+      "id": "F08",
+      "titre": "Scellés : option 'Autre' avec précision",
+      "description": "- Champ categorie_autre_detail (varchar 200) ajouté à la table scelles\n- Formulaire create.php : champ visible uniquement si 'Autre (à préciser)' sélectionné\n- Formulaire edit.php : idem + valeur pré-remplie en édition\n- ScelleController store/update gèrent la nouvelle colonne avec fallback si absente",
+      "fichiers": [
+        "app/controllers/ScelleController.php",
+        "app/views/scelles/create.php",
+        "app/views/scelles/edit.php"
+      ],
+      "migration": "ALTER TABLE scelles ADD COLUMN categorie_autre_detail varchar(200);",
+      "credits_estimes": 40
+    },
+    {
+      "id": "F09",
+      "titre": "Sécurité renforcée",
+      "description": "- Toutes les requêtes DB utilisent PDO avec paramètres liés (pas de concaténation)\n- CSRF::check() sur tous les POST; double champ _csrf + csrf_token\n- En-têtes HTTP sécurisés : X-Frame-Options, CSP, X-Content-Type-Options…\n- Anti-brute-force login : MAX_ATTEMPTS=5, blocage 15 min via security_logs\n- AuthController::logSecurityEvent() journalise connexions et échecs\n- sanitize() = htmlspecialchars ENT_QUOTES pour l'affichage\n- intInput() et dateInput() pour validation des entiers et dates\n- Session régénérée après login (session_regenerate_id)",
+      "fichiers": [
+        "public/index.php",
+        "app/helpers/CSRF.php",
+        "app/helpers/Auth.php",
+        "app/controllers/AuthController.php",
+        "app/core/Controller.php"
+      ],
+      "migration": "CREATE TABLE security_logs; ALTER TABLE parametres_tribunal ADD session_timeout_minutes, max_login_attempts, lockout_minutes;",
+      "credits_estimes": 80
+    },
+    {
+      "id": "F10",
+      "titre": "Mandat de dépôt — format officiel",
+      "description": "- app/views/mandats/print.php : mise en page Times New Roman, sections numérotées\n- En-tête paramétrable (parametres_tribunal : doc_entete_ligne1/2/3, devise, adresse)\n- QR code de vérification (bibliothèque JS qrcode.min.js, pas de dépendance serveur)\n- Sections : identification, infractions, motif, lieu d'exécution, validité, signatures\n- Support multi-types : arrêt, dépôt, amener, comparution, perquisition, libération\n- Impression automatique (window.print()) avec CSS @media print",
+      "fichiers": [
+        "app/controllers/MandatController.php",
+        "app/views/mandats/print.php"
+      ],
+      "migration": "Aucune",
+      "credits_estimes": 70
+    },
+    {
+      "id": "F11",
+      "titre": "Cascade Région / Département / Commune (antiterro PV)",
+      "description": "- PVController::create() charge la géo depuis la DB en JSON (GEO_DATA)\n- Fallback vers app/config/niger_geo.php si la DB est vide\n- Sélection en cascade via JavaScript (select[name=region_id] → depts → communes)\n- Migration 003 : 8 régions, 68 départements, 266 communes (codes INS RENALOC)\n- API /api/departements/{region_id} et /api/communes/{departement_id} disponibles",
+      "fichiers": [
+        "app/controllers/PVController.php",
+        "app/views/pv/create.php",
+        "app/config/niger_geo.php",
+        "migrations/003_geo_niger_complet.sql"
+      ],
+      "migration": "TRUNCATE regions/departements/communes; INSERT 266 communes RENALOC;",
+      "credits_estimes": 100
+    },
+    {
+      "id": "F12",
+      "titre": "Formulaire MEC responsive (modal fullscreen scrollable)",
+      "description": "- Modal #modalAddMEC : modal-fullscreen modal-dialog-scrollable\n- _form.php paramétrable : $inModal=true → boutons sticky-bottom\n- Pas de <form> imbriqué : la balise <form> est dans _form.php\n- Utilisé depuis pv/show.php ET dossiers/show.php (avec $inModal=true)\n- Le formulaire d'édition (mises_en_cause/edit.php) fonctionne en standalone",
+      "fichiers": [
+        "app/views/mises_en_cause/_form.php",
+        "app/views/pv/show.php",
+        "app/views/dossiers/show.php"
+      ],
+      "migration": "Aucune",
+      "credits_estimes": 50
+    }
+  ],
+  "todo": [
+    {
+      "id": "T01",
+      "priorite": "HAUTE",
+      "titre": "Appliquer le filtre de visibilité aux DossierController et autres",
+      "description": "PVController a addVisibilityFilter() mais DossierController, MandatController etc.\nn'ont pas encore de filtre per-user. Ajouter le même mécanisme.\nVérifier aussi JugementController, AudienceController.",
+      "effort_credits": 80
+    },
+    {
+      "id": "T02",
+      "priorite": "HAUTE",
+      "titre": "Génération PDF des rapports (téléchargeable)",
+      "description": "Actuellement les rapports sont affichés en HTML et imprimables.\nAjouter export PDF serveur (mPDF ou FPDF) ou via puppeteer/headless Chrome.\nStocker le chemin dans rapports.fichier et servir via /rapports/download/{id}.",
+      "effort_credits": 150
+    },
+    {
+      "id": "T03",
+      "priorite": "HAUTE",
+      "titre": "Exécuter la migration 004 en production",
+      "description": "La migration 004 est préparée (004_nouvelles_fonctionnalites.sql)\net intégrée dans global.sql. Appliquer via :\n  SOURCE /chemin/migrations/004_nouvelles_fonctionnalites.sql;\nOu importer global.sql complet (attention aux données existantes).",
+      "effort_credits": 10
+    },
+    {
+      "id": "T04",
+      "priorite": "MOYENNE",
+      "titre": "Adapter le mandat de dépôt au format exact du document fourni",
+      "description": "Le PDF mandat_depot.pdf est un scan non textuel.\nComparer visuellement la sortie de print.php avec le document officiel :\n- Vérifier la position des logos\n- Vérifier la typographie et les espacements\n- Ajouter le numéro de parquet et le numéro d'écrou en haut\n- Possibilité d'ajouter le mode d'impression recto-verso si requis",
+      "effort_credits": 80
+    },
+    {
+      "id": "T05",
+      "priorite": "MOYENNE",
+      "titre": "Compléter les données infractions en base",
+      "description": "La table infractions doit être enrichie avec le Code Pénal nigérien :\ncrimes, délits, contraventions.\nCréer un fichier migrations/005_infractions_niger.sql avec les articles principaux.",
+      "effort_credits": 100
+    },
+    {
+      "id": "T06",
+      "priorite": "MOYENNE",
+      "titre": "Tests de non-régression",
+      "description": "Écrire des tests PHPUnit pour :\n- Auth (login, logout, requireRole)\n- CSRF (check, verify)\n- PVController (store, update, visibility)\n- MiseEnCauseController (store, decision)\n- DocumentController (upload, list)",
+      "effort_credits": 120
+    },
+    {
+      "id": "T07",
+      "priorite": "BASSE",
+      "titre": "Interface d'administration des droits (menus/fonctionnalités)",
+      "description": "DroitsController gère les droits via droits_utilisateurs.\nS'assurer que les codes de menus et fonctionnalités correspondent\naux nouvelles routes ajoutées (pv/upload, rapports, etc.).\nInsérer les nouvelles fonctionnalités dans la table fonctionnalites.",
+      "effort_credits": 60
+    },
+    {
+      "id": "T08",
+      "priorite": "BASSE",
+      "titre": "Notification automatique (alerte) lors du transfert d'un PV",
+      "description": "Quand un substitut est affecté ou qu'un PV est transféré,\ncréer automatiquement une alerte (table alertes) pour le destinataire.\nAlerteHelper::create() existe déjà — l'appeler depuis PVController.",
+      "effort_credits": 40
+    }
+  ],
+  "credits_utilises": 1160,
+  "credits_restants_estimes": 640
+}

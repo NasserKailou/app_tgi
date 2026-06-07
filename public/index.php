@@ -15,6 +15,7 @@ require_once ROOT_PATH . '/app/helpers/Auth.php';
 require_once ROOT_PATH . '/app/helpers/CSRF.php';
 require_once ROOT_PATH . '/app/helpers/Numerotation.php';
 require_once ROOT_PATH . '/app/helpers/Alerte.php';
+require_once ROOT_PATH . '/app/helpers/AccessControl.php';
 
 // Autoloader
 spl_autoload_register(function (string $class): void {
@@ -77,6 +78,8 @@ $router->post('/dossiers/affecter-instruction/{id}', 'DossierController@affecter
 $router->post('/dossiers/envoyer-audience/{id}', 'DossierController@envoyerAudience');
 $router->post('/dossiers/partie/add/{id}',       'DossierController@addPartie');
 $router->post('/dossiers/partie/delete/{id}',    'DossierController@deletePartie');
+$router->get('/dossiers/partie/edit/{id}',       'DossierController@editPartie');
+$router->post('/dossiers/partie/update/{id}',    'DossierController@updatePartie');
 $router->post('/dossiers/classer/{id}',         'DossierController@classerDossier');
 $router->post('/dossiers/declasser/{id}',       'DossierController@declasserDossier');
 
@@ -208,6 +211,10 @@ $router->get('/api/dossiers/preview/{id}',               'DossierController@apiP
 
 // PV déclassement
 $router->post('/pv/declasser/{id}',                      'PVController@declasser');
+$router->post('/pv/qualifier/{id}',                      'PVController@qualifier');
+$router->post('/pv/upload/{id}',                         'PVController@uploadDocument');
+$router->post('/pv/document/delete/{id}',                'PVController@deleteDocument');
+$router->post('/api/infractions/store',                  'PVController@apiInfractionStore');
 
 // ─── Avocats / Barreau ────────────────────────────────────────────────────────
 $router->get( '/avocats',                    'AvocatController@index');

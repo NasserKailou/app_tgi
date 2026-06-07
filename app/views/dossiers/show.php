@@ -24,6 +24,7 @@
     <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabAudiences">Audiences (<?=count($audiences)?>)</a></li>
     <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabJugements">Jugements (<?=count($jugements)?>)</a></li>
     <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabDetenus">Détenus (<?=count($detenus)?>)</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabScelles"><i class="bi bi-shield-lock me-1"></i>Scellés (<?=count($scelles ?? [])?>)</a></li>
     <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabPieces"><i class="bi bi-paperclip"></i> Pièces jointes</a></li>
     <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabHistorique">Historique</a></li>
 </ul>
@@ -147,10 +148,13 @@
                             <?php if($p['telephone']): ?><div class="small text-muted"><i class="bi bi-telephone"></i> <?=htmlspecialchars($p['telephone'])?></div><?php endif; ?>
                         </div>
                         <?php if(Auth::canEditDossier()): ?>
-                        <form method="POST" action="<?=BASE_URL?>/dossiers/partie/delete/<?=$p['id']?>" onsubmit="return confirm('Supprimer cette partie ?')">
-                            <?=CSRF::field()?><input type="hidden" name="dossier_id" value="<?=$dossier['id']?>">
-                            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
-                        </form>
+                        <div class="d-flex gap-1 flex-shrink-0">
+                            <a href="<?=BASE_URL?>/dossiers/partie/edit/<?=$p['id']?>" class="btn btn-sm btn-outline-secondary" title="Modifier"><i class="bi bi-pencil"></i></a>
+                            <form method="POST" action="<?=BASE_URL?>/dossiers/partie/delete/<?=$p['id']?>" onsubmit="return confirm('Supprimer cette partie ?')">
+                                <?=CSRF::field()?><input type="hidden" name="dossier_id" value="<?=$dossier['id']?>">
+                                <button class="btn btn-sm btn-outline-danger" title="Supprimer"><i class="bi bi-trash"></i></button>
+                            </form>
+                        </div>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -203,6 +207,45 @@
         <td><a href="<?=BASE_URL?>/detenus/show/<?=$d['id']?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a></td></tr>
         <?php endforeach; ?>
         </tbody></table></div>
+        <?php endif; ?>
+    </div>
+
+    <!-- Scellés -->
+    <div class="tab-pane fade" id="tabScelles">
+        <?php if(Auth::hasRole(['admin','greffier','president','juge_instruction','procureur'])): ?>
+        <a href="<?=BASE_URL?>/scelles/create?dossier_id=<?=$dossier['id']?>" class="btn btn-outline-warning btn-sm mb-3"><i class="bi bi-shield-lock me-1"></i>Enregistrer un scellé</a>
+        <?php endif; ?>
+        <?php if(empty($scelles ?? [])): ?>
+        <div class="text-center text-muted py-4"><i class="bi bi-shield fs-3 d-block mb-2"></i>Aucun scellé enregistré pour ce dossier</div>
+        <?php else: ?>
+        <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr><th>N° Scellé</th><th>Catégorie</th><th>Description</th><th>Dépôt</th><th>Lieu</th><th>Statut</th><th></th></tr>
+            </thead>
+            <tbody>
+            <?php foreach($scelles as $sc): ?>
+            <?php $sst=['depose'=>['secondary','Déposé'],'analyse'=>['info','En analyse'],'restitue'=>['success','Restitué'],'detruit'=>['dark','Détruit']]; [$ssc,$ssl]=$sst[$sc['statut']]??['secondary',$sc['statut']]; ?>
+            <tr>
+                <td class="font-monospace fw-semibold"><?=htmlspecialchars($sc['numero_scelle'])?></td>
+                <td><span class="badge bg-warning text-dark"><?=ucfirst(htmlspecialchars($sc['categorie']??'—'))?></span></td>
+                <td class="small text-truncate" style="max-width:200px" title="<?=htmlspecialchars($sc['description']??'')?>">
+                    <?=htmlspecialchars($sc['description']??'—')?>
+                </td>
+                <td><?=$sc['date_depot']?date('d/m/Y',strtotime($sc['date_depot'])):'—'?></td>
+                <td class="small"><?=htmlspecialchars($sc['lieu_conservation']??'—')?></td>
+                <td><span class="badge bg-<?=$ssc?>"><?=$ssl?></span></td>
+                <td>
+                    <a href="<?=BASE_URL?>/scelles/show/<?=$sc['id']?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
+                    <?php if(Auth::hasRole(['admin','greffier','president','juge_instruction'])): ?>
+                    <a href="<?=BASE_URL?>/scelles/edit/<?=$sc['id']?>" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+                    <?php endif; ?>
+                </td>
+            </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+        </div>
         <?php endif; ?>
     </div>
 
