@@ -10,7 +10,7 @@
 --
 -- ============================================================================
 -- TGI-NY | Tribunal de Grande Instance Hors Classe de Niamey
--- Base de données complète — Sauvegarde globale v3.7
+-- Base de données complète — Sauvegarde globale v3.8
 -- Généré le : 2026-04-18 — Migrations 001 à 014 intégrées
 -- ============================================================================
 -- RESTAURATION : mysql -u root -p tribunal_tgi_ny < global.sql
@@ -2304,6 +2304,76 @@ ALTER TABLE `dossiers` ADD KEY `idx_type_affaire` (`type_affaire`);
 
 -- ============================================================================
 -- FIN — Migration 013 intégrée — TGI-NY global.sql v3.6
+-- ============================================================================
+
+-- ============================================================================
+-- SECTION : Migration 014 — jugement_id + colonnes avocats (v3.7)
+-- ============================================================================
+ALTER TABLE `detenus`
+  ADD COLUMN IF NOT EXISTS `jugement_id` INT DEFAULT NULL;
+
+ALTER TABLE `avocats`
+  ADD COLUMN IF NOT EXISTS `numero_barreau`    VARCHAR(50)  DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `specialite`        VARCHAR(100) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `cabinet`           VARCHAR(150) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `date_inscription`  DATE         DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `observations`      TEXT         DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `est_suspendu`      TINYINT(1)   NOT NULL DEFAULT 0;
+
+ALTER TABLE `avocat_dossier`
+  ADD COLUMN IF NOT EXISTS `role_avocat`       VARCHAR(100) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `date_constitution` DATE         DEFAULT NULL;
+
+-- ============================================================================
+-- SECTION : Migration 015 — Multi-infractions PV + qualifications substitut (v3.8)
+-- ============================================================================
+
+-- Table : infractions déclarées par l'unité d'enquête (multi-sélection)
+CREATE TABLE IF NOT EXISTS `pv_infractions_enquete` (
+  `id`            INT          NOT NULL AUTO_INCREMENT,
+  `pv_id`         INT          NOT NULL,
+  `infraction_id` INT          NOT NULL,
+  `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_pv_infraction_enquete` (`pv_id`, `infraction_id`),
+  KEY `idx_pie_pv_id` (`pv_id`),
+  CONSTRAINT `fk_pie_pv`         FOREIGN KEY (`pv_id`)         REFERENCES `pv`         (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_pie_infraction` FOREIGN KEY (`infraction_id`) REFERENCES `infractions` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Migrer l'infraction existante (pv.infraction_id) vers la nouvelle table
+INSERT IGNORE INTO `pv_infractions_enquete` (`pv_id`, `infraction_id`)
+SELECT `id`, `infraction_id`
+FROM   `pv`
+WHERE  `infraction_id` IS NOT NULL;
+
+-- Table : qualifications retenues par le substitut du procureur
+CREATE TABLE IF NOT EXISTS `pv_qualifications_substitut` (
+  `id`              INT          NOT NULL AUTO_INCREMENT,
+  `pv_id`           INT          NOT NULL,
+  `infraction_id`   INT          NOT NULL,
+  `loi_applicable`  TEXT         DEFAULT NULL,
+  `observations`    TEXT         DEFAULT NULL,
+  `created_by`      INT          DEFAULT NULL,
+  `created_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_pqs_pv_id` (`pv_id`),
+  CONSTRAINT `fk_pqs_pv`         FOREIGN KEY (`pv_id`)         REFERENCES `pv`         (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_pqs_infraction` FOREIGN KEY (`infraction_id`) REFERENCES `infractions` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_pqs_user`       FOREIGN KEY (`created_by`)    REFERENCES `users`       (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Colonne description sur infractions (optionnelle)
+ALTER TABLE `infractions`
+  ADD COLUMN IF NOT EXISTS `description` TEXT DEFAULT NULL;
+
+-- Index sur documents.pv_id (déjà présent dans certaines installations — IF NOT EXISTS simulé)
+ALTER TABLE `documents`
+  ADD KEY IF NOT EXISTS `idx_documents_pv_id` (`pv_id`);
+
+-- ============================================================================
+-- FIN — Migration 015 intégrée — TGI-NY global.sql v3.8
 -- ============================================================================
 
 COMMIT;

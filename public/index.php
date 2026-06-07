@@ -210,6 +210,10 @@ $router->get('/api/dossiers/preview/{id}',               'DossierController@apiP
 
 // PV déclassement
 $router->post('/pv/declasser/{id}',                      'PVController@declasser');
+$router->post('/pv/qualifier/{id}',                      'PVController@qualifier');
+$router->post('/pv/upload/{id}',                         'PVController@uploadDocument');
+$router->post('/pv/document/delete/{id}',                'PVController@deleteDocument');
+$router->post('/api/infractions/store',                  'PVController@apiInfractionStore');
 
 // ─── Avocats / Barreau ────────────────────────────────────────────────────────
 $router->get( '/avocats',                    'AvocatController@index');
