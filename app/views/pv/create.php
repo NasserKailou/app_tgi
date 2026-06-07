@@ -87,10 +87,11 @@
                         <div class="col-12">
                             <div class="card border-primary border-2">
                                 <div class="card-header bg-primary bg-opacity-10 d-flex align-items-center justify-content-between">
-                                    <span class="fw-semibold text-primary">
+                                    <span class="fw-semibold" style="color:#ffffff;">
                                         <i class="bi bi-list-check me-2"></i>Types d'infractions retenues
-                                        <span class="text-muted small fw-normal">(plusieurs choix possibles)</span>
+                                        <span class="small fw-normal" style="color:#e0e0e0;">(plusieurs choix possibles)</span>
                                     </span>
+
                                     <span class="badge bg-primary" id="infractionsCount">0</span>
                                 </div>
                                 <div class="card-body">
@@ -127,7 +128,7 @@
                                     </div>
 
                                     <!-- Liste scrollable des infractions -->
-                                    <div class="border rounded p-2" style="max-height: 320px; overflow-y: auto; background:#fafafa;" id="infractionsList">
+                    <div class="border rounded p-2" style="max-height: 320px; overflow-y: auto; background:#ffffff;" id="infractionsList">
                                         <?php
                                         $selectedInfr = (array)($_POST['infractions'] ?? []);
                                         $complicityArr = (array)($_POST['est_complicite'] ?? []);
