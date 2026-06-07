@@ -15,6 +15,7 @@ require_once ROOT_PATH . '/app/helpers/Auth.php';
 require_once ROOT_PATH . '/app/helpers/CSRF.php';
 require_once ROOT_PATH . '/app/helpers/Numerotation.php';
 require_once ROOT_PATH . '/app/helpers/Alerte.php';
+require_once ROOT_PATH . '/app/helpers/AccessControl.php';
 
 // Autoloader
 spl_autoload_register(function (string $class): void {
@@ -63,29 +64,8 @@ $router->post('/pv/update/{id}',       'PVController@update');
 $router->post('/pv/affecter/{id}',     'PVController@affecter');
 $router->post('/pv/classer/{id}',      'PVController@classer');
 $router->post('/pv/transferer/{id}',   'PVController@transferer');
-$router->post('/pv/declasser/{id}',    'PVController@declasser');
 $router->get('/api/departements/{region_id}', 'PVController@apiDepartements');
 $router->get('/api/communes/{departement_id}', 'PVController@apiCommunes');
-
-// Mises en cause
-$router->post('/pv/mise-en-cause/store/{pvId}',      'MiseEnCauseController@store');
-$router->get('/pv/mise-en-cause/edit/{id}',          'MiseEnCauseController@edit');
-$router->post('/pv/mise-en-cause/update/{id}',       'MiseEnCauseController@update');
-$router->post('/pv/mise-en-cause/delete/{id}',       'MiseEnCauseController@delete');
-$router->post('/pv/mise-en-cause/decision/{id}',     'MiseEnCauseController@decision');
-$router->post('/pv/mise-en-cause/reconduire/{pvId}', 'MiseEnCauseController@reconduire');
-$router->get('/api/mises-en-cause/search',           'MiseEnCauseController@apiSearch');
-
-// Plaintes
-$router->get('/plaintes',                  'PlainteController@index');
-$router->get('/plaintes/create',           'PlainteController@create');
-$router->post('/plaintes/store',           'PlainteController@store');
-$router->get('/plaintes/show/{id}',        'PlainteController@show');
-$router->get('/plaintes/edit/{id}',        'PlainteController@edit');
-$router->post('/plaintes/update/{id}',     'PlainteController@update');
-$router->post('/plaintes/traiter/{id}',    'PlainteController@traiter');
-$router->post('/plaintes/classer/{id}',    'PlainteController@classer');
-$router->post('/plaintes/creer-pv/{id}',   'PlainteController@creerPV');
 
 // Dossiers
 $router->get('/dossiers',                        'DossierController@index');
@@ -98,6 +78,8 @@ $router->post('/dossiers/affecter-instruction/{id}', 'DossierController@affecter
 $router->post('/dossiers/envoyer-audience/{id}', 'DossierController@envoyerAudience');
 $router->post('/dossiers/partie/add/{id}',       'DossierController@addPartie');
 $router->post('/dossiers/partie/delete/{id}',    'DossierController@deletePartie');
+$router->get('/dossiers/partie/edit/{id}',       'DossierController@editPartie');
+$router->post('/dossiers/partie/update/{id}',    'DossierController@updatePartie');
 $router->post('/dossiers/classer/{id}',         'DossierController@classerDossier');
 $router->post('/dossiers/declasser/{id}',       'DossierController@declasserDossier');
 
@@ -229,6 +211,10 @@ $router->get('/api/dossiers/preview/{id}',               'DossierController@apiP
 
 // PV déclassement
 $router->post('/pv/declasser/{id}',                      'PVController@declasser');
+$router->post('/pv/qualifier/{id}',                      'PVController@qualifier');
+$router->post('/pv/upload/{id}',                         'PVController@uploadDocument');
+$router->post('/pv/document/delete/{id}',                'PVController@deleteDocument');
+$router->post('/api/infractions/store',                  'PVController@apiInfractionStore');
 
 // ─── Avocats / Barreau ────────────────────────────────────────────────────────
 $router->get( '/avocats',                    'AvocatController@index');

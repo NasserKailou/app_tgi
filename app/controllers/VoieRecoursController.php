@@ -17,8 +17,9 @@ class VoieRecoursController extends Controller
         $params  = [];
 
         if ($search) {
-            $where[]      = "(vr.demandeur_nom LIKE :q OR d.numero_rg LIKE :q)";
-            $params[':q'] = "%{$search}%";
+            $where[]       = "(vr.demandeur_nom LIKE :q1 OR d.numero_rg LIKE :q2)";
+            $params[':q1'] = "%{$search}%";
+            $params[':q2'] = "%{$search}%";
         }
         if ($type)   { $where[] = 'vr.type_recours=:type';  $params[':type']   = $type; }
         if ($statut) { $where[] = 'vr.statut=:statut';      $params[':statut'] = $statut; }

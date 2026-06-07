@@ -16,8 +16,10 @@ class ScelleController extends Controller
         $params  = [];
 
         if ($search) {
-            $where[]      = "(s.numero_scelle LIKE :q OR s.description LIKE :q OR d.numero_rg LIKE :q)";
-            $params[':q'] = "%{$search}%";
+            $where[]      = "(s.numero_scelle LIKE :q1 OR s.description LIKE :q2 OR d.numero_rg LIKE :q3)";
+            $params[':q1'] = "%{$search}%";
+            $params[':q2'] = "%{$search}%";
+            $params[':q3'] = "%{$search}%";
         }
         if ($statut) { $where[] = 's.statut=:statut'; $params[':statut'] = $statut; }
         $wSQL = $where ? 'WHERE ' . implode(' AND ', $where) : '';

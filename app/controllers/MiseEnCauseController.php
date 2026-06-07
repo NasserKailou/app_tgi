@@ -70,6 +70,15 @@ class MiseEnCauseController extends Controller
             ':by'      => Auth::userId(),
         ]);
 
+        $mecId = (int)$this->db->lastInsertId();
+
+        // Infractions associées à ce mis en cause (unité d'enquête)
+        $this->saveMECInfractions($mecId, $_POST['infractions_mec'] ?? [], 'unite');
+        // Qualification substitut sur ce MEC
+        if (Auth::hasRole(['substitut_procureur','procureur','admin'])) {
+            $this->saveMECInfractions($mecId, $_POST['infractions_mec_substitut'] ?? [], 'substitut');
+        }
+
         $this->flash('success', 'Mise en cause enregistrée.');
         $this->redirect('/pv/show/' . $pvId . '#mises-en-cause');
     }
@@ -81,9 +90,11 @@ class MiseEnCauseController extends Controller
         Auth::requireRole(['admin', 'greffier', 'procureur', 'substitut_procureur', 'president']);
         $mec  = $this->getMEC((int)$id);
         if (!$mec) { $this->redirect('/pv'); }
-        $user  = Auth::currentUser();
-        $flash = $this->getFlash();
-        $this->view('mises_en_cause/edit', compact('mec', 'flash', 'user'));
+        $user        = Auth::currentUser();
+        $flash       = $this->getFlash();
+        $infractions = $this->db->query("SELECT id, code, libelle, categorie FROM infractions ORDER BY libelle")->fetchAll();
+        $mecInfractions = $this->getMECInfractions((int)$id);
+        $this->view('mises_en_cause/edit', compact('mec', 'flash', 'user', 'infractions', 'mecInfractions'));
     }
 
     // ─── POST /pv/mise-en-cause/update/{id} ───────────────────────────────
@@ -134,6 +145,14 @@ class MiseEnCauseController extends Controller
             ':notes'   => $this->sanitize($_POST['notes_antecedents'] ?? '') ?: null,
             ':id'      => (int)$id,
         ]);
+
+        // Mise à jour des infractions
+        $isSubstitut = Auth::hasRole(['substitut_procureur','procureur','admin']);
+        // Greffe peut modifier les infractions unité
+        $this->saveMECInfractions((int)$id, $_POST['infractions_mec'] ?? [], 'unite', true);
+        if ($isSubstitut) {
+            $this->saveMECInfractions((int)$id, $_POST['infractions_mec_substitut'] ?? [], 'substitut', true);
+        }
 
         $this->flash('success', 'Mise en cause mise à jour.');
         $this->redirect('/pv/show/' . $mec['pv_id'] . '#mises-en-cause');
@@ -277,6 +296,43 @@ class MiseEnCauseController extends Controller
         );
         $stmt->execute([':q' => "%{$q}%"]);
         $this->json(['success' => true, 'data' => $stmt->fetchAll()]);
+    }
+
+    // ─── Helpers infractions MEC ──────────────────────────────────────────
+    private function saveMECInfractions(int $mecId, array $infIds, string $type, bool $replace = false): void
+    {
+        if ($replace) {
+            try {
+                $this->db->prepare("DELETE FROM mec_infractions WHERE mec_id=? AND type=?")->execute([$mecId, $type]);
+            } catch (\Exception $e) {}
+        }
+        if (empty($infIds)) return;
+        try {
+            $ins = $this->db->prepare(
+                "INSERT IGNORE INTO mec_infractions (mec_id, infraction_id, type) VALUES (?,?,?)"
+            );
+            foreach ($infIds as $iid) {
+                if ((int)$iid > 0) $ins->execute([$mecId, (int)$iid, $type]);
+            }
+        } catch (\Exception $e) {}
+    }
+
+    private function getMECInfractions(int $mecId): array
+    {
+        try {
+            $stmt = $this->db->prepare(
+                "SELECT mi.type, i.id, i.code, i.libelle, i.categorie
+                 FROM mec_infractions mi JOIN infractions i ON i.id = mi.infraction_id
+                 WHERE mi.mec_id = ? ORDER BY mi.type, i.libelle"
+            );
+            $stmt->execute([$mecId]);
+            $rows   = $stmt->fetchAll();
+            $result = ['unite' => [], 'substitut' => []];
+            foreach ($rows as $r) { $result[$r['type']][] = $r; }
+            return $result;
+        } catch (\Exception $e) {
+            return ['unite' => [], 'substitut' => []];
+        }
     }
 
     // ─── Helpers privés ───────────────────────────────────────────────────

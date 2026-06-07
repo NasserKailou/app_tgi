@@ -16,8 +16,10 @@ class ControleJudiciairController extends Controller
         $params  = [];
 
         if ($search) {
-            $where[]      = "(cj.personne_nom LIKE :q OR cj.personne_prenom LIKE :q OR d.numero_rg LIKE :q)";
-            $params[':q'] = "%{$search}%";
+            $where[]       = "(cj.personne_nom LIKE :q1 OR cj.personne_prenom LIKE :q2 OR d.numero_rg LIKE :q3)";
+            $params[':q1'] = "%{$search}%";
+            $params[':q2'] = "%{$search}%";
+            $params[':q3'] = "%{$search}%";
         }
         if ($statut) { $where[] = 'cj.statut=:statut'; $params[':statut'] = $statut; }
         $wSQL = $where ? 'WHERE ' . implode(' AND ', $where) : '';

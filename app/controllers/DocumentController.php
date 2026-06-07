@@ -52,11 +52,15 @@ class DocumentController extends Controller
             $this->json(['success' => false, 'message' => 'Dossier invalide.'], 400);
         }
 
-        // Vérifier que le dossier existe
-        $stmt = $this->db->prepare('SELECT id FROM dossiers WHERE id = :id');
+        // Vérifier que le dossier existe et que l'utilisateur y a accès
+        $stmt = $this->db->prepare('SELECT id, substitut_id, cabinet_id FROM dossiers WHERE id = :id');
         $stmt->execute([':id' => $dossierId]);
-        if (!$stmt->fetch()) {
+        $dossierRow = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$dossierRow) {
             $this->json(['success' => false, 'message' => 'Dossier introuvable.'], 404);
+        }
+        if (!AccessControl::canAccessDossier($dossierRow)) {
+            $this->json(['success' => false, 'message' => 'Accès refusé : vous n\'avez pas accès à ce dossier.'], 403);
         }
 
         // Vérifier présence du fichier
@@ -193,6 +197,13 @@ class DocumentController extends Controller
             $this->json(['success' => false, 'message' => 'Document introuvable.'], 404);
         }
 
+        // ── Contrôle d'accès : propriétaire ou rôle privilégié ───────
+        if (!AccessControl::canDeleteDocument($doc)) {
+            $this->json(['success' => false, 'message' => 'Accès refusé : vous n\'avez pas le droit de supprimer ce document.'], 403);
+            return;
+        }
+        // ─────────────────────────────────────────────────────────────
+
         // Suppression du fichier physique
         $cheminAbs = ROOT_PATH . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR
             . str_replace('/', DIRECTORY_SEPARATOR, $doc['chemin_fichier']);
@@ -230,9 +241,48 @@ class DocumentController extends Controller
             exit('Document introuvable.');
         }
 
+        // ── Contrôle d'accès : vérifier l'accès au dossier ou PV parent ─
+        $role   = Auth::roleCode();
+        $userId = Auth::userId();
+        $denied = false;
+
+        if ($role === 'substitut_procureur') {
+            // Le doc appartient à un dossier ou un PV
+            if (!empty($doc['dossier_id'])) {
+                $stmtD = $this->db->prepare('SELECT id, substitut_id, cabinet_id FROM dossiers WHERE id = ?');
+                $stmtD->execute([(int)$doc['dossier_id']]);
+                $parentRow = $stmtD->fetch(PDO::FETCH_ASSOC);
+                if (!$parentRow || !AccessControl::canAccessDossier($parentRow)) {
+                    $denied = true;
+                }
+            } elseif (!empty($doc['pv_id'])) {
+                $stmtP = $this->db->prepare('SELECT id, substitut_id FROM pv WHERE id = ?');
+                $stmtP->execute([(int)$doc['pv_id']]);
+                $parentRow = $stmtP->fetch(PDO::FETCH_ASSOC);
+                if (!$parentRow || !AccessControl::canAccessPV($parentRow)) {
+                    $denied = true;
+                }
+            }
+        } elseif ($role === 'juge_instruction') {
+            if (!empty($doc['dossier_id'])) {
+                $stmtD = $this->db->prepare('SELECT id, substitut_id, cabinet_id FROM dossiers WHERE id = ?');
+                $stmtD->execute([(int)$doc['dossier_id']]);
+                $parentRow = $stmtD->fetch(PDO::FETCH_ASSOC);
+                if (!$parentRow || !AccessControl::canAccessDossier($parentRow)) {
+                    $denied = true;
+                }
+            }
+        }
+
+        if ($denied) {
+            http_response_code(403);
+            exit('Accès refusé : vous n\'avez pas accès à ce document.');
+        }
+        // ─────────────────────────────────────────────────────────────
+
         // Normaliser les colonnes (compatibilité migration 001 vs 005)
-        $doc['nom_original'] = $doc['nom_original'] ?? ($doc['nom_fichier'] ?? ($doc['nom_stockage'] ?? 'document'));
-        $doc['mime_type']    = $doc['mime_type']    ?? ($doc['type_mime']  ?? 'application/octet-stream');
+        $doc['nom_original'] = $doc['nom_original'] ?? $doc['nom_fichier'] ?? $doc['nom_stockage'] ?? 'document';
+        $doc['mime_type']    = $doc['mime_type']    ?? $doc['type_mime']  ?? 'application/octet-stream';
 
         // Construire le chemin absolu — chemin_fichier stocké en relatif (ex: uploads/documents/dossier_1/xxx.pdf)
         $cheminRelatif = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $doc['chemin_fichier']);
@@ -291,24 +341,29 @@ class DocumentController extends Controller
             $this->json(['success' => false, 'message' => 'Dossier invalide.'], 400);
         }
 
-        // Déterminer les colonnes disponibles pour compatibilité multi-version
-        $cols = $this->db->query("SHOW COLUMNS FROM documents")->fetchAll(\PDO::FETCH_COLUMN);
-        $nomCol  = in_array('nom_original', $cols) ? 'd.nom_original'
-                 : (in_array('nom_fichier', $cols) ? 'd.nom_fichier' : 'd.nom_stockage');
-        $mimeCol = in_array('mime_type', $cols) ? 'd.mime_type'
-                 : (in_array('type_mime', $cols) ? 'd.type_mime' : "'application/octet-stream'");
+        // ── Contrôle d'accès ─────────────────────────────────────────
+        $stmtAcc = $this->db->prepare('SELECT id, substitut_id, cabinet_id FROM dossiers WHERE id = :id');
+        $stmtAcc->execute([':id' => $dossierId]);
+        $dossierAcc = $stmtAcc->fetch(PDO::FETCH_ASSOC);
+        if (!$dossierAcc) {
+            $this->json(['success' => false, 'message' => 'Dossier introuvable.'], 404);
+        }
+        if (!AccessControl::canAccessDossier($dossierAcc)) {
+            $this->json(['success' => false, 'message' => 'Accès refusé.'], 403);
+        }
+        // ─────────────────────────────────────────────────────────────
 
         $stmt = $this->db->prepare(
-            "SELECT d.id,
-                    {$nomCol} AS nom_original,
-                    {$mimeCol} AS mime_type,
+            'SELECT d.id,
+                    COALESCE(d.nom_original, d.nom_fichier, d.nom_stockage) AS nom_original,
+                    COALESCE(d.mime_type, d.type_mime, \'application/octet-stream\') AS mime_type,
                     d.taille_octets, d.description, d.created_at,
-                    CONCAT(u.prenom, ' ', u.nom) AS uploaded_by_nom
+                    CONCAT(u.prenom, \' \', u.nom) AS uploaded_by_nom
              FROM documents d
              LEFT JOIN users u ON u.id = d.uploaded_by
              WHERE d.dossier_id = :dossier_id
-               AND d.type_document = 'piece_jointe'
-             ORDER BY d.created_at DESC"
+               AND d.type_document = \'piece_jointe\'
+             ORDER BY d.created_at DESC'
         );
         $stmt->execute([':dossier_id' => $dossierId]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);

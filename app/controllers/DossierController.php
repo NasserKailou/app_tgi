@@ -13,11 +13,22 @@ class DossierController extends Controller {
         $type   = $_GET['type'] ?? '';
 
         if ($search) {
-            $where[] = "(d.numero_rg LIKE :q OR d.numero_rp LIKE :q OR d.numero_ri LIKE :q OR d.objet LIKE :q)";
-            $params['q'] = "%{$search}%";
+            $where[] = "(d.numero_rg LIKE :q1 OR d.numero_rp LIKE :q2 OR d.numero_ri LIKE :q3 OR d.objet LIKE :q4)";
+            $params['q1'] = "%{$search}%";
+            $params['q2'] = "%{$search}%";
+            $params['q3'] = "%{$search}%";
+            $params['q4'] = "%{$search}%";
         }
         if ($statut) { $where[] = "d.statut=:statut"; $params['statut'] = $statut; }
         if ($type)   { $where[] = "d.type_affaire=:type"; $params['type'] = $type; }
+
+        // ── Filtre rôle (serveur) ─────────────────────────────────────
+        [$roleWhere, $roleParams] = AccessControl::dossierListFilter('d');
+        if ($roleWhere) {
+            $where[]  = $roleWhere;
+            $params   = array_merge($params, $roleParams);
+        }
+        // ─────────────────────────────────────────────────────────────
 
         $whereSQL = $where ? 'WHERE ' . implode(' AND ', $where) : '';
         $page    = max(1, (int)($_GET['page'] ?? 1));
@@ -30,18 +41,24 @@ class DossierController extends Controller {
 
         $sql = "SELECT d.*, 
                        us.nom as substitut_nom, us.prenom as substitut_prenom,
+                       uc.nom as createur_nom, uc.prenom as createur_prenom,
                        ci.numero as cabinet_num, ci.libelle as cabinet_lib,
                        (SELECT COUNT(*) FROM audiences a WHERE a.dossier_id=d.id AND a.statut='planifiee') as nb_audiences
                 FROM dossiers d
                 LEFT JOIN users us ON d.substitut_id = us.id
+                LEFT JOIN users uc ON d.created_by  = uc.id
                 LEFT JOIN cabinets_instruction ci ON d.cabinet_id = ci.id
                 $whereSQL ORDER BY d.created_at DESC LIMIT $perPage OFFSET $offset";
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         $dossiers = $stmt->fetchAll();
 
-        $totalPages = ceil($total / $perPage);
-        $this->view('dossiers/index', compact('dossiers','total','page','perPage','totalPages','search','statut','type','flash','user'));
+        $totalPages  = ceil($total / $perPage);
+        $contextNote = AccessControl::listContextNote();
+        $this->view('dossiers/index', compact(
+            'dossiers','total','page','perPage','totalPages',
+            'search','statut','type','flash','user','contextNote'
+        ));
     }
 
     public function create(): void {
@@ -103,10 +120,14 @@ class DossierController extends Controller {
         Auth::requireLogin();
         $dossier = $this->getDossierDetail((int)$id);
         if (!$dossier) { $this->redirect('/dossiers'); }
+
+        // ── Contrôle d'accès niveau ressource ────────────────────────
+        AccessControl::assertDossierAccess($dossier, $this);
+        // ─────────────────────────────────────────────────────────────
+
         $flash   = $this->getFlash();
         $user    = Auth::currentUser();
 
-        $parties   = $this->db->prepare("SELECT * FROM parties WHERE dossier_id=? ORDER BY type_partie,nom")->execute([(int)$id]) ? $this->db->prepare("SELECT * FROM parties WHERE dossier_id=? ORDER BY type_partie,nom") : null;
         $partiesStmt = $this->db->prepare("SELECT * FROM parties WHERE dossier_id=? ORDER BY type_partie,nom");
         $partiesStmt->execute([(int)$id]);
         $parties = $partiesStmt->fetchAll();
@@ -127,30 +148,21 @@ class DossierController extends Controller {
         $detStmt->execute([(int)$id]);
         $detenus = $detStmt->fetchAll();
 
-        // Mises en cause liées au PV du dossier
-        $misesEnCause = [];
-        if (!empty($dossier['pv_id'])) {
-            try {
-                $mecStmt = $this->db->prepare(
-                    "SELECT m.*, p.numero_rg FROM mises_en_cause m
-                     JOIN pv p ON p.id = m.pv_id
-                     WHERE m.pv_id = ?
-                     ORDER BY m.nom, m.prenom"
-                );
-                $mecStmt->execute([$dossier['pv_id']]);
-                $misesEnCause = $mecStmt->fetchAll();
-            } catch (\Exception $e) {
-                $misesEnCause = [];
-            }
-        }
-
         $cabinets  = $this->db->query("SELECT * FROM cabinets_instruction WHERE actif=1")->fetchAll();
         $salles    = $this->db->query("SELECT * FROM salles_audience WHERE actif=1")->fetchAll();
         $jugesStmt = $this->db->query("SELECT u.* FROM users u JOIN roles r ON u.role_id=r.id WHERE r.code IN ('president','juge_siege','vice_president') AND u.actif=1");
         $juges     = $jugesStmt->fetchAll();
         $greffiers = $this->db->query("SELECT u.* FROM users u JOIN roles r ON u.role_id=r.id WHERE r.code='greffier' AND u.actif=1")->fetchAll();
 
-        $this->view('dossiers/show', compact('dossier','parties','audiences','jugements','mouvements','detenus','misesEnCause','cabinets','salles','juges','greffiers','flash','user'));
+        // Scellés liés au dossier
+        $scelles = [];
+        try {
+            $scelStmt = $this->db->prepare("SELECT * FROM scelles WHERE dossier_id=? ORDER BY created_at DESC");
+            $scelStmt->execute([(int)$id]);
+            $scelles = $scelStmt->fetchAll();
+        } catch (\Exception $e) { $scelles = []; }
+
+        $this->view('dossiers/show', compact('dossier','parties','audiences','jugements','mouvements','detenus','scelles','cabinets','salles','juges','greffiers','flash','user'));
     }
 
     public function edit(string $id): void {
@@ -158,6 +170,11 @@ class DossierController extends Controller {
         Auth::requireRole(['admin','greffier','procureur']);
         $dossier  = $this->getDossierDetail((int)$id);
         if (!$dossier) { $this->redirect('/dossiers'); }
+
+        // ── Contrôle d'accès niveau ressource ────────────────────────
+        AccessControl::assertDossierAccess($dossier, $this);
+        // ─────────────────────────────────────────────────────────────
+
         $user     = Auth::currentUser();
         $substituts = $this->db->query("SELECT u.* FROM users u JOIN roles r ON u.role_id=r.id WHERE r.code='substitut_procureur' AND u.actif=1")->fetchAll();
         $cabinets  = $this->db->query("SELECT * FROM cabinets_instruction WHERE actif=1")->fetchAll();
@@ -167,6 +184,14 @@ class DossierController extends Controller {
     public function update(string $id): void {
         Auth::requireLogin();
         CSRF::check();
+        Auth::requireRole(['admin','greffier','procureur']);
+
+        // ── Contrôle d'accès niveau ressource ────────────────────────
+        $dossier = $this->getDossierDetail((int)$id);
+        if (!$dossier) { $this->redirect('/dossiers'); }
+        AccessControl::assertDossierAccess($dossier, $this);
+        // ─────────────────────────────────────────────────────────────
+
         $this->db->prepare("UPDATE dossiers SET objet=:objet, type_affaire=:type, statut=:statut WHERE id=:id")
             ->execute([
                 'objet'  => $this->sanitize($_POST['objet']),
@@ -182,6 +207,13 @@ class DossierController extends Controller {
         Auth::requireLogin();
         CSRF::check();
         Auth::requireRole(['admin','procureur','substitut_procureur','president']);
+
+        // ── Contrôle d'accès niveau ressource ────────────────────────
+        $dossier = $this->getDossierDetail((int)$id);
+        if (!$dossier) { $this->redirect('/dossiers'); }
+        AccessControl::assertDossierAccess($dossier, $this);
+        // ─────────────────────────────────────────────────────────────
+
         $cabinetId = (int)($_POST['cabinet_id'] ?? 0);
         if (!$cabinetId) { $this->flash('error','Sélectionner un cabinet.'); $this->redirect('/dossiers/show/'.$id); }
 
@@ -204,6 +236,14 @@ class DossierController extends Controller {
     public function envoyerAudience(string $id): void {
         Auth::requireLogin();
         CSRF::check();
+        Auth::requireRole(['admin','procureur','greffier','president']);
+
+        // ── Contrôle d'accès niveau ressource ────────────────────────
+        $dossier = $this->getDossierDetail((int)$id);
+        if (!$dossier) { $this->redirect('/dossiers'); }
+        AccessControl::assertDossierAccess($dossier, $this);
+        // ─────────────────────────────────────────────────────────────
+
         $this->db->prepare("UPDATE dossiers SET statut='en_audience' WHERE id=?")->execute([(int)$id]);
         $this->db->prepare("INSERT INTO mouvements_dossier (dossier_id,user_id,type_mouvement,nouveau_statut,description) VALUES (?,?,'renvoi_audience','en_audience','Dossier envoyé en audience')")
             ->execute([(int)$id, Auth::userId()]);
@@ -214,6 +254,13 @@ class DossierController extends Controller {
     public function addPartie(string $id): void {
         Auth::requireLogin();
         CSRF::check();
+
+        // ── Contrôle d'accès niveau ressource ────────────────────────
+        $dossier = $this->getDossierDetail((int)$id);
+        if (!$dossier) { $this->json(['success'=>false,'message'=>'Dossier introuvable.'], 404); return; }
+        AccessControl::assertDossierAccess($dossier, $this);
+        // ─────────────────────────────────────────────────────────────
+
         $this->db->prepare(
             "INSERT INTO parties (dossier_id,type_partie,nom,prenom,date_naissance,nationalite,profession,adresse,telephone) VALUES (?,?,?,?,?,?,?,?,?)"
         )->execute([
@@ -231,10 +278,71 @@ class DossierController extends Controller {
         $this->redirect('/dossiers/show/' . $id);
     }
 
+    public function editPartie(string $id): void {
+        Auth::requireLogin();
+        Auth::requireRole(['admin','greffier','procureur','substitut_procureur','juge_instruction','president']);
+        $stmt = $this->db->prepare("SELECT * FROM parties WHERE id=?");
+        $stmt->execute([(int)$id]);
+        $partie = $stmt->fetch();
+        if (!$partie) { $this->redirect('/dossiers'); }
+
+        // ── Contrôle d'accès via le dossier parent ───────────────────
+        $dossier = $this->getDossierDetail((int)$partie['dossier_id']);
+        if ($dossier) { AccessControl::assertDossierAccess($dossier, $this); }
+        // ─────────────────────────────────────────────────────────────
+
+        $user  = Auth::currentUser();
+        $flash = $this->getFlash();
+        $this->view('dossiers/edit_partie', compact('partie','flash','user'));
+    }
+
+    public function updatePartie(string $id): void {
+        Auth::requireLogin();
+        CSRF::check();
+        Auth::requireRole(['admin','greffier','procureur','substitut_procureur','juge_instruction','president']);
+        $stmt = $this->db->prepare("SELECT dossier_id FROM parties WHERE id=?");
+        $stmt->execute([(int)$id]);
+        $row = $stmt->fetch();
+        if (!$row) { $this->redirect('/dossiers'); }
+        $dossierId = (int)$row['dossier_id'];
+
+        // ── Contrôle d'accès via le dossier parent ───────────────────
+        $dossier = $this->getDossierDetail($dossierId);
+        if ($dossier) { AccessControl::assertDossierAccess($dossier, $this); }
+        // ─────────────────────────────────────────────────────────────
+
+        $this->db->prepare(
+            "UPDATE parties SET type_partie=:tp, nom=:nom, prenom=:prenom,
+             date_naissance=:dn, nationalite=:nat, profession=:prof,
+             adresse=:adr, telephone=:tel
+             WHERE id=:id"
+        )->execute([
+            ':tp'   => $_POST['type_partie'],
+            ':nom'  => $this->sanitize($_POST['nom']),
+            ':prenom'=> $this->sanitize($_POST['prenom'] ?? ''),
+            ':dn'   => $_POST['date_naissance'] ?: null,
+            ':nat'  => $this->sanitize($_POST['nationalite'] ?? 'Nigérienne'),
+            ':prof' => $this->sanitize($_POST['profession'] ?? ''),
+            ':adr'  => $this->sanitize($_POST['adresse'] ?? ''),
+            ':tel'  => $this->sanitize($_POST['telephone'] ?? ''),
+            ':id'   => (int)$id,
+        ]);
+        $this->flash('success', 'Partie mise à jour.');
+        $this->redirect('/dossiers/show/' . $dossierId);
+    }
+
     public function deletePartie(string $id): void {
         Auth::requireLogin();
         CSRF::check();
         $dossierId = (int)($_POST['dossier_id'] ?? 0);
+
+        // ── Contrôle d'accès via le dossier parent ───────────────────
+        if ($dossierId > 0) {
+            $dossier = $this->getDossierDetail($dossierId);
+            if ($dossier) { AccessControl::assertDossierAccess($dossier, $this); }
+        }
+        // ─────────────────────────────────────────────────────────────
+
         $this->db->prepare("DELETE FROM parties WHERE id=?")->execute([(int)$id]);
         $this->flash('success', 'Partie supprimée.');
         $this->redirect('/dossiers/show/' . $dossierId);
@@ -247,10 +355,17 @@ class DossierController extends Controller {
         Auth::requireLogin();
         Auth::requireRole(['admin','procureur','substitut_procureur']);
         CSRF::check();
-        $id     = (int)$id;
+        $id = (int)$id;
+
+        // ── Contrôle d'accès niveau ressource ────────────────────────
+        $dossier = $this->getDossierDetail($id);
+        if (!$dossier) { $this->redirect('/dossiers'); }
+        AccessControl::assertDossierAccess($dossier, $this);
+        // ─────────────────────────────────────────────────────────────
+
         $motif  = $this->sanitize($_POST['motif_classement'] ?? '');
         if (!$motif) { $this->flash('error','Veuillez indiquer le motif de classement.'); $this->redirect('/dossiers/show/'.$id); return; }
-        $ancien = $this->db->query("SELECT statut FROM dossiers WHERE id=$id")->fetchColumn();
+        $ancien = $dossier['statut'];
         $this->db->prepare("UPDATE dossiers SET statut='classe', motif_classement=:m WHERE id=:id")
             ->execute([':m'=>$motif,':id'=>$id]);
         $this->db->prepare("INSERT INTO mouvements_dossier (dossier_id,user_id,type_mouvement,ancien_statut,nouveau_statut,description) VALUES (?,?,'classement',?,?,'Classé sans suite')")
@@ -266,12 +381,17 @@ class DossierController extends Controller {
         Auth::requireLogin();
         Auth::requireRole(['admin','procureur']);
         CSRF::check();
-        $id    = (int)$id;
+        $id = (int)$id;
+
+        // ── Contrôle d'accès niveau ressource ────────────────────────
+        $dossier = $this->getDossierDetail($id);
+        if (!$dossier) { $this->redirect('/dossiers'); }
+        AccessControl::assertDossierAccess($dossier, $this);
+        // ─────────────────────────────────────────────────────────────
+
         $motif = $this->sanitize($_POST['motif_declassement'] ?? '');
         if (!$motif) { $this->flash('error','Veuillez indiquer le motif du déclassement.'); $this->redirect('/dossiers/show/'.$id); return; }
-        // Vérifier que le dossier est bien classé
-        $dossier = $this->db->query("SELECT statut,motif_classement FROM dossiers WHERE id=$id")->fetch();
-        if (!$dossier || $dossier['statut'] !== 'classe') {
+        if ($dossier['statut'] !== 'classe') {
             $this->flash('error','Ce dossier n\'est pas classé.'); $this->redirect('/dossiers/show/'.$id); return;
         }
         $this->db->prepare("UPDATE dossiers SET statut='parquet', motif_classement=NULL WHERE id=:id")
@@ -309,9 +429,13 @@ class DossierController extends Controller {
             return;
         }
 
-        // Compter parties, audiences, détenus
-        $nbParties = (int)$this->db->prepare("SELECT COUNT(*) FROM parties WHERE dossier_id=?")
-            ->execute([$id]) ? $this->db->prepare("SELECT COUNT(*) FROM parties WHERE dossier_id=?")->execute([$id]) && 1 : 0;
+        // ── Contrôle d'accès niveau ressource (JSON) ─────────────────
+        if (!AccessControl::canAccessDossier($d)) {
+            $this->json(['success' => false, 'message' => 'Accès refusé.'], 403);
+            return;
+        }
+        // ─────────────────────────────────────────────────────────────
+
         $stmtP = $this->db->prepare("SELECT COUNT(*) FROM parties WHERE dossier_id=?");
         $stmtP->execute([$id]);
         $nbParties = (int)$stmtP->fetchColumn();

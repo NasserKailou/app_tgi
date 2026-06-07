@@ -133,36 +133,11 @@ class DroitsController extends Controller
     }
 
     // ─── Méthodes statiques pour vérification des droits ──────────────────
-
-    /**
-     * Retourne vrai si l'utilisateur a accès à ce menu.
-     * Logique :
-     *  - Si l'utilisateur n'a AUCUN droit configuré (table vide pour cet user) → accès total (admin-like)
-     *  - Si l'utilisateur a AU MOINS UN droit configuré → seuls les menus explicitement accordés sont visibles
-     */
     public static function hasMenuAccess(int $userId, string $menuCode): bool
     {
-        static $menuCache  = [];
-        static $hasRights  = []; // cache : est-ce que l'user a au moins un droit configuré ?
-
-        if (!isset($hasRights[$userId])) {
-            try {
-                $db   = Database::getInstance()->getPDO();
-                $stmt = $db->prepare("SELECT COUNT(*) FROM droits_utilisateurs WHERE user_id=?");
-                $stmt->execute([$userId]);
-                $hasRights[$userId] = (int)$stmt->fetchColumn() > 0;
-            } catch (\Exception $e) {
-                $hasRights[$userId] = false;
-            }
-        }
-
-        // Aucun droit configuré → accès total
-        if (!$hasRights[$userId]) {
-            return true;
-        }
-
+        static $cache = [];
         $key = $userId . '_' . $menuCode;
-        if (!isset($menuCache[$key])) {
+        if (!isset($cache[$key])) {
             try {
                 $db   = Database::getInstance()->getPDO();
                 $stmt = $db->prepare(
@@ -173,38 +148,20 @@ class DroitsController extends Controller
                 );
                 $stmt->execute([$userId, $menuCode]);
                 $row = $stmt->fetch();
-                // Si la ligne existe → vérifier accorde ; si absente → non accordé (car user a des droits)
-                $menuCache[$key] = ($row !== false) ? (bool)$row['accorde'] : false;
+                // Si aucune ligne → pas de restriction spécifique → accès par défaut autorisé
+                $cache[$key] = ($row === false) ? true : (bool)$row['accorde'];
             } catch (\Exception $e) {
-                $menuCache[$key] = false;
+                $cache[$key] = true;
             }
         }
-        return $menuCache[$key];
+        return $cache[$key];
     }
 
     public static function hasFuncAccess(int $userId, string $funcCode): bool
     {
-        static $funcCache = [];
-        static $hasRights = [];
-
-        if (!isset($hasRights[$userId])) {
-            try {
-                $db   = Database::getInstance()->getPDO();
-                $stmt = $db->prepare("SELECT COUNT(*) FROM droits_utilisateurs WHERE user_id=?");
-                $stmt->execute([$userId]);
-                $hasRights[$userId] = (int)$stmt->fetchColumn() > 0;
-            } catch (\Exception $e) {
-                $hasRights[$userId] = false;
-            }
-        }
-
-        // Aucun droit configuré → accès total
-        if (!$hasRights[$userId]) {
-            return true;
-        }
-
+        static $cache = [];
         $key = $userId . '_' . $funcCode;
-        if (!isset($funcCache[$key])) {
+        if (!isset($cache[$key])) {
             try {
                 $db   = Database::getInstance()->getPDO();
                 $stmt = $db->prepare(
@@ -215,11 +172,11 @@ class DroitsController extends Controller
                 );
                 $stmt->execute([$userId, $funcCode]);
                 $row = $stmt->fetch();
-                $funcCache[$key] = ($row !== false) ? (bool)$row['accorde'] : false;
+                $cache[$key] = ($row === false) ? true : (bool)$row['accorde'];
             } catch (\Exception $e) {
-                $funcCache[$key] = false;
+                $cache[$key] = true;
             }
         }
-        return $funcCache[$key];
+        return $cache[$key];
     }
 }

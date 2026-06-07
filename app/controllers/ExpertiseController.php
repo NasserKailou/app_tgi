@@ -17,8 +17,10 @@ class ExpertiseController extends Controller
         $params  = [];
 
         if ($search) {
-            $where[]      = "(e.expert_nom LIKE :q OR e.objet_expertise LIKE :q OR d.numero_rg LIKE :q)";
-            $params[':q'] = "%{$search}%";
+            $where[]       = "(e.expert_nom LIKE :q1 OR e.objet_expertise LIKE :q2 OR d.numero_rg LIKE :q3)";
+            $params[':q1'] = "%{$search}%";
+            $params[':q2'] = "%{$search}%";
+            $params[':q3'] = "%{$search}%";
         }
         if ($statut) { $where[] = 'e.statut=:statut'; $params[':statut'] = $statut; }
         $wSQL = $where ? 'WHERE ' . implode(' AND ', $where) : '';
