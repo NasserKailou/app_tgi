@@ -9,11 +9,17 @@
             <h4 class="fw-bold mb-1"><i class="bi bi-file-text me-2 text-primary"></i><?= htmlspecialchars($pv['numero_rg']) ?></h4>
             <p class="text-muted mb-0"><?= htmlspecialchars($pv['numero_pv']) ?></p>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 flex-wrap">
             <?php if (Auth::hasRole(['admin','greffier','procureur'])): ?>
             <a href="<?= BASE_URL ?>/pv/edit/<?= $pv['id'] ?>" class="btn btn-outline-secondary"><i class="bi bi-pencil me-1"></i>Modifier</a>
             <?php endif; ?>
             <a href="<?= BASE_URL ?>/export/pv/<?= $pv['id'] ?>" target="_blank" class="btn btn-outline-danger"><i class="bi bi-file-pdf me-1"></i>Imprimer / PDF</a>
+            <?php if (Auth::hasRole(['admin'])): ?>
+            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#modalDeletePV"
+                    title="Supprimer définitivement ce PV (admin uniquement)">
+                <i class="bi bi-trash3 me-1"></i>Supprimer
+            </button>
+            <?php endif; ?>
         </div>
     </div>
 </div>
@@ -592,6 +598,51 @@
         <?php endif; ?>
     </div>
 </div>
+
+<!-- Modal Suppression PV (admin uniquement) -->
+<?php if (Auth::hasRole(['admin'])): ?>
+<div class="modal fade" id="modalDeletePV" tabindex="-1" aria-labelledby="modalDeletePVLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-danger">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="modalDeletePVLabel">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Supprimer ce PV
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger d-flex align-items-start gap-2 mb-3">
+                    <i class="bi bi-trash3-fill fs-4 flex-shrink-0 mt-1"></i>
+                    <div>
+                        <strong>Action irréversible</strong><br>
+                        Vous êtes sur le point de supprimer définitivement le PV
+                        <strong><?= htmlspecialchars($pv['numero_rg']) ?></strong>
+                        (<?= htmlspecialchars($pv['numero_pv']) ?>).
+                    </div>
+                </div>
+                <p class="mb-1 small text-muted">Cette action supprimera également :</p>
+                <ul class="small text-muted mb-0">
+                    <li>Toutes les pièces jointes (fichiers physiques + base de données)</li>
+                    <li>Les infractions et primo-intervenants associés</li>
+                    <li>Les mises en cause liées à ce PV</li>
+                    <li>Les liens vers les dossiers (les dossiers eux-mêmes sont conservés)</li>
+                </ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>Annuler
+                </button>
+                <form method="POST" action="<?= BASE_URL ?>/pv/delete/<?= $pv['id'] ?>" class="d-inline">
+                    <?= CSRF::field() ?>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash3 me-1"></i>Supprimer définitivement
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
 <!-- Modal Affecter -->
 <div class="modal fade" id="modalAffecter" tabindex="-1">
