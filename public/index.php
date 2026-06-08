@@ -97,6 +97,8 @@ $router->post('/pv/upload/{pvId}',             'PVController@uploadDocument');
 $router->get('/api/pv/documents/{pvId}',       'PVController@listDocuments');
 // PV — suppression pièce jointe
 $router->post('/pv/document/delete/{id}',      'PVController@deleteDocument');
+// PV — suppression définitive du PV (admin uniquement)
+$router->post('/pv/delete/{id}',               'PVController@delete');
 // PV — fusion multi-PV + recherche RP
 $router->post('/pv/fusionner/{id}',            'PVController@fusionner');
 $router->get('/api/pv/search-rp',              'PVController@apiSearchRP');

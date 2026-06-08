@@ -1,4 +1,21 @@
 <?php $pageTitle = 'Modifier le PV'; ?>
+<style>
+/* ── Infraction cochée : fond bleu marine, texte blanc (identique à create.php) ── */
+.infraction-row.infraction-checked {
+    background-color: #1a3c5e !important;
+    color: #ffffff !important;
+}
+.infraction-row.infraction-checked .form-check-label,
+.infraction-row.infraction-checked .fw-semibold,
+.infraction-row.infraction-checked .text-muted {
+    color: #ffffff !important;
+}
+.infraction-row.infraction-checked .form-check-input {
+    border-color: #a8c4e0;
+}
+.infraction-row.infraction-checked .badge.bg-warning { color:#fff !important; }
+</style>
+
 <div class="mb-4 mt-2">
     <nav aria-label="breadcrumb"><ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="<?=BASE_URL?>/pv">Procès-Verbaux</a></li>
@@ -9,11 +26,30 @@
 </div>
 
 <?php
-// Récupération des sélections : POST prioritaire, sinon données du PV
-$selectedInfr = $_POST['infractions']    ?? ($pv['infractions_ids']  ?? []);
-$selectedComp = $_POST['est_complicite'] ?? ($pv['complicites_ids'] ?? []);
-$selectedInfr = array_map('intval', (array)$selectedInfr);
-$selectedComp = array_map('intval', (array)$selectedComp);
+// ── Récupération des IDs d'infractions pré-cochées ─────────────────────────
+// Priorité 1 : POST (re-soumission avec erreur)
+// Priorité 2 : données existantes en DB via getPVDetail() → $pv['infractions_unite']
+if (isset($_POST['infractions_unite'])) {
+    $selectedInfr = array_map('intval', (array)$_POST['infractions_unite']);
+} else {
+    // Extraire les infraction_id depuis le tableau d'objets infractions_unite
+    $selectedInfr = array_map(
+        fn($i) => (int)($i['infraction_id'] ?? $i['id'] ?? 0),
+        (array)($pv['infractions_unite'] ?? [])
+    );
+}
+
+if (isset($_POST['est_complicite'])) {
+    $selectedComp = array_map('intval', (array)$_POST['est_complicite']);
+} else {
+    // Extraire les infraction_id dont est_complicite = 1
+    $selectedComp = array_map(
+        fn($i) => (int)($i['infraction_id'] ?? $i['id'] ?? 0),
+        array_filter((array)($pv['infractions_unite'] ?? []), fn($i) => !empty($i['est_complicite']))
+    );
+}
+$selectedInfr = array_values(array_filter($selectedInfr));
+$selectedComp = array_values(array_filter($selectedComp));
 ?>
 
 <div class="row justify-content-center"><div class="col-lg-10">
@@ -77,17 +113,20 @@ $selectedComp = array_map('intval', (array)$selectedComp);
                 </select>
             </div>
 
-            <!-- ============================== -->
-            <!-- INFRACTIONS MULTIPLES           -->
-            <!-- ============================== -->
+            <!-- ============================================================ -->
+            <!-- INFRACTIONS MULTIPLES (unité d'enquête)                      -->
+            <!-- Header navy identique à create.php — texte blanc visible     -->
+            <!-- ============================================================ -->
             <div class="col-12">
-                <div class="card border-primary border-2">
-                    <div class="card-header bg-primary bg-opacity-10 d-flex align-items-center justify-content-between">
-                        <span class="fw-semibold text-primary">
+                <div class="card border-2" style="border-color:#1a3c5e !important;">
+                    <div class="card-header d-flex align-items-center justify-content-between" style="background:#1a3c5e;">
+                        <span class="fw-semibold" style="color:#ffffff;">
                             <i class="bi bi-list-check me-2"></i>Types d'infractions retenues
-                            <span class="text-muted small fw-normal">(plusieurs choix possibles)</span>
+                            <span class="small fw-normal" style="color:#a8c4e0;">(infractions déclarées — unité d'enquête)</span>
                         </span>
-                        <span class="badge bg-primary" id="infractionsCount">0</span>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-light text-dark" id="infractionsCount">0</span>
+                        </div>
                     </div>
                     <div class="card-body">
                         <!-- Recherche -->
@@ -122,7 +161,7 @@ $selectedComp = array_map('intval', (array)$selectedComp);
 
                         <!-- Liste scrollable -->
                         <div class="border rounded p-2" id="infractionsList"
-                             style="max-height: 320px; overflow-y: auto; background:#fafafa;">
+                             style="max-height: 320px; overflow-y: auto; background:#ffffff;">
                             <?php foreach ($infractions as $inf):
                                 $isChecked  = in_array((int)$inf['id'], $selectedInfr, true);
                                 $isComplice = in_array((int)$inf['id'], $selectedComp, true);
@@ -133,15 +172,16 @@ $selectedComp = array_map('intval', (array)$selectedComp);
                                     default              => 'secondary'
                                 };
                             ?>
-                            <div class="infraction-row p-2 mb-1 rounded <?= $isChecked ? 'bg-primary bg-opacity-10 border border-primary' : 'bg-white border' ?>"
+                            <div class="infraction-row p-2 mb-1 rounded <?= $isChecked ? 'infraction-checked border' : 'bg-white border' ?>"
                                  data-categorie="<?= htmlspecialchars($inf['categorie']) ?>"
                                  data-libelle="<?= htmlspecialchars(strtolower($inf['libelle'])) ?>"
                                  data-code="<?= htmlspecialchars(strtolower($inf['code'])) ?>"
                                  data-id="<?= $inf['id'] ?>">
                                 <div class="d-flex align-items-center gap-2">
                                     <div class="form-check flex-grow-1 mb-0">
+                                        <!-- name="infractions_unite[]" — correspond à PVController::update() -->
                                         <input class="form-check-input infraction-check" type="checkbox"
-                                               name="infractions[]" value="<?= $inf['id'] ?>"
+                                               name="infractions_unite[]" value="<?= $inf['id'] ?>"
                                                id="inf<?= $inf['id'] ?>"
                                                <?= $isChecked ? 'checked' : '' ?>>
                                         <label class="form-check-label w-100" for="inf<?= $inf['id'] ?>" style="cursor:pointer;">
@@ -161,7 +201,7 @@ $selectedComp = array_map('intval', (array)$selectedComp);
                                                name="est_complicite[]" value="<?= $inf['id'] ?>"
                                                id="comp<?= $inf['id'] ?>"
                                                <?= $isComplice ? 'checked' : '' ?>>
-                                        <label class="form-check-label small text-muted" for="comp<?= $inf['id'] ?>">
+                                        <label class="form-check-label small" for="comp<?= $inf['id'] ?>">
                                             Complicité
                                         </label>
                                     </div>
@@ -260,7 +300,7 @@ $selectedComp = array_map('intval', (array)$selectedComp);
     </div>
 
     <div class="d-flex gap-2">
-        <button type="submit" class="btn btn-primary flex-fill"><i class="bi bi-save me-1"></i>Enregistrer</button>
+        <button type="submit" class="btn btn-primary flex-fill"><i class="bi bi-save me-1"></i>Enregistrer les modifications</button>
         <a href="<?= BASE_URL ?>/pv/show/<?= $pv['id'] ?>" class="btn btn-outline-secondary">Annuler</a>
     </div>
 </form>
@@ -326,7 +366,8 @@ function loadCommunes(deptId) {
 })();
 
 /* ================================================================
-   GESTION DES INFRACTIONS MULTIPLES (mêmes règles que la vue create)
+   GESTION DES INFRACTIONS MULTIPLES
+   — Style navy + blanc identique à create.php
 ================================================================ */
 (function(){
     const list         = document.getElementById('infractionsList');
@@ -350,8 +391,9 @@ function loadCommunes(deptId) {
 
             if (chk.checked) {
                 n++;
+                // Appliquer style navy (comme create.php)
+                row.classList.add('infraction-checked', 'border-primary');
                 row.classList.remove('bg-white');
-                row.classList.add('bg-primary', 'bg-opacity-10', 'border-primary');
                 if (switchEl) switchEl.style.visibility = 'visible';
 
                 const label     = row.querySelector('label.form-check-label');
@@ -360,13 +402,13 @@ function loadCommunes(deptId) {
                 const isCompl   = compChk && compChk.checked;
 
                 const badge = document.createElement('span');
-                badge.className = 'badge ' +
-                    (codeBadge ? codeBadge.className.replace('me-1','') : 'bg-secondary') +
-                    ' d-inline-flex align-items-center gap-1';
-                badge.innerHTML = (isCompl ? '<i class="bi bi-link-45deg" title="Complicité"></i> ' : '') + text;
+                badge.className = 'badge bg-secondary d-inline-flex align-items-center gap-1';
+                badge.innerHTML = (isCompl ? '<i class="bi bi-link-45deg" title="Complicité"></i> ' : '') +
+                    (codeBadge ? '<span class="me-1">' + codeBadge.textContent + '</span>' : '') + text;
                 badges.appendChild(badge);
             } else {
-                row.classList.remove('bg-primary','bg-opacity-10','border-primary');
+                // Retirer style navy
+                row.classList.remove('infraction-checked', 'border-primary');
                 row.classList.add('bg-white');
                 if (switchEl) switchEl.style.visibility = 'hidden';
                 if (compChk) compChk.checked = false;
@@ -374,7 +416,7 @@ function loadCommunes(deptId) {
         });
 
         counter.textContent = n;
-        counter.className = 'badge ' + (n > 0 ? 'bg-success' : 'bg-secondary');
+        counter.className = 'badge ' + (n > 0 ? 'bg-light text-dark' : 'bg-light text-dark');
         summary.style.display = n > 0 ? 'block' : 'none';
     }
 
@@ -422,6 +464,7 @@ function loadCommunes(deptId) {
         r.addEventListener('change', applyFilter);
     });
 
+    // Initialisation : appliquer les styles sur les infractions déjà cochées (pré-chargées)
     updateUI();
 })();
 </script>

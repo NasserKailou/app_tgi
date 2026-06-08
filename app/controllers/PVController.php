@@ -476,6 +476,60 @@ class PVController extends Controller {
         $this->redirect('/pv/show/' . $id);
     }
 
+    // ── Suppression définitive d'un PV (admin uniquement) ─────────────────────
+    public function delete(string $id): void {
+        Auth::requireLogin();
+        CSRF::check();
+        Auth::requireRole(['admin']);
+
+        $id = (int)$id;
+        if ($id <= 0) {
+            $this->flash('error', 'Identifiant de PV invalide.');
+            $this->redirect('/pv');
+            return;
+        }
+
+        // Vérifier que le PV existe
+        $stmtChk = $this->db->prepare("SELECT id, numero_rg FROM pv WHERE id = ?");
+        $stmtChk->execute([$id]);
+        $pvRow = $stmtChk->fetch();
+        if (!$pvRow) {
+            $this->flash('error', 'PV introuvable.');
+            $this->redirect('/pv');
+            return;
+        }
+
+        // ── 1. Supprimer les fichiers physiques des documents liés ────────────
+        $docsStmt = $this->db->prepare(
+            "SELECT chemin_fichier FROM documents WHERE pv_id = ?"
+        );
+        $docsStmt->execute([$id]);
+        foreach ($docsStmt->fetchAll() as $doc) {
+            if (!empty($doc['chemin_fichier'])) {
+                $absPath = ROOT_PATH . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR
+                    . str_replace('/', DIRECTORY_SEPARATOR, ltrim($doc['chemin_fichier'], '/'));
+                if (file_exists($absPath)) {
+                    @unlink($absPath);
+                }
+            }
+        }
+
+        // ── 2. Supprimer les enregistrements liés (cascade si non activée) ────
+        $this->db->prepare("DELETE FROM documents              WHERE pv_id = ?")->execute([$id]);
+        $this->db->prepare("DELETE FROM pv_infractions         WHERE pv_id = ?")->execute([$id]);
+        $this->db->prepare("DELETE FROM pv_primo_intervenants  WHERE pv_id = ?")->execute([$id]);
+        $this->db->prepare("DELETE FROM mises_en_cause         WHERE pv_id = ?")->execute([$id]);
+        // Dissocier les dossiers liés (ne pas supprimer les dossiers eux-mêmes)
+        $this->db->prepare("UPDATE dossiers SET pv_id = NULL   WHERE pv_id = ?")->execute([$id]);
+        $this->db->prepare("DELETE FROM dossier_pvs            WHERE pv_id = ?")->execute([$id]);
+
+        // ── 3. Supprimer le PV lui-même ───────────────────────────────────────
+        $this->db->prepare("DELETE FROM pv WHERE id = ?")->execute([$id]);
+
+        $this->flash('success', "PV {$pvRow['numero_rg']} supprimé définitivement.");
+        $this->redirect('/pv');
+    }
+
     public function transferer(string $id): void {
         Auth::requireLogin();
         CSRF::check();
