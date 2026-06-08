@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Hôte : 127.0.0.1
--- Généré le : mar. 28 avr. 2026 à 14:56
+-- Généré le : dim. 07 juin 2026 à 13:08
 -- Version du serveur : 10.4.32-MariaDB
 -- Version de PHP : 8.2.12
 
@@ -64,13 +64,6 @@ CREATE TABLE `audiences` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Déchargement des données de la table `audiences`
---
-
-INSERT INTO `audiences` (`id`, `dossier_id`, `salle_id`, `numero_audience`, `date_audience`, `type_audience`, `statut`, `president_id`, `greffier_id`, `notes`, `motif_renvoi`, `date_renvoi`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 3, 2, 'AUD N°001/2026/TGI-NY', '2026-04-18 10:00:00', 'correctionnelle', 'planifiee', 10, 11, '', NULL, NULL, 1, '2026-04-18 05:43:41', '2026-04-18 05:43:41');
 
 -- --------------------------------------------------------
 
@@ -137,15 +130,29 @@ CREATE TABLE `cabinets_instruction` (
 --
 
 INSERT INTO `cabinets_instruction` (`id`, `numero`, `libelle`, `juge_id`, `actif`) VALUES
-(1, 'CAB-01', 'Doyen des Juges d\'Instruction', NULL, 1),
-(2, 'CAB-02', 'Cabinet Droit Commun Mineur N°1', NULL, 1),
-(3, 'CAB-03', 'Cabinet Droit Commun Mineur N°2', NULL, 1),
-(4, 'CAB-04', 'Cabinet Droit Commun Majeur N°1', NULL, 1),
-(5, 'CAB-05', 'Cabinet Droit Commun Majeur N°2', NULL, 1),
-(6, 'CAB-06', 'Cabinet Pôle Économique et Financier N°1', NULL, 1),
-(7, 'CAB-07', 'Cabinet Pôle Économique et Financier N°2', NULL, 1),
-(8, 'CAB-08', 'Cabinet Pôle Antiterroriste', NULL, 1),
-(9, 'VVVV', 'VVVV', 2, 1);
+(1, 'DC-DOYEN', 'Cabinet Doyen Droit Commun', NULL, 1),
+(2, 'DC-01', '1er Cabinet Droit Commun', NULL, 1),
+(3, 'DC-02', '2e Cabinet Droit Commun', NULL, 1),
+(4, 'DC-03', '3e Cabinet Droit Commun', NULL, 1),
+(5, 'DC-04', '4e Cabinet Droit Commun', NULL, 1),
+(6, 'DC-05', '5e Cabinet Droit Commun', NULL, 1),
+(7, 'DC-MIN-01', '1er Cabinet Mineurs', NULL, 1),
+(8, 'DC-MIN-02', '2e Cabinet Mineurs', NULL, 1),
+(9, 'ECO-DOYEN', 'Cabinet Doyen Économique et Financier', NULL, 1),
+(10, 'ECO-01', '1er Cabinet Économique et Financier', NULL, 1),
+(11, 'ECO-02', '2e Cabinet Économique et Financier', NULL, 1),
+(12, 'ECO-03', '3e Cabinet Économique et Financier', NULL, 1),
+(13, 'ECO-04', '4e Cabinet Économique et Financier', NULL, 1),
+(14, 'PAT-DOYEN', 'Cabinet Doyen Pôle Antiterroriste', NULL, 1),
+(15, 'PAT-01', '1er Cabinet Pôle Antiterroriste', NULL, 1),
+(16, 'PAT-02', '2e Cabinet Pôle Antiterroriste', NULL, 1),
+(17, 'PAT-03', '3e Cabinet Pôle Antiterroriste', NULL, 1),
+(18, 'PAT-04', '4e Cabinet Pôle Antiterroriste', NULL, 1),
+(19, 'PAT-05', '5e Cabinet Pôle Antiterroriste', NULL, 1),
+(20, 'PAT-06', '6e Cabinet Pôle Antiterroriste', NULL, 1),
+(21, 'PAT-07', '7e Cabinet Pôle Antiterroriste', NULL, 1),
+(22, 'PAT-08', '8e Cabinet Pôle Antiterroriste', NULL, 1),
+(23, 'PAT-MIN', 'Cabinet Mineurs Pôle Antiterroriste', NULL, 1);
 
 -- --------------------------------------------------------
 
@@ -938,13 +945,6 @@ CREATE TABLE `detenus` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Déchargement des données de la table `detenus`
---
-
-INSERT INTO `detenus` (`id`, `numero_ecrou`, `nom`, `prenom`, `surnom_alias`, `nom_mere`, `statut_matrimonial`, `nombre_enfants`, `sexe`, `photo_identite`, `maison_arret_id`, `date_naissance`, `lieu_naissance`, `nationalite`, `profession`, `adresse`, `dossier_id`, `jugement_id`, `type_detention`, `date_incarceration`, `date_liberation_prevue`, `date_liberation_effective`, `cellule`, `etablissement`, `statut`, `infractions_retenues`, `notes`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 'ECR0001/2026', 'Ali', 'ARZIKA', 'KOUDIZE', 'MINTOU SINKA', 'marie', 5, 'M', 'uploads/photos_detenus/det_dae062d59f963628_1776491861.jpg', 1, '1990-04-18', 'SOKORBE', 'Nigérienne', 'REVENDEUR', NULL, 3, NULL, 'prevenu', '2026-04-18', '2026-12-18', NULL, '', 'Maison d&#039;Arrêt de Niamey', 'incarcere', NULL, '', NULL, '2026-04-18 05:57:41', '2026-04-18 05:57:41');
-
 -- --------------------------------------------------------
 
 --
@@ -974,12 +974,11 @@ CREATE TABLE `documents` (
 --
 
 INSERT INTO `documents` (`id`, `dossier_id`, `pv_id`, `audience_id`, `jugement_id`, `nom_original`, `nom_stockage`, `chemin_fichier`, `type_document`, `mime_type`, `taille_octets`, `description`, `uploaded_by`, `uploaded_by_role`, `created_at`) VALUES
-(1, 1, NULL, NULL, NULL, 'MANDAT D\'ARRÊT — MAND N°001_2026_TGI-NY.pdf', '677c960acb6a72df_MANDAT_D_ARR__T_____MAND_N__001_2026_TGI-NY.pdf', 'uploads/documents/dossier_1/677c960acb6a72df_MANDAT_D_ARR__T_____MAND_N__001_2026_TGI-NY.pdf', 'piece_jointe', 'application/pdf', 234142, 'test', 1, NULL, '2026-04-17 17:01:17'),
-(2, 2, NULL, NULL, NULL, 'MANDAT D\'ARRÊT — MAND N°001_2026_TGI-NY.pdf', '677c960acb6a72df_MANDAT_D_ARR__T_____MAND_N__001_2026_TGI-NY.pdf', 'uploads/documents/dossier_2/677c960acb6a72df_MANDAT_D_ARR__T_____MAND_N__001_2026_TGI-NY.pdf', 'piece_jointe', 'application/pdf', 234142, 'TEST', 1, NULL, '2026-04-17 20:54:09'),
-(3, 3, NULL, NULL, NULL, 'MANDAT D\'ARRÊT — MAND N°001_2026_TGI-NY.pdf', '677c960acb6a72df_MANDAT_D_ARR__T_____MAND_N__001_2026_TGI-NY.pdf', 'uploads/documents/dossier_3/677c960acb6a72df_MANDAT_D_ARR__T_____MAND_N__001_2026_TGI-NY.pdf', 'piece_jointe', 'application/pdf', 234142, 'TEST', 1, NULL, '2026-04-17 21:01:43'),
-(4, 3, NULL, NULL, NULL, 'whatsapp_image_2025-11-25_at_17.20_40.jpg', 'b83d439bf4ec2e05_whatsapp_image_2025-11-25_at_17.20_40.jpg', 'uploads/documents/dossier_3/b83d439bf4ec2e05_whatsapp_image_2025-11-25_at_17.20_40.jpg', 'piece_jointe', 'image/jpeg', 153485, 'gg', 1, NULL, '2026-04-17 21:25:27'),
-(5, 3, NULL, NULL, NULL, 'whatsapp_image_2025-11-25_at_17.20_40.jpg', 'b83d439bf4ec2e05_whatsapp_image_2025-11-25_at_17.20_40.jpg', 'uploads/documents/dossier_3/b83d439bf4ec2e05_whatsapp_image_2025-11-25_at_17.20_40.jpg', 'piece_jointe', 'image/jpeg', 153485, NULL, 1, NULL, '2026-04-17 23:11:17'),
-(6, 3, NULL, NULL, NULL, 'WhatsApp Image 2026-04-14 at 16.51.49.jpeg', '0e827f44df1fa653_WhatsApp_Image_2026-04-14_at_16.51.49.jpeg', 'uploads/documents/dossier_3/0e827f44df1fa653_WhatsApp_Image_2026-04-14_at_16.51.49.jpeg', 'piece_jointe', 'image/jpeg', 260836, NULL, 1, NULL, '2026-04-18 06:05:03');
+(2, NULL, 1, NULL, NULL, '20260421142616952.pdf', '5b95e955d355b2bd_20260421142616952.pdf', 'uploads/documents/pv_1/5b95e955d355b2bd_20260421142616952.pdf', 'piece_jointe', 'application/pdf', 47016, NULL, 13, 'substitut_procureur', '2026-04-28 13:30:38'),
+(3, NULL, 1, NULL, NULL, 'Code de Bonne Conduite-1.pdf', '3206b34bbc860057_Code_de_Bonne_Conduite-1.pdf', 'uploads/documents/pv_1/3206b34bbc860057_Code_de_Bonne_Conduite-1.pdf', 'piece_jointe', 'application/pdf', 1848101, '55555', 13, 'substitut_procureur', '2026-04-28 13:35:26'),
+(4, NULL, 1, NULL, NULL, 'mandat_depot.pdf', '09f2cd0fc095188c_mandat_depot.pdf', 'uploads/documents/pv_1/09f2cd0fc095188c_mandat_depot.pdf', 'piece_jointe', 'application/pdf', 555206, NULL, 13, 'substitut_procureur', '2026-04-28 13:40:59'),
+(5, NULL, 2, NULL, NULL, 'PASSPORT_251214_134909.pdf', '291eb107db82b2a1_PASSPORT_251214_134909.pdf', 'uploads/documents/pv_2/291eb107db82b2a1_PASSPORT_251214_134909.pdf', 'piece_jointe', 'application/pdf', 430090, NULL, 1, 'admin', '2026-06-07 11:03:49'),
+(6, NULL, 2, NULL, NULL, 'rib_076325400501_2509905609.pdf', 'd19db01fe1c81d38_rib_076325400501_2509905609.pdf', 'uploads/documents/pv_2/d19db01fe1c81d38_rib_076325400501_2509905609.pdf', 'piece_jointe', 'application/pdf', 52600, NULL, 1, 'admin', '2026-06-07 11:04:11');
 
 -- --------------------------------------------------------
 
@@ -1021,15 +1020,6 @@ CREATE TABLE `dossiers` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Déchargement des données de la table `dossiers`
---
-
-INSERT INTO `dossiers` (`id`, `numero_rg`, `numero_rp`, `numero_ri`, `pv_id`, `substitut_id`, `cabinet_id`, `mode_poursuite`, `intitule`, `objet`, `motif_classement`, `date_classement`, `motif_declassement`, `date_declassement`, `declasse_par`, `statut_avant_classement`, `type_affaire`, `nature`, `statut`, `date_enregistrement`, `date_limite_traitement`, `date_instruction_debut`, `date_instruction_fin`, `est_antiterroriste`, `region_id`, `departement_id`, `commune_id`, `juge_siege_id`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 'RG N°002/2026/TGI-NY', 'RP N°001/2026/PARQUET', 'RI N°001/2026/INSTR', 1, 5, 1, 'aucun', '', 'examen', NULL, NULL, NULL, NULL, NULL, NULL, 'penale', 'correctionnel', 'en_instruction', '2026-04-17', '2026-10-17', '2026-04-17', NULL, 0, NULL, NULL, NULL, NULL, 1, '2026-04-17 16:09:56', '2026-04-17 20:02:34'),
-(2, 'RG N°004/2026/TGI-NY', 'RP N°002/2026/PARQUET', 'RI N°002/2026/INSTR', 2, 6, 2, 'RI', '', 'test', NULL, NULL, NULL, NULL, NULL, NULL, 'penale', 'correctionnel', 'en_instruction', '2026-04-17', '2026-10-17', '2026-04-17', NULL, 0, NULL, NULL, NULL, NULL, 1, '2026-04-17 20:53:43', '2026-04-17 20:53:43'),
-(3, 'RG N°006/2026/TGI-NY', 'RP N°003/2026/PARQUET', 'RI N°003/2026/INSTR', 3, 7, 3, 'FD', '', 'TESTT', NULL, NULL, NULL, NULL, NULL, NULL, 'penale', 'correctionnel', 'en_audience', '2026-04-17', '2026-10-17', '2026-04-17', NULL, 0, NULL, NULL, NULL, NULL, 1, '2026-04-17 21:01:24', '2026-04-18 05:43:41');
-
 -- --------------------------------------------------------
 
 --
@@ -1060,15 +1050,6 @@ CREATE TABLE `dossier_pvs` (
   `date_jonction` timestamp NOT NULL DEFAULT current_timestamp(),
   `joint_par` int(11) DEFAULT NULL COMMENT 'user_id du substitut ayant fait la jonction'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Jonction plusieurs PVs → un dossier (fusion par le substitut)';
-
---
--- Déchargement des données de la table `dossier_pvs`
---
-
-INSERT INTO `dossier_pvs` (`dossier_id`, `pv_id`, `date_jonction`, `joint_par`) VALUES
-(1, 1, '2026-04-27 10:19:25', NULL),
-(2, 2, '2026-04-27 10:19:25', NULL),
-(3, 3, '2026-04-27 10:19:25', NULL);
 
 -- --------------------------------------------------------
 
@@ -1164,7 +1145,16 @@ INSERT INTO `droits_utilisateurs` (`id`, `user_id`, `menu_id`, `fonctionnalite_i
 (131, 7, NULL, 9, 1, 1, '2026-04-22 17:58:39'),
 (132, 7, NULL, 10, 1, 1, '2026-04-22 17:58:39'),
 (133, 7, NULL, 11, 1, 1, '2026-04-22 17:58:39'),
-(134, 7, NULL, 12, 1, 1, '2026-04-22 17:58:39');
+(134, 7, NULL, 12, 1, 1, '2026-04-22 17:58:39'),
+(145, 13, 2, NULL, 1, 1, '2026-04-28 14:28:17'),
+(146, 13, 8, NULL, 1, 1, '2026-04-28 14:28:17'),
+(147, 13, NULL, 2, 1, 1, '2026-04-28 14:28:17'),
+(148, 13, NULL, 3, 1, 1, '2026-04-28 14:28:17'),
+(149, 13, NULL, 4, 1, 1, '2026-04-28 14:28:17'),
+(150, 13, NULL, 5, 1, 1, '2026-04-28 14:28:17'),
+(151, 13, NULL, 6, 1, 1, '2026-04-28 14:28:17'),
+(152, 13, NULL, 25, 1, 1, '2026-04-28 14:28:17'),
+(153, 13, NULL, 26, 1, 1, '2026-04-28 14:28:17');
 
 -- --------------------------------------------------------
 
@@ -1189,13 +1179,6 @@ CREATE TABLE `expertises_judiciaires` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Déchargement des données de la table `expertises_judiciaires`
---
-
-INSERT INTO `expertises_judiciaires` (`id`, `dossier_id`, `ordonnance_id`, `type_expertise`, `expert_nom`, `expert_qualification`, `date_mission`, `delai_depot`, `objet_expertise`, `date_depot_rapport`, `conclusions`, `statut`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 1, NULL, 'psychiatrique', 'uuu', '', '2026-04-18', NULL, 'hjhj', NULL, NULL, 'ordonnee', 1, '2026-04-17 23:08:02', '2026-04-17 23:08:02');
 
 -- --------------------------------------------------------
 
@@ -1299,7 +1282,7 @@ CREATE TABLE `infractions` (
   `id` int(11) NOT NULL,
   `code` varchar(20) NOT NULL,
   `libelle` varchar(255) NOT NULL,
-  `categorie` enum('criminelle','correctionnelle','contraventionnelle') NOT NULL,
+  `categorie` enum('criminelle','correctionnelle','contraventionnelle','autres') NOT NULL DEFAULT 'correctionnelle',
   `peine_min_mois` int(11) DEFAULT NULL,
   `peine_max_mois` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
@@ -1348,7 +1331,8 @@ INSERT INTO `infractions` (`id`, `code`, `libelle`, `categorie`, `peine_min_mois
 (36, 'INF-036', 'Vol avec violence', 'criminelle', 60, 120, '2026-04-17 20:52:30'),
 (37, 'INF-037', 'Terrorisme', 'criminelle', 120, 999, '2026-04-17 20:52:30'),
 (38, 'RJ', 'RENSEIGNEMENT JUDICIAIRE', 'correctionnelle', NULL, NULL, '2026-04-22 15:44:46'),
-(39, 'ES', 'EXAMEN DE SITUATION', 'criminelle', NULL, NULL, '2026-04-22 15:45:17');
+(39, 'ES', 'EXAMEN DE SITUATION', 'criminelle', NULL, NULL, '2026-04-22 15:45:17'),
+(40, 'ES23', 'VVVVDDDDD', 'autres', NULL, NULL, '2026-04-29 11:53:48');
 
 -- --------------------------------------------------------
 
@@ -1436,6 +1420,7 @@ CREATE TABLE `mandats` (
   `nouveau_nom` varchar(150) DEFAULT NULL,
   `nouveau_prenom` varchar(150) DEFAULT NULL,
   `nouveau_ddn` date DEFAULT NULL,
+  `nouveau_lieu_naissance` varchar(150) DEFAULT NULL,
   `nouveau_nationalite` varchar(100) DEFAULT 'Nigérienne',
   `nouveau_adresse` text DEFAULT NULL,
   `nouveau_profession` varchar(200) DEFAULT NULL,
@@ -1451,16 +1436,23 @@ CREATE TABLE `mandats` (
   `observations` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `created_by` int(11) DEFAULT NULL
+  `created_by` int(11) DEFAULT NULL,
+  `nouveau_pere` varchar(150) DEFAULT NULL,
+  `nouveau_mere` varchar(150) DEFAULT NULL,
+  `sexe` enum('M','F') DEFAULT NULL,
+  `situation_famille` varchar(100) DEFAULT NULL,
+  `service_militaire` varchar(100) DEFAULT NULL,
+  `condamnations` text DEFAULT NULL,
+  `flagrant_delit` tinyint(1) NOT NULL DEFAULT 0,
+  `date_exhibe` date DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Déchargement des données de la table `mandats`
 --
 
-INSERT INTO `mandats` (`id`, `numero`, `type_mandat`, `dossier_id`, `detenu_id`, `partie_id`, `nouveau_nom`, `nouveau_prenom`, `nouveau_ddn`, `nouveau_nationalite`, `nouveau_adresse`, `nouveau_profession`, `motif`, `infraction_libelle`, `lieu_execution`, `emetteur_id`, `date_emission`, `date_expiration`, `statut`, `date_execution`, `executant_nom`, `observations`, `created_at`, `updated_at`, `created_by`) VALUES
-(1, 'MAND N°001/2026/TGI-NY', 'arret', NULL, NULL, NULL, 'DG CAIMA', 'LAOUALI', '1993-04-17', 'Nigérienne', NULL, NULL, 'test', 'ttt', 'tttt', 1, '2026-04-17', '2026-10-17', 'execute', '2026-04-17', NULL, NULL, '2026-04-17 16:07:29', '2026-04-17 21:31:50', 1),
-(2, 'MAND N°002/2026/TGI-NY', 'depot', 3, NULL, NULL, 'SANI', 'SIDIKOU', '1990-04-22', 'Nigérienne', 'BOBIEL', 'COMMERCANTE', 'ESCROQUERIE, vol en reuinion', NULL, 'NIAMEY', 1, '2026-04-22', '2026-10-22', 'emis', NULL, NULL, NULL, '2026-04-22 17:18:20', '2026-04-22 17:18:20', 1);
+INSERT INTO `mandats` (`id`, `numero`, `type_mandat`, `dossier_id`, `detenu_id`, `partie_id`, `nouveau_nom`, `nouveau_prenom`, `nouveau_ddn`, `nouveau_lieu_naissance`, `nouveau_nationalite`, `nouveau_adresse`, `nouveau_profession`, `motif`, `infraction_libelle`, `lieu_execution`, `emetteur_id`, `date_emission`, `date_expiration`, `statut`, `date_execution`, `executant_nom`, `observations`, `created_at`, `updated_at`, `created_by`, `nouveau_pere`, `nouveau_mere`, `sexe`, `situation_famille`, `service_militaire`, `condamnations`, `flagrant_delit`, `date_exhibe`) VALUES
+(1, 'MAND N°001/2026/TGI-NY', 'arret', NULL, NULL, NULL, 'Maikibi', 'Sanda', NULL, NULL, 'Nigérienne', 'tondo bon', 'revendeur', 'tentative de meurtre', NULL, NULL, 1, '2026-04-30', '2026-10-30', 'emis', NULL, NULL, NULL, '2026-04-30 10:45:37', '2026-04-30 12:14:37', 1, 'sanda mado', 'mintou', 'M', 'Marié', 'oui', 'CBV', 1, NULL);
 
 -- --------------------------------------------------------
 
@@ -1478,6 +1470,19 @@ CREATE TABLE `mec_infractions` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Infractions retenues par mis en cause';
 
+--
+-- Déchargement des données de la table `mec_infractions`
+--
+
+INSERT INTO `mec_infractions` (`id`, `mec_id`, `infraction_id`, `type`, `est_complicite`, `notes`, `created_at`) VALUES
+(1, 1, 27, 'unite', 0, NULL, '2026-06-07 11:05:02'),
+(2, 1, 33, 'unite', 0, NULL, '2026-06-07 11:05:02'),
+(3, 1, 21, 'unite', 0, NULL, '2026-06-07 11:05:02'),
+(4, 1, 6, 'unite', 0, NULL, '2026-06-07 11:05:02'),
+(5, 1, 27, 'substitut', 0, NULL, '2026-06-07 11:05:02'),
+(6, 1, 33, 'substitut', 0, NULL, '2026-06-07 11:05:02'),
+(7, 1, 38, 'substitut', 0, NULL, '2026-06-07 11:05:02');
+
 -- --------------------------------------------------------
 
 --
@@ -1492,17 +1497,6 @@ CREATE TABLE `membres_audience` (
   `role_audience` enum('president','greffier','assesseur_1','assesseur_2','jure_1','jure_2','procureur','substitut','juge_assesseur','avocat_defense','avocat_partie_civile','greffier_adjoint','autre') NOT NULL DEFAULT 'autre',
   `observations` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Déchargement des données de la table `membres_audience`
---
-
-INSERT INTO `membres_audience` (`id`, `audience_id`, `user_id`, `nom_externe`, `role_audience`, `observations`) VALUES
-(1, 1, 2, NULL, 'assesseur_1', NULL),
-(2, 1, 3, NULL, 'assesseur_2', NULL),
-(3, 1, NULL, 'AAAAA', 'jure_1', NULL),
-(4, 1, NULL, 'BBBBBB', 'jure_2', NULL),
-(5, 1, 7, NULL, 'procureur', NULL);
 
 -- --------------------------------------------------------
 
@@ -1590,12 +1584,7 @@ CREATE TABLE `mises_en_cause` (
 --
 
 INSERT INTO `mises_en_cause` (`id`, `pv_id`, `nom`, `prenom`, `alias`, `nom_mere`, `date_naissance`, `lieu_naissance`, `nationalite`, `sexe`, `profession`, `adresse`, `telephone`, `statut`, `statut_autre_detail`, `photo`, `personne_contacter_nom`, `personne_contacter_tel`, `personne_contacter_lien`, `est_connu_archives`, `nb_affaires_precedentes`, `notes_antecedents`, `decision_substitut`, `motif_non_poursuite`, `date_decision`, `created_by`, `substitut_id`, `created_at`, `updated_at`) VALUES
-(1, 4, 'DETENUS 1', 'ARZIKA', 'cobra', 'MINTOU SINKA', '1999-04-19', NULL, 'Nigérienne', 'M', 'REVENDEUR', NULL, NULL, 'prevenu', NULL, 'uploads/photos_mec/mec_38fe96c8e62dbb44_1776588618.jpeg', 'HJHJHHJHJ', NULL, NULL, 1, 8, 'HHHHHHH', 'en_attente', NULL, NULL, 1, NULL, '2026-04-19 08:50:18', '2026-04-19 08:50:18'),
-(2, 5, 'AZIZ ET AUTRES', '', NULL, NULL, NULL, NULL, 'Nigérienne', 'M', NULL, NULL, NULL, 'mise_en_cause', NULL, NULL, NULL, NULL, NULL, 0, 0, NULL, 'en_attente', NULL, NULL, 1, NULL, '2026-04-22 16:38:58', '2026-04-22 16:38:58'),
-(3, 6, 'ABIBOULAYE MOUNKAILA ET AUTRES', '', NULL, NULL, NULL, NULL, 'Nigérienne', 'M', NULL, NULL, NULL, 'mise_en_cause', NULL, NULL, NULL, NULL, NULL, 0, 0, NULL, 'poursuivi', NULL, '2026-04-22', 11, NULL, '2026-04-22 16:39:39', '2026-04-22 16:51:35'),
-(4, 6, 'GARBA', '', NULL, NULL, NULL, NULL, 'Nigérienne', 'M', NULL, NULL, NULL, 'mise_en_cause', NULL, NULL, NULL, NULL, NULL, 0, 0, NULL, 'poursuivi', NULL, '2026-04-22', 1, NULL, '2026-04-22 16:48:22', '2026-04-22 16:48:51'),
-(5, 6, 'MOUSTAPHA', '', NULL, NULL, NULL, NULL, 'Nigérienne', 'M', NULL, NULL, NULL, 'mise_en_cause', NULL, NULL, NULL, NULL, NULL, 0, 0, NULL, 'non_poursuivi', 'test', '2026-04-22', 1, NULL, '2026-04-22 16:48:29', '2026-04-22 16:49:12'),
-(6, 7, 'ABDOU', '', NULL, NULL, NULL, NULL, 'Nigérienne', 'M', NULL, NULL, NULL, 'mise_en_cause', NULL, NULL, NULL, NULL, NULL, 0, 0, NULL, 'en_attente', NULL, NULL, 11, NULL, '2026-04-22 16:54:04', '2026-04-22 16:54:04');
+(1, 2, 'SIDIKOU', '', NULL, NULL, NULL, NULL, 'Nigérienne', 'M', NULL, NULL, NULL, 'mise_en_cause', NULL, 'uploads/photos_mec/mec_65a0d204b908fe03_1780830302.jpeg', NULL, NULL, NULL, 0, 0, NULL, 'en_attente', NULL, NULL, 1, NULL, '2026-06-07 11:05:02', '2026-06-07 11:05:02');
 
 -- --------------------------------------------------------
 
@@ -1613,19 +1602,6 @@ CREATE TABLE `mouvements_dossier` (
   `nouveau_statut` varchar(60) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Déchargement des données de la table `mouvements_dossier`
---
-
-INSERT INTO `mouvements_dossier` (`id`, `dossier_id`, `user_id`, `type_mouvement`, `description`, `ancien_statut`, `nouveau_statut`, `created_at`) VALUES
-(1, 1, 1, 'creation', 'Dossier créé depuis PV RG N°001/2026/TGI-NY', NULL, 'en_instruction', '2026-04-17 16:09:56'),
-(2, 1, 1, 'classement', 'Classé sans suite', 'en_instruction', 'classe', '2026-04-17 16:33:46'),
-(3, 1, 1, 'declassement', 'Déclassé : ssss', 'classe', 'parquet', '2026-04-17 16:34:00'),
-(4, 1, 1, 'affectation_instruction', 'Affecté au cabinet d\'instruction', 'parquet', 'en_instruction', '2026-04-17 20:02:34'),
-(5, 2, 1, 'creation', 'Dossier créé depuis PV RG N°003/2026/TGI-NY — Mode de poursuite : Réquisitoire Introductif', NULL, 'en_instruction', '2026-04-17 20:53:43'),
-(6, 3, 1, 'creation', 'Dossier créé depuis PV RG N°005/2026/TGI-NY — Mode de poursuite : Flagrant Délit', NULL, 'en_instruction', '2026-04-17 21:01:24'),
-(7, 1, 1, 'ordonnance', 'Ordonnance ORD-2026-0001 créée', NULL, NULL, '2026-04-18 06:02:15');
 
 -- --------------------------------------------------------
 
@@ -1649,13 +1625,6 @@ CREATE TABLE `ordonnances` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Déchargement des données de la table `ordonnances`
---
-
-INSERT INTO `ordonnances` (`id`, `numero_ordonnance`, `dossier_id`, `juge_id`, `type_ordonnance`, `date_ordonnance`, `contenu`, `observations`, `statut`, `date_signature`, `date_notification`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 'ORD-2026-0001', 1, 8, 'detention', '2026-04-18', 'jughhhhhhh', 'chghgffghhjfgfgtyj', 'signee', '2026-04-18 07:02:27', NULL, 1, '2026-04-18 06:02:15', '2026-04-18 06:02:27');
 
 -- --------------------------------------------------------
 
@@ -1734,14 +1703,6 @@ CREATE TABLE `parties` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Déchargement des données de la table `parties`
---
-
-INSERT INTO `parties` (`id`, `dossier_id`, `type_partie`, `nom`, `prenom`, `date_naissance`, `nationalite`, `profession`, `adresse`, `telephone`, `notes`, `created_at`) VALUES
-(1, 3, '', 'SCP', 'ARZIKA', NULL, 'Nigérienne', '', '', 'KIMBA', NULL, '2026-04-18 05:41:55'),
-(2, 3, 'prevenu', 'SANI', 'SIDIKOU', '1990-04-22', 'Nigérienne', 'COMMERCANTE', 'BOBIEL', NULL, NULL, '2026-04-22 17:18:20');
-
 -- --------------------------------------------------------
 
 --
@@ -1776,13 +1737,6 @@ CREATE TABLE `plaintes` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Gestion des plaintes reçues au parquet';
 
---
--- Déchargement des données de la table `plaintes`
---
-
-INSERT INTO `plaintes` (`id`, `numero_plainte`, `date_plainte`, `date_reception`, `plaignant_nom`, `plaignant_prenom`, `plaignant_telephone`, `plaignant_adresse`, `plaignant_email`, `plaignant_qualite`, `mis_en_cause_nom`, `mis_en_cause_adresse`, `nature_plainte`, `description_faits`, `lieu_faits`, `date_faits`, `pieces_jointes`, `statut`, `pv_id`, `motif_classement`, `substitut_id`, `observations`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 'PLT-2026-0001', '2026-04-19', '2026-04-19', 'DIALLO', 'MOUSSA', '99999999', 'NIAMEY', '', 'personne_physique', 'ALI', 'BOBIEL', 'VOL ESCROQUERIE', '', '', '2026-04-15', 'uploads/plaintes/plt_6e6469c4d5aa52b6_1776588283.pdf', 'deposee', NULL, NULL, NULL, '', 11, '2026-04-19 08:44:43', '2026-04-19 08:44:43');
-
 -- --------------------------------------------------------
 
 --
@@ -1802,13 +1756,12 @@ CREATE TABLE `primo_intervenants` (
 --
 
 INSERT INTO `primo_intervenants` (`id`, `nom`, `type`, `description`, `actif`) VALUES
-(1, 'Unité Spéciale de la Police', 'Police', 'DGPN — Unité Spéciale', 1),
-(2, 'Forces Armées Nigériennes', 'Armée', 'Forces Armées du Niger', 1),
-(3, 'Opération Damissa', 'Inter-forces', 'Opération sécuritaire inter-forces', 1),
-(4, 'Garde Nationale du Niger', 'Gendarmerie', 'Garde Nationale — missions sécuritaires', 1),
-(5, 'Gendarmerie Nationale', 'Gendarmerie', 'Gendarmerie Nationale du Niger', 1),
-(6, 'Direction de la Surveillance du Territoire', 'Renseignement', 'DST — services de renseignement', 1),
-(7, 'Police Judiciaire', 'Police', 'Brigade de Police Judiciaire', 1);
+(1, 'F.A.N', 'Armée', 'Forces Armées Nigériennes', 1),
+(2, 'G.N', 'Gendarmerie', 'Gendarmerie Nationale', 1),
+(3, 'G.N.N', 'Gendarmerie', 'Garde Nationale du Niger', 1),
+(4, 'P.N', 'Police', 'Police Nationale', 1),
+(5, 'E&F', 'Environnement', 'Eaux et Forêts', 1),
+(6, 'D.N', 'Douanes', 'Direction Générale des Douanes', 1);
 
 -- --------------------------------------------------------
 
@@ -1853,13 +1806,8 @@ CREATE TABLE `pv` (
 --
 
 INSERT INTO `pv` (`id`, `numero_pv`, `numero_rg`, `unite_enquete_id`, `date_pv`, `date_reception`, `type_affaire`, `infraction_id`, `qualification_substitut_id`, `qualification_details`, `lois_applicables`, `est_antiterroriste`, `region_id`, `departement_id`, `commune_id`, `description_faits`, `statut`, `motif_classement`, `date_classement`, `motif_declassement`, `date_declassement`, `substitut_id`, `date_affectation_substitut`, `created_by`, `created_at`, `updated_at`, `numero_rp`, `numero_ordre`, `mode_poursuite`) VALUES
-(1, '234/2026', 'RG N°001/2026/TGI-NY', 4, '2026-04-17', '2026-04-17', 'penale', NULL, NULL, NULL, NULL, 1, 6, 37, 14, '', 'transfere_instruction', NULL, NULL, NULL, NULL, 5, '2026-04-17', 1, '2026-04-17 16:05:28', '2026-04-17 16:09:56', NULL, NULL, NULL),
-(2, '239/2026', 'RG N°003/2026/TGI-NY', 5, '2026-04-17', '2026-04-17', 'penale', NULL, NULL, NULL, NULL, 1, 6, 46, 17, 'test', 'transfere_instruction', NULL, NULL, NULL, NULL, 6, '2026-04-17', 1, '2026-04-17 17:02:43', '2026-04-17 20:53:43', NULL, NULL, NULL),
-(3, '247/2026', 'RG N°005/2026/TGI-NY', 6, '2026-04-17', '2026-04-17', 'penale', 30, NULL, NULL, NULL, 0, NULL, NULL, NULL, '', 'transfere_instruction', NULL, NULL, NULL, NULL, 7, '2026-04-17', 1, '2026-04-17 21:00:34', '2026-04-17 21:01:24', NULL, NULL, NULL),
-(4, '234/2026', 'RG N°007/2026/TGI-NY', 6, '2026-04-19', '2026-04-19', 'pole_antiterro_majeur', 23, NULL, NULL, NULL, 1, 6, 54, 198, '8989', 'en_traitement', NULL, NULL, NULL, NULL, 5, '2026-04-22', 11, '2026-04-19 08:45:58', '2026-04-22 16:10:32', '99', '007', NULL),
-(5, 'PV N°504', 'RG N°008/2026/TGI-NY', 8, '2025-03-26', '2024-04-22', 'droit_commun_majeur', 17, NULL, NULL, NULL, 0, NULL, NULL, NULL, 'ESCROQUERIE FAUX ET USAGE DE FAUX', 'en_traitement', NULL, NULL, NULL, NULL, 6, '2026-04-22', 11, '2026-04-22 16:31:59', '2026-04-22 16:39:50', 'TMP01', 'SOUS LE N°055', NULL),
-(6, '', 'RG N°009/2026/TGI-NY', NULL, '2026-04-22', '2026-04-22', 'penale', NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, '', 'en_traitement', NULL, NULL, NULL, NULL, 7, '2026-04-22', 11, '2026-04-22 16:38:16', '2026-04-22 16:56:28', NULL, NULL, NULL),
-(7, 'PV N°505', 'RG N°010/2026/TGI-NY', 6, '2026-04-22', '2026-04-22', 'droit_commun_majeur', 32, NULL, NULL, NULL, 0, NULL, NULL, NULL, '', 'en_traitement', NULL, NULL, NULL, NULL, 5, '2026-04-22', 11, '2026-04-22 16:44:58', '2026-04-22 16:59:34', 'TMP02', 'SOUS LE N°056', NULL);
+(1, '123', 'RG N°001/2026/TGI-NY', 17, '2026-04-28', '2026-04-28', 'droit_commun_mineur', NULL, NULL, NULL, NULL, 1, 6, 55, 199, '', 'en_traitement', NULL, NULL, NULL, NULL, 13, '2026-04-28', 1, '2026-04-28 13:01:48', '2026-04-28 13:06:44', '0010', '004', NULL),
+(2, '', 'RG N°002/2026/TGI-NY', NULL, '0000-00-00', '0000-00-00', '', NULL, NULL, '', '', 0, NULL, NULL, NULL, '', 'en_traitement', NULL, NULL, NULL, NULL, 25, '2026-06-07', 1, '2026-06-07 11:02:50', '2026-06-07 11:06:26', '123', '123', NULL);
 
 -- --------------------------------------------------------
 
@@ -1893,8 +1841,7 @@ CREATE TABLE `pv_primo_intervenants` (
 --
 
 INSERT INTO `pv_primo_intervenants` (`pv_id`, `primo_intervenant_id`) VALUES
-(1, 2),
-(4, 2);
+(1, 1);
 
 -- --------------------------------------------------------
 
@@ -1913,6 +1860,13 @@ CREATE TABLE `rapports` (
   `genere_par` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Rapports de fin de journée / périodiques générés depuis le dashboard';
+
+--
+-- Déchargement des données de la table `rapports`
+--
+
+INSERT INTO `rapports` (`id`, `type`, `titre`, `date_debut`, `date_fin`, `contenu_json`, `fichier`, `genere_par`, `created_at`) VALUES
+(1, 'quotidien', 'Rapport quotidien du 30/04/2026', '2026-04-30', '2026-04-30', '{\"pv\":{\"total\":0,\"antiterro\":null,\"penale\":0,\"civile\":0,\"commerciale\":0,\"classes\":0},\"dossiers\":{\"total\":0,\"juges\":0,\"classes\":0},\"audiences\":{\"total\":0,\"tenues\":0},\"mec\":{\"total\":0,\"poursuivis\":0,\"non_poursuivis\":0,\"femmes\":0},\"top_infractions\":[],\"pv_par_jour\":[],\"date_debut\":\"2026-04-30\",\"date_fin\":\"2026-04-30\",\"genere_le\":\"2026-04-30 12:30:52\"}', NULL, 1, '2026-04-30 10:30:52');
 
 -- --------------------------------------------------------
 
@@ -2019,14 +1973,6 @@ CREATE TABLE `scelles` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Déchargement des données de la table `scelles`
---
-
-INSERT INTO `scelles` (`id`, `numero_scelle`, `dossier_id`, `categorie`, `categorie_autre_detail`, `description`, `date_depot`, `lieu_conservation`, `observations`, `statut`, `date_restitution`, `beneficiaire_restitution`, `date_destruction`, `motif_destruction`, `pv_destruction`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 'SCL-2026-0001', 2, 'drogue', NULL, 'uuuuuuu', '2026-04-18', '', '', 'depose', NULL, NULL, NULL, NULL, NULL, 1, '2026-04-17 23:07:23', '2026-04-17 23:07:23'),
-(3, 'SCL-2026-0002', 2, 'drogue', NULL, 'ggggg', '2026-04-19', '', '', 'detruit', NULL, NULL, '2026-04-19', 'dddd', NULL, 1, '2026-04-19 06:21:35', '2026-04-19 06:22:32');
-
 -- --------------------------------------------------------
 
 --
@@ -2042,6 +1988,31 @@ CREATE TABLE `security_logs` (
   `details` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Journal de sécurité : connexions, tentatives échouées, actions sensibles';
+
+--
+-- Déchargement des données de la table `security_logs`
+--
+
+INSERT INTO `security_logs` (`id`, `user_id`, `action`, `ip_address`, `user_agent`, `details`, `created_at`) VALUES
+(1, 3, 'logout', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0', ' — Déconnexion', '2026-04-28 13:00:33'),
+(2, NULL, 'login_success', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0', 'admin@tgi-niamey.ne — Connexion réussie', '2026-04-28 13:00:39'),
+(3, 1, 'logout', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0', 'admin@tgi-niamey.ne — Déconnexion', '2026-04-28 13:07:28'),
+(4, NULL, 'login_success', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0', 'zara.massi@tgi-niamey.ne — Connexion réussie', '2026-04-28 13:07:46'),
+(5, 13, 'logout', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0', 'zara.massi@tgi-niamey.ne — Déconnexion', '2026-04-28 13:26:53'),
+(6, NULL, 'login_success', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'admin@tgi-niamey.ne — Connexion réussie', '2026-04-28 13:27:13'),
+(7, NULL, 'login_success', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0', 'zara.massi@tgi-niamey.ne — Connexion réussie', '2026-04-28 13:27:31'),
+(8, 1, 'logout', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', 'admin@tgi-niamey.ne — Déconnexion', '2026-04-28 13:47:24'),
+(9, 13, 'logout', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0', 'zara.massi@tgi-niamey.ne — Déconnexion', '2026-04-28 13:47:50'),
+(10, NULL, 'login_success', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0', 'admin@tgi-niamey.ne — Connexion réussie', '2026-04-28 13:47:56'),
+(11, NULL, 'login_success', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0', 'admin@tgi-niamey.ne — Connexion réussie', '2026-04-29 11:21:42'),
+(12, NULL, 'login_success', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0', 'admin@tgi-niamey.ne — Connexion réussie', '2026-04-29 12:51:13'),
+(13, NULL, 'login_success', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0', 'greffier@tgi-niamey.ne — Connexion réussie', '2026-04-30 10:29:23'),
+(14, 11, 'logout', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0', 'greffier@tgi-niamey.ne — Déconnexion', '2026-04-30 10:30:42'),
+(15, NULL, 'login_success', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0', 'admin@tgi-niamey.ne — Connexion réussie', '2026-04-30 10:30:47'),
+(16, NULL, 'login_success', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0', 'admin@tgi-niamey.ne — Connexion réussie', '2026-05-11 09:54:39'),
+(17, NULL, 'login_success', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0', 'admin@tgi-niamey.ne — Connexion réussie', '2026-05-12 11:23:49'),
+(18, NULL, 'login_success', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:151.0) Gecko/20100101 Firefox/151.0', 'admin@tgi-niamey.ne — Connexion réussie', '2026-06-04 08:59:56'),
+(19, NULL, 'login_success', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:151.0) Gecko/20100101 Firefox/151.0', 'admin@tgi-niamey.ne — Connexion réussie', '2026-06-07 09:47:22');
 
 -- --------------------------------------------------------
 
@@ -2063,14 +2034,27 @@ CREATE TABLE `unites_enquete` (
 --
 
 INSERT INTO `unites_enquete` (`id`, `nom`, `type`, `commune_id`, `telephone`, `actif`) VALUES
-(1, 'Commissariat Central de Niamey', 'commissariat', NULL, '+227 20 73 20 00', 1),
-(2, 'Commissariat du 1er Arrondissement', 'commissariat', NULL, '+227 20 73 21 00', 1),
-(3, 'Commissariat du 2ème Arrondissement', 'commissariat', NULL, '+227 20 73 22 00', 1),
-(4, 'Brigade de Gendarmerie de Niamey', 'gendarmerie', NULL, '+227 20 73 30 00', 1),
-(5, 'Brigade Territoriale de Say', 'gendarmerie', NULL, '+227 20 73 31 00', 1),
-(6, 'Brigade de Kollo', 'gendarmerie', NULL, '+227 20 73 32 00', 1),
-(7, 'Police Judiciaire Niamey', 'brigade_police', NULL, '+227 20 73 25 00', 1),
-(8, 'Unité Spéciale Anti-Terrorisme', 'unite_speciale', NULL, '+227 20 73 40 00', 1);
+(1, 'SCLCT/CTO', 'unite_speciale', NULL, NULL, 1),
+(2, 'DPJ — Direction de la Police Judiciaire', 'brigade_police', NULL, NULL, 1),
+(3, 'DST — Direction de la Surveillance du Territoire', 'unite_speciale', NULL, NULL, 1),
+(4, 'OCRTIS — Office Central de Répression du Trafic Illicite des Stupéfiants', 'unite_speciale', NULL, NULL, 1),
+(5, 'CCN — Commissariat Central de Niamey', 'commissariat', NULL, NULL, 1),
+(6, 'DPMF/PN — Direction de la Police des Mœurs et des Mineurs', 'brigade_police', NULL, NULL, 1),
+(7, 'CCPFM/GN — Compagnie de Circulation et de Police Routière', 'gendarmerie', NULL, NULL, 1),
+(8, 'Section des Recherches / GN', 'gendarmerie', NULL, NULL, 1),
+(9, 'CP Rive Droite', 'commissariat', NULL, NULL, 1),
+(10, 'CP Niamey 2000', 'commissariat', NULL, NULL, 1),
+(11, 'Brigade des Pistes / GNN', 'gendarmerie', NULL, NULL, 1),
+(12, 'CP Boukoki', 'commissariat', NULL, NULL, 1),
+(13, 'CP Koubia', 'commissariat', NULL, NULL, 1),
+(14, 'CP Aéroport', 'commissariat', NULL, NULL, 1),
+(15, 'CP Francophonie', 'commissariat', NULL, NULL, 1),
+(16, 'Brigade Fluviale / GN', 'gendarmerie', NULL, NULL, 1),
+(17, 'Brigade de Recherche Koira Tégui / GN', 'gendarmerie', NULL, NULL, 1),
+(18, 'CP Route Kollo', 'commissariat', NULL, NULL, 1),
+(19, 'CP Kirkissoye', 'commissariat', NULL, NULL, 1),
+(20, 'CP Kalley Plateau', 'commissariat', NULL, NULL, 1),
+(21, 'CP Talladjé', 'commissariat', NULL, NULL, 1);
 
 -- --------------------------------------------------------
 
@@ -2102,14 +2086,24 @@ INSERT INTO `users` (`id`, `role_id`, `fonction_parquet_id`, `nom`, `prenom`, `e
 (2, 2, NULL, 'MAÏGA', 'Ousmane', 'president@tgi-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'PRES-001', 1, '2026-04-17 16:04:24', '2026-04-17 16:04:24'),
 (3, 3, NULL, 'HASSANE', 'Aminatou', 'vice.president@tgi-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'VP-001', 1, '2026-04-17 16:04:24', '2026-04-17 16:04:24'),
 (4, 4, NULL, 'MOUSSA', 'Ibrahim', 'procureur@tgi-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'PROC-001', 1, '2026-04-17 16:04:24', '2026-04-17 16:04:24'),
-(5, 5, NULL, 'ADAMOU', 'Fatouma', 'substitut1@tgi-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'SUB-001', 1, '2026-04-17 16:04:24', '2026-04-17 16:04:24'),
-(6, 5, NULL, 'CHAIBOU', 'Moustapha', 'substitut2@tgi-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'SUB-002', 1, '2026-04-17 16:04:24', '2026-04-17 16:04:24'),
-(7, 5, NULL, 'MAHAMADOU', 'Salissou', 'substitut3@tgi-niamey.ne', '$2y$12$6RD5DqKtkTyAJnb8EMAHNONJdSzknzOGRpCKSxdBpsAo0gbBFyxU.', '', 'SUB-003', 1, '2026-04-17 16:04:24', '2026-04-22 16:57:04'),
 (8, 6, NULL, 'SAIDOU', 'Aïssatou', 'juge.instr1@tgi-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'JI-001', 1, '2026-04-17 16:04:24', '2026-04-17 16:04:24'),
 (9, 6, NULL, 'HAMIDOU', 'Mariama', 'juge.instr2@tgi-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'JI-002', 1, '2026-04-17 16:04:24', '2026-04-17 16:04:24'),
 (10, 7, NULL, 'YACOUBA', 'Hassane', 'juge.siege@tgi-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'JS-001', 1, '2026-04-17 16:04:24', '2026-04-17 16:04:24'),
 (11, 8, NULL, 'ISSA', 'Rahila', 'greffier@tgi-niamey.ne', '$2y$12$clSJyB3Ayv7Uo8/Og2MKkucpN7ScLqTCzMsiI3D115uFg5.JkIpsS', '', 'GRF-001', 1, '2026-04-17 16:04:24', '2026-04-19 08:42:23'),
-(12, 9, NULL, 'MAHAMANE', 'Alio', 'avocat@barreau-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'AVO-001', 1, '2026-04-17 16:04:24', '2026-04-17 16:04:24');
+(12, 9, NULL, 'MAHAMANE', 'Alio', 'avocat@barreau-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'AVO-001', 1, '2026-04-17 16:04:24', '2026-04-17 16:04:24'),
+(13, 5, 3, 'MASSI', 'Zara', 'zara.massi@tgi-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'PSUB-001', 1, '2026-04-28 12:58:29', '2026-04-28 12:58:29'),
+(14, 5, 4, 'CHINA AMADOU KOURGUENI', 'Ali', 'ali.china@tgi-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'PSUB-002', 1, '2026-04-28 12:58:29', '2026-04-28 12:58:29'),
+(15, 5, 5, 'MAMADOU SADOU', 'Fatouma', 'fatouma.mamadou@tgi-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'PSUB-003', 1, '2026-04-28 12:58:29', '2026-04-28 12:58:29'),
+(16, 5, 6, 'YOUNOUSSI', 'Soumana', 'soumana.younoussi@tgi-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'SUB-001', 1, '2026-04-28 12:58:29', '2026-04-28 12:58:29'),
+(17, 5, 7, 'AMADOU BADAMASSI', 'Issa', 'issa.amadou@tgi-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'SUB-002', 1, '2026-04-28 12:58:29', '2026-04-28 12:58:29'),
+(18, 5, 8, 'BEIDOU DJAMILOU', 'Alou', 'alou.beidou@tgi-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'SUB-003', 1, '2026-04-28 12:58:29', '2026-04-28 12:58:29'),
+(19, 5, 9, 'HAMANI HANTAROU', 'Hamadou', 'hamadou.hamani@tgi-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'SUB-004', 1, '2026-04-28 12:58:29', '2026-04-28 12:58:29'),
+(20, 5, 10, 'ABDOURAHAMANE', 'Nafissa Youssouf', 'nafissa.abdourahamane@tgi-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'SUB-005', 1, '2026-04-28 12:58:29', '2026-04-28 12:58:29'),
+(21, 5, 11, 'OUSSEINI', 'Garba', 'garba.ousseini@tgi-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'SUB-006', 1, '2026-04-28 12:58:29', '2026-04-28 12:58:29'),
+(22, 5, 12, 'MAHAMADOU', 'Inoussa', 'inoussa.mahamadou@tgi-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'SUB-007', 1, '2026-04-28 12:58:29', '2026-04-28 12:58:29'),
+(23, 5, 13, 'ADAMOU OUMAROU', 'Mahamadou', 'mahamadou.adamou@tgi-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'SUB-008', 1, '2026-04-28 12:58:29', '2026-04-28 12:58:29'),
+(24, 5, 14, 'LAOUALI DIT OUMA', 'Moussa', 'moussa.laouali@tgi-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'SUB-009', 1, '2026-04-28 12:58:29', '2026-04-28 12:58:29'),
+(25, 5, 15, 'HAMANI MOUSTAPHA', 'Hassane', 'hassane.hamani@tgi-niamey.ne', '$2y$12$QOBYKWWfAWXEae1fpkEUFOH/JJvtCOqA0nwH/FKzzSPs.84nmc5Ym', NULL, 'SUB-010', 1, '2026-04-28 12:58:29', '2026-04-28 12:58:29');
 
 -- --------------------------------------------------------
 
@@ -2134,13 +2128,6 @@ CREATE TABLE `voies_recours` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Déchargement des données de la table `voies_recours`
---
-
-INSERT INTO `voies_recours` (`id`, `dossier_id`, `jugement_id`, `type_recours`, `demandeur_nom`, `demandeur_qualite`, `date_declaration`, `juridiction_saisie`, `motifs`, `decision_rendue`, `date_decision`, `statut`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 3, NULL, 'opposition', 'SANI MOUSSA', 'prevenu', '2026-04-18', 'APPEL NY', '', '', '2026-04-18', 'irrecevable', 1, '2026-04-18 05:46:00', '2026-04-18 05:46:25');
 
 --
 -- Index pour les tables déchargées
@@ -2595,7 +2582,7 @@ ALTER TABLE `alertes`
 -- AUTO_INCREMENT pour la table `audiences`
 --
 ALTER TABLE `audiences`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT pour la table `avocats`
@@ -2613,7 +2600,7 @@ ALTER TABLE `avocat_dossier`
 -- AUTO_INCREMENT pour la table `cabinets_instruction`
 --
 ALTER TABLE `cabinets_instruction`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
 
 --
 -- AUTO_INCREMENT pour la table `casier_judiciaire_condamnations`
@@ -2661,7 +2648,7 @@ ALTER TABLE `departements`
 -- AUTO_INCREMENT pour la table `detenus`
 --
 ALTER TABLE `detenus`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT pour la table `documents`
@@ -2673,7 +2660,7 @@ ALTER TABLE `documents`
 -- AUTO_INCREMENT pour la table `dossiers`
 --
 ALTER TABLE `dossiers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT pour la table `dossier_avocats`
@@ -2685,13 +2672,13 @@ ALTER TABLE `dossier_avocats`
 -- AUTO_INCREMENT pour la table `droits_utilisateurs`
 --
 ALTER TABLE `droits_utilisateurs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=135;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=154;
 
 --
 -- AUTO_INCREMENT pour la table `expertises_judiciaires`
 --
 ALTER TABLE `expertises_judiciaires`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT pour la table `fonctionnalites`
@@ -2709,7 +2696,7 @@ ALTER TABLE `fonctions_parquet`
 -- AUTO_INCREMENT pour la table `infractions`
 --
 ALTER TABLE `infractions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=40;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
 
 --
 -- AUTO_INCREMENT pour la table `jugements`
@@ -2733,13 +2720,13 @@ ALTER TABLE `mandats`
 -- AUTO_INCREMENT pour la table `mec_infractions`
 --
 ALTER TABLE `mec_infractions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT pour la table `membres_audience`
 --
 ALTER TABLE `membres_audience`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT pour la table `menus`
@@ -2751,19 +2738,19 @@ ALTER TABLE `menus`
 -- AUTO_INCREMENT pour la table `mises_en_cause`
 --
 ALTER TABLE `mises_en_cause`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT pour la table `mouvements_dossier`
 --
 ALTER TABLE `mouvements_dossier`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT pour la table `ordonnances`
 --
 ALTER TABLE `ordonnances`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT pour la table `parametres_tribunal`
@@ -2775,25 +2762,25 @@ ALTER TABLE `parametres_tribunal`
 -- AUTO_INCREMENT pour la table `parties`
 --
 ALTER TABLE `parties`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT pour la table `plaintes`
 --
 ALTER TABLE `plaintes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT pour la table `primo_intervenants`
 --
 ALTER TABLE `primo_intervenants`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT pour la table `pv`
 --
 ALTER TABLE `pv`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT pour la table `pv_infractions`
@@ -2805,7 +2792,7 @@ ALTER TABLE `pv_infractions`
 -- AUTO_INCREMENT pour la table `rapports`
 --
 ALTER TABLE `rapports`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT pour la table `regions`
@@ -2829,31 +2816,31 @@ ALTER TABLE `salles_audience`
 -- AUTO_INCREMENT pour la table `scelles`
 --
 ALTER TABLE `scelles`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT pour la table `security_logs`
 --
 ALTER TABLE `security_logs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
 
 --
 -- AUTO_INCREMENT pour la table `unites_enquete`
 --
 ALTER TABLE `unites_enquete`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
 
 --
 -- AUTO_INCREMENT pour la table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
 
 --
 -- AUTO_INCREMENT pour la table `voies_recours`
 --
 ALTER TABLE `voies_recours`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- Contraintes pour les tables déchargées
