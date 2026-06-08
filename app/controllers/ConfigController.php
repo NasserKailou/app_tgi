@@ -521,6 +521,69 @@ public function infractionUpdate(string $id): void
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
+    // API AJAX — Création d'infraction depuis PV/create (tous rôles connectés)
+    // POST /api/infractions/store → JSON
+    // ═══════════════════════════════════════════════════════════════════════════
+    public function apiInfractionStore(): void
+    {
+        Auth::requireLogin();
+        // CSRF : accepte le champ _csrf envoyé en FormData
+        CSRF::check();
+
+        header('Content-Type: application/json; charset=utf-8');
+
+        $categorie = $_POST['categorie'] ?? 'correctionnelle';
+        if (!in_array($categorie, self::INFRACTION_CATEGORIES, true)) {
+            echo json_encode(['success' => false, 'error' => 'Catégorie invalide.']);
+            return;
+        }
+
+        $code    = strtoupper(trim($_POST['code']    ?? ''));
+        $libelle = trim($_POST['libelle'] ?? '');
+
+        if ($code === '' || $libelle === '') {
+            echo json_encode(['success' => false, 'error' => 'Le code et le libellé sont obligatoires.']);
+            return;
+        }
+
+        // Doublon de code
+        $check = $this->db->prepare("SELECT id FROM infractions WHERE code = :code LIMIT 1");
+        $check->execute([':code' => $code]);
+        if ($check->fetch()) {
+            echo json_encode(['success' => false, 'error' => "Le code « {$code} » existe déjà."]);
+            return;
+        }
+
+        $peineMin = (isset($_POST['peine_min_mois']) && $_POST['peine_min_mois'] !== '')
+            ? (int)$_POST['peine_min_mois'] : null;
+        $peineMax = (isset($_POST['peine_max_mois']) && $_POST['peine_max_mois'] !== '')
+            ? (int)$_POST['peine_max_mois'] : null;
+
+        $this->db->prepare(
+            "INSERT INTO infractions (code, libelle, categorie, peine_min_mois, peine_max_mois)
+             VALUES (:code, :libelle, :categorie, :peine_min, :peine_max)"
+        )->execute([
+            ':code'      => $code,
+            ':libelle'   => $libelle,
+            ':categorie' => $categorie,
+            ':peine_min' => $peineMin,
+            ':peine_max' => $peineMax,
+        ]);
+
+        $newId = (int)$this->db->lastInsertId();
+
+        echo json_encode([
+            'success'    => true,
+            'infraction' => [
+                'id'        => $newId,
+                'code'      => $code,
+                'libelle'   => $libelle,
+                'categorie' => $categorie,
+            ],
+        ]);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
     // 6. MAISONS D'ARRÊT
     // ═══════════════════════════════════════════════════════════════════════════
     public function maisonsArret(): void

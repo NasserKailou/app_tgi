@@ -1,23 +1,22 @@
 <?php
 /**
- * ─────────────────────────────────────────────────────────────
- * app_config.php — Configuration locale TGI-NY
- * ─────────────────────────────────────────────────────────────
- * Ce fichier est exclu du contrôle de version (.gitignore).
- * Copiez ce fichier sur votre serveur et ajustez les valeurs.
+ * app_config.php — Configuration locale de l'application
  *
- * UTILISATION :
- *   1. Copier ce fichier dans la racine du projet
- *   2. Décommenter et ajuster les lignes selon votre environnement
- *   3. Le fichier est chargé automatiquement par config.php
- * ─────────────────────────────────────────────────────────────
+ * INSTRUCTIONS :
+ *   1. Copiez ce fichier : cp app_config.php.example app_config.php
+ *   2. Modifiez les valeurs ci-dessous pour votre environnement
+ *   3. CE FICHIER NE DOIT JAMAIS ÊTRE VERSIONNÉ (il est dans .gitignore)
+ *
+ * Ce fichier est chargé automatiquement avant config.php si présent.
+ * Il surcharge la détection automatique de BASE_URL.
  */
 
-// ── URL de base de l'application ──────────────────────────────
-// Décommentez et ajustez si l'auto-détection ne fonctionne pas
-// Exemples :
-//   XAMPP sous-dossier : 'http://localhost/tribunal-tgi-ny/public'
-//   vhost racine       : 'http://tribunal.mondomaine.ne'
-//   production HTTPS   : 'https://sgj.tribunal-niamey.ne'
+// ── URL de base de l'application ──────────────────────────────────────────────
+// Indiquez l'URL complète jusqu'à (et incluant) "public/", SANS slash final.
 //
-// define('APP_BASE_URL', 'http://localhost/tribunal-tgi-ny/public');
+// Exemples :
+//   Production  : https://tgihc.ca-niamey.ne/public
+//   Local       : http://localhost:8085/app_tgi/public
+//   Sous-dossier: http://192.168.1.10/tgi/public
+//
+define('APP_BASE_URL', 'https://tgihc.ca-niamey.ne/public');

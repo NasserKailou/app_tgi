@@ -32,57 +32,76 @@
                         <?php if ($pv['est_antiterroriste']): ?><span class="badge bg-dark ms-1"><i class="bi bi-shield-exclamation"></i> Anti-terroriste</span><?php endif; ?>
                     </div>
                     <div class="col-md-6"><small class="text-muted d-block">Unité d'enquête</small><strong><?= htmlspecialchars($pv['unite_nom'] ?? '—') ?></strong></div>
-                    <div class="col-md-6">
-                        <small class="text-muted d-block">Infraction déclarée (unité d'enquête)</small>
-                        <?php if (!empty($pv['infraction_libelle'])): ?>
-                        <strong><?= htmlspecialchars($pv['infraction_libelle']) ?></strong>
-                        <?php $catColors = ['criminelle'=>'danger','correctionnelle'=>'warning','contraventionnelle'=>'secondary']; ?>
-                        <span class="badge bg-<?= $catColors[$pv['infraction_categorie']] ?? 'secondary' ?> ms-1"><?= ucfirst($pv['infraction_categorie'] ?? '') ?></span>
-                        <?php else: ?><span class="text-muted">—</span><?php endif; ?>
-                        <?php if (!empty($pvInfractions['unite'])): ?>
-                        <div class="mt-1">
-                        <?php foreach ($pvInfractions['unite'] as $inf): ?>
-                        <span class="badge bg-light text-dark border me-1 mb-1">
-                            <i class="bi bi-gavel me-1"></i><?= htmlspecialchars($inf['code']) ?> — <?= htmlspecialchars($inf['libelle']) ?>
-                        </span>
-                        <?php endforeach; ?>
-                        </div>
-                        <?php endif; ?>
-                    </div>
-                    <?php if (!empty($pv['qualification_substitut_libelle']) || !empty($pvInfractions['substitut'])): ?>
-                    <div class="col-md-6">
-                        <small class="text-muted d-block">
-                            <i class="bi bi-scales me-1 text-success"></i>Qualification retenue
-                            <span class="badge bg-success ms-1 small">Substitut</span>
-                        </small>
-                        <?php if (!empty($pv['qualification_substitut_libelle'])): ?>
-                        <strong class="text-success"><?= htmlspecialchars($pv['qualification_substitut_libelle']) ?></strong>
-                        <?php endif; ?>
-                        <?php if (!empty($pv['qualification_details'])): ?>
-                        <div class="small text-muted mt-1 fst-italic"><?= htmlspecialchars($pv['qualification_details']) ?></div>
-                        <?php endif; ?>
-                        <?php if (!empty($pvInfractions['substitut'])): ?>
-                        <div class="mt-1">
-                        <?php foreach ($pvInfractions['substitut'] as $inf): ?>
-                        <span class="badge bg-success me-1 mb-1">
-                            <?= htmlspecialchars($inf['code']) ?>
-                            <?php if (!empty($inf['est_complicite'])): ?><i class="bi bi-people-fill ms-1" title="Complicité"></i><?php endif; ?>
-                        </span>
-                        <?php endforeach; ?>
-                        </div>
-                        <?php endif; ?>
-                    </div>
-                    <?php endif; ?>
-                    <div class="col-12"><small class="text-muted d-block">Description des faits (initiale)</small><p class="mb-0"><?= nl2br(htmlspecialchars($pv['description_faits'] ?? '—')) ?></p></div>
-                    <?php if (!empty($pv['lois_applicables'])): ?>
+
+                    <!-- ── Infraction déclarée (unité d'enquête) ─────────── -->
                     <div class="col-12">
-                        <small class="text-muted d-block">
-                            <i class="bi bi-book me-1 text-warning"></i>Lois applicables
-                            <span class="badge bg-warning text-dark ms-1 small">Substitut</span>
-                        </small>
-                        <p class="mb-0 fw-semibold"><?= nl2br(htmlspecialchars($pv['lois_applicables'])) ?></p>
+                        <div class="rounded border p-2" style="border-left:4px solid #1a3c5e !important;">
+                            <div class="d-flex align-items-center mb-1">
+                                <span class="fw-semibold text-white rounded-start px-2 py-1 me-2" style="background:#1a3c5e;font-size:.8rem;">
+                                    <i class="bi bi-shield me-1"></i>Infraction déclarée — Unité d'enquête
+                                </span>
+                            </div>
+                            <?php if (!empty($pv['infraction_libelle'])): ?>
+                            <?php $catColors = ['criminelle'=>'danger','correctionnelle'=>'warning','contraventionnelle'=>'secondary']; ?>
+                            <div class="mb-1">
+                                <strong><?= htmlspecialchars($pv['infraction_libelle']) ?></strong>
+                                <span class="badge bg-<?= $catColors[$pv['infraction_categorie']] ?? 'secondary' ?> ms-1"><?= ucfirst($pv['infraction_categorie'] ?? '') ?></span>
+                            </div>
+                            <?php endif; ?>
+                            <?php if (!empty($pvInfractions['unite'])): ?>
+                            <div class="d-flex flex-wrap gap-1 mt-1">
+                            <?php foreach ($pvInfractions['unite'] as $inf): ?>
+                            <?php $catBadge2 = ['criminelle'=>'danger','correctionnelle'=>'warning','contraventionnelle'=>'info']; ?>
+                            <span class="badge border text-dark me-1 mb-1" style="background:#e8eef4;">
+                                <i class="bi bi-gavel me-1 text-secondary"></i>
+                                <span class="badge bg-<?= $catBadge2[$inf['categorie']] ?? 'secondary' ?> me-1"><?= htmlspecialchars($inf['code']) ?></span>
+                                <?= htmlspecialchars($inf['libelle']) ?>
+                            </span>
+                            <?php endforeach; ?>
+                            </div>
+                            <?php elseif (empty($pv['infraction_libelle'])): ?>
+                            <span class="text-muted small fst-italic">Aucune infraction déclarée</span>
+                            <?php endif; ?>
+                        </div>
                     </div>
-                    <?php endif; ?>
+
+                    <!-- ── Qualification retenue (substitut) ──────────────── -->
+                    <div class="col-12">
+                        <div class="rounded border p-2" style="border-left:4px solid #198754 !important;">
+                            <div class="d-flex align-items-center mb-1">
+                                <span class="fw-semibold text-white rounded-start px-2 py-1 me-2" style="background:#198754;font-size:.8rem;">
+                                    <i class="bi bi-scales me-1"></i>Qualification retenue — Substitut du procureur
+                                </span>
+                            </div>
+                            <?php if (!empty($pvInfractions['substitut'])): ?>
+                            <div class="d-flex flex-wrap gap-1 mt-1">
+                            <?php foreach ($pvInfractions['substitut'] as $inf): ?>
+                            <span class="badge bg-success me-1 mb-1">
+                                <?= htmlspecialchars($inf['code']) ?>
+                                <?php if (!empty($inf['est_complicite'])): ?><i class="bi bi-people-fill ms-1" title="Complicité"></i><?php endif; ?>
+                            </span>
+                            <?php endforeach; ?>
+                            </div>
+                            <?php if (!empty($pv['qualification_details'])): ?>
+                            <div class="small text-muted mt-1 fst-italic"><?= htmlspecialchars($pv['qualification_details']) ?></div>
+                            <?php endif; ?>
+                            <?php elseif (!empty($pv['qualification_substitut_libelle'])): ?>
+                            <strong class="text-success"><?= htmlspecialchars($pv['qualification_substitut_libelle']) ?></strong>
+                            <?php if (!empty($pv['qualification_details'])): ?>
+                            <div class="small text-muted mt-1 fst-italic"><?= htmlspecialchars($pv['qualification_details']) ?></div>
+                            <?php endif; ?>
+                            <?php else: ?>
+                            <span class="text-muted small fst-italic">En attente de qualification par le substitut</span>
+                            <?php endif; ?>
+                            <?php if (!empty($pv['lois_applicables'])): ?>
+                            <div class="mt-2 pt-1 border-top">
+                                <small class="text-muted"><i class="bi bi-book me-1 text-warning"></i><strong>Lois applicables :</strong></small>
+                                <p class="mb-0 fw-semibold small"><?= nl2br(htmlspecialchars($pv['lois_applicables'])) ?></p>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <div class="col-12"><small class="text-muted d-block">Description des faits (initiale)</small><p class="mb-0"><?= nl2br(htmlspecialchars($pv['description_faits'] ?? '—')) ?></p></div>
                 </div>
             </div>
         </div>
@@ -233,7 +252,7 @@
                 <?php else: ?>
                 <div class="list-group list-group-flush">
                 <?php foreach ($pvDocuments as $doc): ?>
-                <div class="list-group-item d-flex align-items-center gap-3">
+                <div class="list-group-item d-flex align-items-center gap-3" id="pvdoc-<?= $doc['id'] ?>">
                     <i class="bi bi-file-earmark-<?= str_contains($doc['mime_type']??'','pdf') ? 'pdf text-danger' : (str_contains($doc['mime_type']??'','image') ? 'image text-success' : 'text-secondary') ?> fs-4 flex-shrink-0"></i>
                     <div class="flex-grow-1">
                         <div class="fw-semibold small"><?= htmlspecialchars($doc['nom_original'] ?? '') ?></div>
@@ -249,6 +268,13 @@
                     <a href="<?= BASE_URL ?>/documents/view/<?= $doc['id'] ?>" target="_blank" class="btn btn-xs btn-outline-primary btn-sm">
                         <i class="bi bi-eye"></i>
                     </a>
+                    <button type="button"
+                            class="btn btn-xs btn-outline-danger btn-sm btn-delete-pvdoc"
+                            data-id="<?= $doc['id'] ?>"
+                            data-nom="<?= htmlspecialchars($doc['nom_original'] ?? '') ?>"
+                            title="Supprimer ce document">
+                        <i class="bi bi-trash"></i>
+                    </button>
                 </div>
                 <?php endforeach; ?>
                 </div>
@@ -1115,6 +1141,40 @@ document.getElementById('btnPVUpload')?.addEventListener('click', function() {
         document.getElementById('pvUploadProgress').style.display = 'none';
         document.getElementById('btnPVUpload').disabled = false;
         document.getElementById('pvUploadMsg').innerHTML = '<div class="alert alert-danger small py-2">Erreur réseau</div>';
+    });
+});
+
+// ── Suppression pièce jointe PV ───────────────────────────────────────────
+document.addEventListener('click', function(e) {
+    var btn = e.target.closest('.btn-delete-pvdoc');
+    if (!btn) return;
+    var docId = btn.dataset.id;
+    var docNom = btn.dataset.nom;
+    if (!confirm('Supprimer définitivement le document « ' + docNom + ' » ?\n\nCette action supprime le fichier physique et l\'entrée en base de données. Elle est irréversible.')) {
+        return;
+    }
+    btn.disabled = true;
+    var csrfToken = document.querySelector('[name="_csrf"]')?.value || '';
+    var fd = new FormData();
+    fd.append('_csrf', csrfToken);
+    fetch('<?= BASE_URL ?>/pv/document/delete/' + docId, { method: 'POST', body: fd })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+        if (data.success) {
+            var row = document.getElementById('pvdoc-' + docId);
+            if (row) {
+                row.style.transition = 'opacity 0.3s';
+                row.style.opacity = '0';
+                setTimeout(function(){ row.remove(); }, 300);
+            }
+        } else {
+            btn.disabled = false;
+            alert('Erreur : ' + (data.error || 'Suppression impossible.'));
+        }
+    })
+    .catch(function(){
+        btn.disabled = false;
+        alert('Erreur réseau — veuillez réessayer.');
     });
 });
 </script>

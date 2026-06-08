@@ -1,7 +1,7 @@
 <?php
 class PVController extends Controller {
 
-    // ─── Visibilité : restreindre aux entrées de l'utilisateur sauf admin/procureur ───
+    // ─── Visibilité : restreindre selon le rôle ───────────────────────────────
     private function addVisibilityFilter(array &$where, array &$params, string $alias = 'p'): void {
         $user = Auth::currentUser();
         $role = $user['role_code'] ?? '';
@@ -9,14 +9,20 @@ class PVController extends Controller {
         if (in_array($role, ['admin','procureur'])) return;
         $uid = (int)($user['id'] ?? 0);
         if ($role === 'substitut_procureur') {
-            // Voit ses PV affectés + ceux qu'il a créés
+            // Substitut : voit seulement les PV qui lui sont affectés OU qu'il a créés
             $where[]            = "({$alias}.substitut_id = :vis_uid OR {$alias}.created_by = :vis_uid2)";
             $params['vis_uid']  = $uid;
             $params['vis_uid2'] = $uid;
+        } elseif ($role === 'greffier') {
+            // Greffier : voit TOUS les PV (pas de restriction)
+            // NOTE : la distinction créateur/affectant est visible dans l'UI via les champs
+            // created_by et substitut_id mais n'est pas un filtre de visibilité
+            // — aucune clause WHERE ajoutée
+            return;
         } else {
-            // Greffier, etc. : seulement ce qu'il a créé
-            $where[]             = "{$alias}.created_by = :vis_uid";
-            $params['vis_uid']   = $uid;
+            // Autres rôles : seulement les PV qu'ils ont créés
+            $where[]           = "{$alias}.created_by = :vis_uid";
+            $params['vis_uid'] = $uid;
         }
     }
 
@@ -285,8 +291,14 @@ class PVController extends Controller {
         if (in_array($role, ['admin','procureur'])) return true;
         $uid = (int)($user['id'] ?? 0);
         if ($role === 'substitut_procureur') {
+            // Substitut : seulement les PV qui lui sont affectés ou qu'il a créés
             return (int)($pv['substitut_id'] ?? 0) === $uid || (int)($pv['created_by'] ?? 0) === $uid;
         }
+        if ($role === 'greffier') {
+            // Greffier : accès à tous les PV
+            return true;
+        }
+        // Autres rôles : seulement ce qu'ils ont créé
         return (int)($pv['created_by'] ?? 0) === $uid;
     }
 
@@ -748,6 +760,69 @@ public function uploadDocument(string $pvId): void {
 }
 
 
+    // ─── Suppression d'une pièce jointe PV ───────────────────────────────────
+    public function deleteDocument(string $id): void {
+        header('Content-Type: application/json; charset=utf-8');
+        Auth::requireLogin();
+        CSRF::check();
+
+        $id = (int)$id;
+        if ($id <= 0) {
+            echo json_encode(['success' => false, 'error' => 'ID invalide.']);
+            return;
+        }
+
+        // Charger le document + son PV pour vérifier les droits
+        $stmt = $this->db->prepare(
+            "SELECT d.*, p.created_by AS pv_created_by, p.substitut_id AS pv_substitut_id
+             FROM documents d
+             LEFT JOIN pv p ON p.id = d.pv_id
+             WHERE d.id = :id AND d.pv_id IS NOT NULL"
+        );
+        $stmt->execute([':id' => $id]);
+        $doc = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$doc) {
+            echo json_encode(['success' => false, 'error' => 'Document introuvable.']);
+            return;
+        }
+
+        // Contrôle d'accès :
+        //   admin/procureur → tous droits
+        //   substitut       → seulement ses propres PVs (affecté ou créé)
+        //   greffier        → seulement les documents qu'il a uploadés
+        $user = Auth::currentUser();
+        $role = $user['role_code'] ?? '';
+        $uid  = (int)($user['id'] ?? 0);
+
+        $canDelete = false;
+        if (in_array($role, ['admin', 'procureur'])) {
+            $canDelete = true;
+        } elseif ($role === 'substitut_procureur') {
+            $canDelete = ((int)$doc['pv_substitut_id'] === $uid || (int)$doc['pv_created_by'] === $uid);
+        } else {
+            // greffier + autres : uniquement ce qu'ils ont uploadé
+            $canDelete = ((int)$doc['uploaded_by'] === $uid);
+        }
+
+        if (!$canDelete) {
+            echo json_encode(['success' => false, 'error' => "Accès refusé — vous n'avez pas le droit de supprimer ce document."]);
+            return;
+        }
+
+        // Suppression du fichier physique
+        $cheminAbs = ROOT_PATH . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR
+            . str_replace('/', DIRECTORY_SEPARATOR, $doc['chemin_fichier']);
+        if (file_exists($cheminAbs)) {
+            @unlink($cheminAbs);
+        }
+
+        // Suppression en base
+        $this->db->prepare("DELETE FROM documents WHERE id = :id")->execute([':id' => $id]);
+
+        echo json_encode(['success' => true, 'message' => 'Document supprimé.']);
+    }
+
     // API endpoint : liste des documents d'un PV
 public function listDocuments(string $pvId): void {
     Auth::requireLogin();
@@ -812,7 +887,7 @@ public function listDocuments(string $pvId): void {
                     r.nom as region_nom, dep.nom as dept_nom, c.nom as commune_nom,
                     cb.nom as created_by_nom, cb.prenom as created_by_prenom,
                     inf.libelle as infraction_libelle, inf.code as infraction_code, inf.categorie as infraction_categorie,
-                    qsub.libelle as qualification_sub_libelle, qsub.code as qualification_sub_code
+                    qsub.libelle as qualification_substitut_libelle, qsub.code as qualification_substitut_code
              FROM pv p
              LEFT JOIN unites_enquete ue ON p.unite_enquete_id = ue.id
              LEFT JOIN users us ON p.substitut_id = us.id

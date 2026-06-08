@@ -1,4 +1,20 @@
 <?php $pageTitle = 'Nouveau PV'; ?>
+<style>
+/* ── Infraction cochée : fond bleu marine, texte blanc ── */
+.infraction-row.infraction-checked {
+    background-color: #1a3c5e !important;
+    color: #ffffff !important;
+}
+.infraction-row.infraction-checked .form-check-label,
+.infraction-row.infraction-checked .fw-semibold,
+.infraction-row.infraction-checked .text-muted {
+    color: #ffffff !important;
+}
+.infraction-row.infraction-checked .form-check-input {
+    border-color: #a8c4e0;
+}
+.infraction-row.infraction-checked .badge.bg-warning { color:#fff !important; }
+</style>
 <div class="mb-4 mt-2">
     <nav aria-label="breadcrumb"><ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="<?= BASE_URL ?>/pv">PV</a></li>
@@ -86,13 +102,18 @@
                         <!-- ===================================================== -->
                         <div class="col-12">
                             <div class="card border-primary border-2">
-                                <div class="card-header bg-primary bg-opacity-10 d-flex align-items-center justify-content-between">
+                                <div class="card-header d-flex align-items-center justify-content-between" style="background:#1a3c5e;">
                                     <span class="fw-semibold" style="color:#ffffff;">
                                         <i class="bi bi-list-check me-2"></i>Types d'infractions retenues
-                                        <span class="small fw-normal" style="color:#e0e0e0;">(plusieurs choix possibles)</span>
+                                        <span class="small fw-normal" style="color:#a8c4e0;">(infractions déclarées — unité d'enquête)</span>
                                     </span>
-
-                                    <span class="badge bg-primary" id="infractionsCount">0</span>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="badge bg-light text-dark" id="infractionsCount">0</span>
+                                        <button type="button" class="btn btn-sm btn-outline-light" id="btnAddInfraction"
+                                                title="Ajouter une nouvelle infraction">
+                                            <i class="bi bi-plus-lg"></i> Nouvelle
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="card-body">
                                     <!-- Recherche -->
@@ -130,7 +151,7 @@
                                     <!-- Liste scrollable des infractions -->
                     <div class="border rounded p-2" style="max-height: 320px; overflow-y: auto; background:#ffffff;" id="infractionsList">
                                         <?php
-                                        $selectedInfr = (array)($_POST['infractions'] ?? []);
+                                        $selectedInfr = (array)($_POST['infractions_unite'] ?? []);
                                         $complicityArr = (array)($_POST['est_complicite'] ?? []);
                                         foreach ($infractions as $inf):
                                             $isChecked   = in_array($inf['id'], $selectedInfr);
@@ -142,7 +163,7 @@
                                                 default              => 'secondary'
                                             };
                                         ?>
-                                        <div class="infraction-row p-2 mb-1 rounded <?= $isChecked ? 'bg-primary bg-opacity-10 border border-primary' : 'bg-white border' ?>"
+                                        <div class="infraction-row p-2 mb-1 rounded <?= $isChecked ? 'infraction-checked border' : 'bg-white border' ?>"
                                              data-categorie="<?= htmlspecialchars($inf['categorie']) ?>"
                                              data-libelle="<?= htmlspecialchars(strtolower($inf['libelle'])) ?>"
                                              data-code="<?= htmlspecialchars(strtolower($inf['code'])) ?>"
@@ -150,7 +171,7 @@
                                             <div class="d-flex align-items-center gap-2">
                                                 <div class="form-check flex-grow-1 mb-0">
                                                     <input class="form-check-input infraction-check" type="checkbox"
-                                                           name="infractions[]" value="<?= $inf['id'] ?>"
+                                                           name="infractions_unite[]" value="<?= $inf['id'] ?>"
                                                            id="inf<?= $inf['id'] ?>"
                                                            <?= $isChecked ? 'checked' : '' ?>>
                                                     <label class="form-check-label w-100" for="inf<?= $inf['id'] ?>" style="cursor:pointer;">
@@ -365,8 +386,8 @@ function loadCommunes(deptId) {
 
             if (chk.checked) {
                 n++;
-                row.classList.remove('bg-white');
-                row.classList.add('bg-primary', 'bg-opacity-10', 'border-primary');
+                row.classList.remove('bg-white', 'border-secondary');
+                row.classList.add('infraction-checked', 'border-primary');
                 if (switchEl) switchEl.style.visibility = 'visible';
 
                 // Récupérer libellé et catégorie depuis le DOM
@@ -389,7 +410,7 @@ function loadCommunes(deptId) {
                     '</div>'
                 );
             } else {
-                row.classList.remove('bg-primary','bg-opacity-10','border-primary');
+                row.classList.remove('infraction-checked','border-primary');
                 row.classList.add('bg-white');
                 if (switchEl) switchEl.style.visibility = 'hidden';
                 if (compChk) compChk.checked = false;
@@ -451,5 +472,152 @@ function loadCommunes(deptId) {
 
     // Init
     updateUI();
+
+    // ── Bouton + Nouvelle infraction ─────────────────────────────────────
+    var btnAdd = document.getElementById('btnAddInfraction');
+    if (btnAdd) {
+        btnAdd.addEventListener('click', function() {
+            var modal = new bootstrap.Modal(document.getElementById('modalNewInfraction'));
+            modal.show();
+        });
+    }
+
+    // ── Soumission AJAX nouvelle infraction ───────────────────────────────
+    document.getElementById('formNewInfraction')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var form = this;
+        var btn  = document.getElementById('btnSaveNewInfraction');
+        var msg  = document.getElementById('newInfractionMsg');
+        btn.disabled = true;
+        msg.innerHTML = '';
+
+        var data = new FormData(form);
+        fetch('<?= BASE_URL ?>/api/infractions/store', {
+            method: 'POST',
+            body: data
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(res){
+            btn.disabled = false;
+            if (res.success) {
+                // Injecter la nouvelle infraction dans la liste
+                var inf = res.infraction;
+                var catMap = {
+                    'criminelle':'danger',
+                    'correctionnelle':'warning',
+                    'contraventionnelle':'info',
+                    'autres':'secondary'
+                };
+                var catBadge = catMap[inf.categorie] || 'secondary';
+                var div = document.createElement('div');
+                div.className = 'infraction-row p-2 mb-1 rounded bg-white border';
+                div.setAttribute('data-categorie', inf.categorie);
+                div.setAttribute('data-libelle', inf.libelle.toLowerCase());
+                div.setAttribute('data-code', inf.code.toLowerCase());
+                div.setAttribute('data-id', inf.id);
+                div.innerHTML =
+                    '<div class="d-flex align-items-center gap-2">' +
+                    '<div class="form-check flex-grow-1 mb-0">' +
+                    '<input class="form-check-input infraction-check" type="checkbox" ' +
+                    'name="infractions_unite[]" value="' + inf.id + '" id="inf' + inf.id + '" checked>' +
+                    '<label class="form-check-label w-100" for="inf' + inf.id + '" style="cursor:pointer;">' +
+                    '<span class="badge bg-' + catBadge + ' me-1">' + inf.code + '</span>' +
+                    '<span class="fw-semibold">' + inf.libelle + '</span>' +
+                    '<span class="text-muted small ms-2">' + inf.categorie + '</span>' +
+                    '</label></div>' +
+                    '<div class="form-check form-switch mb-0 complicite-switch" style="visibility:visible;">' +
+                    '<input class="form-check-input" type="checkbox" name="est_complicite[]" value="' + inf.id + '" id="comp' + inf.id + '">' +
+                    '<label class="form-check-label small text-muted" for="comp' + inf.id + '">Complicité</label>' +
+                    '</div></div>';
+                var listEl = document.getElementById('infractionsList');
+                var noMsg2 = document.getElementById('noInfractionMsg');
+                listEl.insertBefore(div, noMsg2);
+                // Marquer comme cochée + déclencher updateUI
+                div.querySelector('.infraction-check').checked = true;
+                updateUI();
+
+                // Fermer modal + reset form
+                bootstrap.Modal.getInstance(document.getElementById('modalNewInfraction')).hide();
+                form.reset();
+                msg.innerHTML = '';
+
+                // Flash succès
+                var alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-success alert-dismissible fade show py-2 mt-2';
+                alertDiv.innerHTML = '<i class="bi bi-check-circle me-1"></i>Infraction « ' + inf.code + ' — ' + inf.libelle + ' » créée et sélectionnée.' +
+                    '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+                listEl.parentElement.insertAdjacentElement('afterend', alertDiv);
+                setTimeout(function(){ alertDiv.remove(); }, 4000);
+            } else {
+                msg.innerHTML = '<div class="alert alert-danger py-2 small">' + (res.error || 'Erreur inconnue') + '</div>';
+            }
+        })
+        .catch(function(){
+            btn.disabled = false;
+            msg.innerHTML = '<div class="alert alert-danger py-2 small">Erreur réseau, veuillez réessayer.</div>';
+        });
+    });
 })();
 </script>
+
+<!-- ══ Modal : Nouvelle infraction ══ -->
+<div class="modal fade" id="modalNewInfraction" tabindex="-1" aria-labelledby="modalNewInfractionLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#1a3c5e;">
+                <h5 class="modal-title text-white" id="modalNewInfractionLabel">
+                    <i class="bi bi-plus-circle me-2"></i>Créer une nouvelle infraction
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <form id="formNewInfraction">
+                <input type="hidden" name="_csrf" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                <div class="modal-body">
+                    <div class="alert alert-info small py-2">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Créez ici une infraction qui n'existe pas encore dans la liste. Elle sera immédiatement
+                        ajoutée à la liste ci-dessus et cochée automatiquement.
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Code <span class="text-danger">*</span></label>
+                        <input type="text" name="code" class="form-control text-uppercase" required
+                               placeholder="Ex: ART250CPP" maxlength="30"
+                               oninput="this.value=this.value.toUpperCase()">
+                        <div class="form-text">Identifiant court et unique (ex: ART123, CP450…)</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Libellé <span class="text-danger">*</span></label>
+                        <input type="text" name="libelle" class="form-control" required
+                               placeholder="Ex: Association de malfaiteurs" maxlength="200">
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Catégorie <span class="text-danger">*</span></label>
+                            <select name="categorie" class="form-select" required>
+                                <option value="correctionnelle" selected>Correctionnelle</option>
+                                <option value="criminelle">Criminelle</option>
+                                <option value="contraventionnelle">Contraventionnelle</option>
+                                <option value="autres">Autres</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Peine min (mois)</label>
+                            <input type="number" name="peine_min_mois" class="form-control" min="0" placeholder="0">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Peine max (mois)</label>
+                            <input type="number" name="peine_max_mois" class="form-control" min="0" placeholder="0">
+                        </div>
+                    </div>
+                    <div id="newInfractionMsg" class="mt-2"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary" id="btnSaveNewInfraction">
+                        <i class="bi bi-plus-circle me-1"></i>Créer et sélectionner
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

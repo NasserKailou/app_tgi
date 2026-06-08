@@ -7,7 +7,7 @@ header('X-Content-Type-Options: nosniff');
 // Protection XSS (anciens navigateurs)
 header('X-XSS-Protection: 1; mode=block');
 // Content Security Policy — permissif mais protège les injections CSS/JS externes
-header("Content-Security-Policy: default-src 'self' https://cdn.jsdelivr.net https://unpkg.com 'unsafe-inline'; img-src 'self' data:; font-src 'self' https://cdn.jsdelivr.net; frame-src 'self'");
+header("Content-Security-Policy: default-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://code.highcharts.com 'unsafe-inline'; img-src 'self' data: https://*.cartocdn.com https://*.openstreetmap.org https://unpkg.com; font-src 'self' https://cdn.jsdelivr.net; frame-src 'self'; connect-src 'self' https://unpkg.com https://*.cartocdn.com");
 // Strict Transport Security (si HTTPS)
 if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
     header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
@@ -22,6 +22,14 @@ ob_start();
 if (!defined('ROOT_PATH')) {
     define('ROOT_PATH', dirname(__DIR__));
 }
+
+// Chargement optionnel de app_config.php (surcharge de APP_BASE_URL pour déploiement production)
+// Ce fichier ne doit pas être versionné — voir app_config.php.example
+$_appConfigPath = ROOT_PATH . '/app_config.php';
+if (file_exists($_appConfigPath)) {
+    require_once $_appConfigPath;
+}
+unset($_appConfigPath);
 
 require_once ROOT_PATH . '/app/config/config.php';
 require_once ROOT_PATH . '/app/config/database.php';
@@ -87,6 +95,8 @@ $router->get('/api/communes/{departement_id}', 'PVController@apiCommunes');
 // PV — pièces jointes (substitut uniquement)
 $router->post('/pv/upload/{pvId}',             'PVController@uploadDocument');
 $router->get('/api/pv/documents/{pvId}',       'PVController@listDocuments');
+// PV — suppression pièce jointe
+$router->post('/pv/document/delete/{id}',      'PVController@deleteDocument');
 // PV — fusion multi-PV + recherche RP
 $router->post('/pv/fusionner/{id}',            'PVController@fusionner');
 $router->get('/api/pv/search-rp',              'PVController@apiSearchRP');
@@ -228,6 +238,8 @@ $router->get('/config/infractions',                      'ConfigController@infra
 $router->post('/config/infractions/store',               'ConfigController@infractionStore');
 $router->post('/config/infractions/update/{id}',         'ConfigController@infractionUpdate');
 $router->post('/config/infractions/delete/{id}',         'ConfigController@infractionDelete');
+// API AJAX — création infraction depuis PV/create (accessible à tous les rôles connectés)
+$router->post('/api/infractions/store',                  'ConfigController@apiInfractionStore');
 
 $router->get('/config/maisons-arret',                    'ConfigController@maisonsArret');
 $router->post('/config/maisons-arret/store',             'ConfigController@maisonArretStore');
