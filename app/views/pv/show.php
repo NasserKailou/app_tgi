@@ -146,6 +146,9 @@
     <div class="card-body">
         <form method="POST" action="<?= BASE_URL ?>/pv/update/<?= $pv['id'] ?>">
             <?= CSRF::field() ?>
+            <!-- Identifie ce formulaire comme mise à jour de qualification uniquement -->
+            <!-- update() lira ce contexte pour ne PAS toucher aux infractions_unite   -->
+            <input type="hidden" name="_form_context" value="qualification">
             <div class="row g-3">
                 <div class="col-md-6">
                     <label class="form-label fw-semibold small">Infractions qualifiées (multi-sélection)</label>

@@ -55,6 +55,9 @@ $selectedComp = array_values(array_filter($selectedComp));
 <div class="row justify-content-center"><div class="col-lg-10">
 <form method="POST" action="<?=BASE_URL?>/pv/update/<?=$pv['id']?>" novalidate>
     <?=CSRF::field()?>
+    <!-- Identifie ce formulaire comme édition générale -->
+    <!-- update() mettra à jour données générales + infractions_unite uniquement -->
+    <input type="hidden" name="_form_context" value="edit_general">
 
     <!-- ============================== -->
     <!-- Informations générales         -->

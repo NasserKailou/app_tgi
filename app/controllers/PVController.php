@@ -341,50 +341,78 @@ class PVController extends Controller {
         CSRF::check();
         $user = Auth::currentUser();
         $role = $user['role_code'] ?? '';
-        $isSubstitut = in_array($role, ['admin','procureur','substitut_procureur']);
+        $pvId = (int)$id;
 
-        // Substitut peut mettre à jour qualification + lois_applicables
-     if ($isSubstitut) {
-    // Calcul de qualification_substitut_id : première infraction cochée
-    $qsubId = null;
-    if (!empty($_POST['infractions_substitut']) && is_array($_POST['infractions_substitut'])) {
-        $first = reset($_POST['infractions_substitut']);
-        if ($first) $qsubId = (int)$first;
-    }
+        // ── Contexte du formulaire soumis ────────────────────────────────────
+        // 'qualification' = formulaire de qualification substitut (show.php)
+        // 'edit_general'  = formulaire d'édition générale (edit.php)
+        // Ce champ évite qu'un formulaire partiel n'écrase les données de l'autre.
+        $formContext = $_POST['_form_context'] ?? 'edit_general';
 
-    $stmt = $this->db->prepare(
-        "UPDATE pv SET qualification_substitut_id=:qsub, qualification_details=:qdet,
-         lois_applicables=:lois WHERE id=:id"
-    );
-    $stmt->execute([
-        'qsub' => $qsubId,
-        'qdet' => $this->sanitize($_POST['qualification_details'] ?? ''),
-        'lois' => $this->sanitize($_POST['lois_applicables'] ?? ''),
-        'id'   => (int)$id,
-    ]);
+        // ════════════════════════════════════════════════════════════════════
+        // BLOC A — Qualification substitut
+        // Acteurs : substitut_procureur, procureur, admin
+        // Mis à jour UNIQUEMENT quand _form_context = 'qualification'
+        // N'efface jamais pv_infractions type='unite'
+        // ════════════════════════════════════════════════════════════════════
+        if ($formContext === 'qualification'
+            && in_array($role, ['admin', 'procureur', 'substitut_procureur'])
+        ) {
+            // Calcul de qualification_substitut_id : première infraction cochée
+            $qsubId = null;
+            if (!empty($_POST['infractions_substitut']) && is_array($_POST['infractions_substitut'])) {
+                $first = reset($_POST['infractions_substitut']);
+                if ($first) $qsubId = (int)$first;
+            }
 
-    // Infractions substitut (multi-select)
-    $this->db->prepare("DELETE FROM pv_infractions WHERE pv_id=? AND type='substitut'")->execute([(int)$id]);
-    if (!empty($_POST['infractions_substitut']) && is_array($_POST['infractions_substitut'])) {
-        $insIS = $this->db->prepare(
-            "INSERT IGNORE INTO pv_infractions (pv_id, infraction_id, type, est_complicite, notes) VALUES (?,?,'substitut',?,?)"
-        );
-        foreach ($_POST['infractions_substitut'] as $iid) {
-            $complicite = isset($_POST['complicite_' . $iid]) ? 1 : 0;
-            $notes      = $this->sanitize($_POST['notes_infraction_' . $iid] ?? '');
-            $insIS->execute([(int)$id, (int)$iid, $complicite, $notes ?: null]);
+            $this->db->prepare(
+                "UPDATE pv SET qualification_substitut_id=:qsub,
+                               qualification_details=:qdet,
+                               lois_applicables=:lois
+                 WHERE id=:id"
+            )->execute([
+                'qsub' => $qsubId,
+                'qdet' => $this->sanitize($_POST['qualification_details'] ?? ''),
+                'lois' => $this->sanitize($_POST['lois_applicables'] ?? ''),
+                'id'   => $pvId,
+            ]);
+
+            // Mise à jour infractions substitut UNIQUEMENT — sans toucher aux infractions unité
+            $this->db->prepare(
+                "DELETE FROM pv_infractions WHERE pv_id=? AND type='substitut'"
+            )->execute([$pvId]);
+
+            if (!empty($_POST['infractions_substitut']) && is_array($_POST['infractions_substitut'])) {
+                $insIS = $this->db->prepare(
+                    "INSERT IGNORE INTO pv_infractions
+                         (pv_id, infraction_id, type, est_complicite, notes)
+                     VALUES (?,?,'substitut',?,?)"
+                );
+                foreach ($_POST['infractions_substitut'] as $iid) {
+                    $complicite = isset($_POST['complicite_' . $iid]) ? 1 : 0;
+                    $notes      = $this->sanitize($_POST['notes_infraction_' . $iid] ?? '');
+                    $insIS->execute([$pvId, (int)$iid, $complicite, $notes ?: null]);
+                }
+            }
+
+            $this->flash('success', 'Qualification enregistrée avec succès.');
+            $this->redirect('/pv/show/' . $pvId);
+            return;
         }
-    }
-}
 
-        // Greffier/admin peut modifier les données générales
-        if (in_array($role, ['admin','greffier','procureur'])) {
-            $stmt2 = $this->db->prepare(
+        // ════════════════════════════════════════════════════════════════════
+        // BLOC B — Édition générale (edit.php)
+        // Acteurs : admin, greffier, procureur
+        // Met à jour données générales + infractions_unite
+        // Ne touche jamais aux infractions_substitut ni à qualification_substitut_id
+        // ════════════════════════════════════════════════════════════════════
+        if (in_array($role, ['admin', 'greffier', 'procureur'])) {
+            $this->db->prepare(
                 "UPDATE pv SET numero_pv=:pv, unite_enquete_id=:ue, date_pv=:dpv, date_reception=:drec,
-                 type_affaire=:type, infraction_id=:infr, est_antiterroriste=:anti, region_id=:reg, departement_id=:dep,
-                 commune_id=:com, description_faits=:desc WHERE id=:id"
-            );
-            $stmt2->execute([
+                 type_affaire=:type, infraction_id=:infr, est_antiterroriste=:anti,
+                 region_id=:reg, departement_id=:dep, commune_id=:com,
+                 description_faits=:desc WHERE id=:id"
+            )->execute([
                 'pv'   => $this->sanitize($_POST['numero_pv'] ?? ''),
                 'ue'   => !empty($_POST['unite_enquete_id']) ? (int)$_POST['unite_enquete_id'] : null,
                 'dpv'  => $_POST['date_pv'],
@@ -396,30 +424,39 @@ class PVController extends Controller {
                 'dep'  => !empty($_POST['departement_id']) ? (int)$_POST['departement_id'] : null,
                 'com'  => !empty($_POST['commune_id']) ? (int)$_POST['commune_id'] : null,
                 'desc' => $this->sanitize($_POST['description_faits'] ?? ''),
-                'id'   => (int)$id,
+                'id'   => $pvId,
             ]);
 
-            // Mise à jour primo intervenants
-            $this->db->prepare("DELETE FROM pv_primo_intervenants WHERE pv_id=?")->execute([(int)$id]);
+            // Primo intervenants
+            $this->db->prepare(
+                "DELETE FROM pv_primo_intervenants WHERE pv_id=?"
+            )->execute([$pvId]);
             if (!empty($_POST['primo_intervenants']) && is_array($_POST['primo_intervenants'])) {
-                $insPI = $this->db->prepare("INSERT IGNORE INTO pv_primo_intervenants (pv_id, primo_intervenant_id) VALUES (?,?)");
+                $insPI = $this->db->prepare(
+                    "INSERT IGNORE INTO pv_primo_intervenants (pv_id, primo_intervenant_id) VALUES (?,?)"
+                );
                 foreach ($_POST['primo_intervenants'] as $piId) {
-                    $insPI->execute([(int)$id, (int)$piId]);
+                    $insPI->execute([$pvId, (int)$piId]);
                 }
             }
 
-            // Infractions unité (multi)
-            $this->db->prepare("DELETE FROM pv_infractions WHERE pv_id=? AND type='unite'")->execute([(int)$id]);
+            // Infractions unité — mise à jour complète (le formulaire edit.php envoie toujours la liste complète)
+            // Les infractions substitut ne sont PAS touchées ici.
+            $this->db->prepare(
+                "DELETE FROM pv_infractions WHERE pv_id=? AND type='unite'"
+            )->execute([$pvId]);
             if (!empty($_POST['infractions_unite']) && is_array($_POST['infractions_unite'])) {
-                $insIU = $this->db->prepare("INSERT IGNORE INTO pv_infractions (pv_id, infraction_id, type) VALUES (?,?,'unite')");
+                $insIU = $this->db->prepare(
+                    "INSERT IGNORE INTO pv_infractions (pv_id, infraction_id, type) VALUES (?,?,'unite')"
+                );
                 foreach ($_POST['infractions_unite'] as $iid) {
-                    $insIU->execute([(int)$id, (int)$iid]);
+                    $insIU->execute([$pvId, (int)$iid]);
                 }
             }
         }
 
         $this->flash('success', 'PV mis à jour avec succès.');
-        $this->redirect('/pv/show/' . $id);
+        $this->redirect('/pv/show/' . $pvId);
     }
 
     public function affecter(string $id): void {
