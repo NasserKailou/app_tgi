@@ -423,24 +423,42 @@ class PVController extends Controller {
         // Ne touche jamais aux infractions_substitut ni à qualification_substitut_id
         // ════════════════════════════════════════════════════════════════════
         if (in_array($role, ['admin', 'greffier', 'procureur'])) {
+            // Validation unicité du N° RP (si renseigné et différent de l'actuel)
+            $numeroRP    = trim($this->sanitize($_POST['numero_rp'] ?? ''));
+            $numeroOrdre = trim($this->sanitize($_POST['numero_ordre'] ?? ''));
+            if ($numeroRP !== '') {
+                $chkRP = $this->db->prepare(
+                    "SELECT COUNT(*) FROM pv WHERE numero_rp = ? AND id != ?"
+                );
+                $chkRP->execute([$numeroRP, $pvId]);
+                if ((int)$chkRP->fetchColumn() > 0) {
+                    $this->flash('error', "Le N° RP « {$numeroRP} » est déjà utilisé par un autre PV.");
+                    $this->redirect('/pv/edit/' . $pvId);
+                    return;
+                }
+            }
+
             $this->db->prepare(
-                "UPDATE pv SET numero_pv=:pv, unite_enquete_id=:ue, date_pv=:dpv, date_reception=:drec,
+                "UPDATE pv SET numero_pv=:pv, numero_rp=:rp, numero_ordre=:nordre,
+                 unite_enquete_id=:ue, date_pv=:dpv, date_reception=:drec,
                  type_affaire=:type, infraction_id=:infr, est_antiterroriste=:anti,
                  region_id=:reg, departement_id=:dep, commune_id=:com,
                  description_faits=:desc WHERE id=:id"
             )->execute([
-                'pv'   => $this->sanitize($_POST['numero_pv'] ?? ''),
-                'ue'   => !empty($_POST['unite_enquete_id']) ? (int)$_POST['unite_enquete_id'] : null,
-                'dpv'  => $_POST['date_pv'],
-                'drec' => $_POST['date_reception'],
-                'type' => $_POST['type_affaire'],
-                'infr' => !empty($_POST['infraction_id']) ? (int)$_POST['infraction_id'] : null,
-                'anti' => isset($_POST['est_antiterroriste']) ? 1 : 0,
-                'reg'  => !empty($_POST['region_id']) ? (int)$_POST['region_id'] : null,
-                'dep'  => !empty($_POST['departement_id']) ? (int)$_POST['departement_id'] : null,
-                'com'  => !empty($_POST['commune_id']) ? (int)$_POST['commune_id'] : null,
-                'desc' => $this->sanitize($_POST['description_faits'] ?? ''),
-                'id'   => $pvId,
+                'pv'     => $this->sanitize($_POST['numero_pv'] ?? ''),
+                'rp'     => $numeroRP ?: null,
+                'nordre' => $numeroOrdre ?: null,
+                'ue'     => !empty($_POST['unite_enquete_id']) ? (int)$_POST['unite_enquete_id'] : null,
+                'dpv'    => $_POST['date_pv'],
+                'drec'   => $_POST['date_reception'],
+                'type'   => $_POST['type_affaire'],
+                'infr'   => !empty($_POST['infraction_id']) ? (int)$_POST['infraction_id'] : null,
+                'anti'   => isset($_POST['est_antiterroriste']) ? 1 : 0,
+                'reg'    => !empty($_POST['region_id']) ? (int)$_POST['region_id'] : null,
+                'dep'    => !empty($_POST['departement_id']) ? (int)$_POST['departement_id'] : null,
+                'com'    => !empty($_POST['commune_id']) ? (int)$_POST['commune_id'] : null,
+                'desc'   => $this->sanitize($_POST['description_faits'] ?? ''),
+                'id'     => $pvId,
             ]);
 
             // Primo intervenants

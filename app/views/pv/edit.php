@@ -65,10 +65,28 @@ $selectedComp = array_values(array_filter($selectedComp));
     <div class="card border-0 shadow-sm mb-3">
         <div class="card-header bg-white fw-semibold">Informations générales</div>
         <div class="card-body"><div class="row g-3">
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <label class="form-label">N° PV d'origine <span class="text-danger">*</span></label>
                 <input type="text" name="numero_pv" class="form-control" required
                        value="<?= htmlspecialchars($_POST['numero_pv'] ?? $pv['numero_pv']) ?>">
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">N° d'ordre du PV <span class="text-muted small">(saisi manuellement)</span></label>
+                <input type="text" name="numero_ordre" class="form-control font-monospace"
+                       value="<?= htmlspecialchars($_POST['numero_ordre'] ?? $pv['numero_ordre'] ?? '') ?>"
+                       placeholder="ex: 001/2026">
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">
+                    N° RP (Registre du Parquet)
+                    <span class="text-muted small">(unique, saisi manuellement)</span>
+                </label>
+                <input type="text" name="numero_rp" class="form-control font-monospace text-primary fw-semibold"
+                       value="<?= htmlspecialchars($_POST['numero_rp'] ?? $pv['numero_rp'] ?? '') ?>"
+                       placeholder="ex: RP N°001/2026/PARQUET">
+                <div class="form-text">Le système vérifie l'unicité du RP.</div>
             </div>
 
             <div class="col-md-6">
