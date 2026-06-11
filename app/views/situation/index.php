@@ -49,6 +49,13 @@ $typeLabels = [
         <p class="text-muted mb-0 small">Tableau de bord périodique — filtrez par date, statut, substitut, unité…</p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
+        <a href="<?= BASE_URL ?>/situation/crpc?<?= http_build_query(array_filter([
+            'date_debut'   => $dateDebut,
+            'date_fin'     => $dateFin,
+            'substitut_id' => $substitutId ?: '',
+        ])) ?>" class="btn btn-sm fw-semibold text-white" style="background:#6f42c1;border-color:#6f42c1;">
+            <i class="bi bi-file-earmark-text me-1"></i>Situation CRPC
+        </a>
         <a href="<?= BASE_URL ?>/situation/pv/export?<?= http_build_query(array_filter([
             'date_debut'     => $dateDebut,
             'date_fin'       => $dateFin,

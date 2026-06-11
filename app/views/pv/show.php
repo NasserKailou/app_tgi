@@ -697,15 +697,15 @@
 
 <!-- Modal Transférer (nouveau workflow basé sur le mode de poursuite) -->
 <div class="modal fade" id="modalTransferer" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable" style="max-height:95vh;">
+        <div class="modal-content" style="max-height:95vh;">
+            <div class="modal-header bg-success text-white flex-shrink-0">
                 <h5 class="modal-title"><i class="bi bi-send me-2"></i>Transférer le PV — Décision du substitut</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST" action="<?= BASE_URL ?>/pv/transferer/<?= $pv['id'] ?>">
                 <?= CSRF::field() ?>
-                <div class="modal-body">
+                <div class="modal-body" style="overflow-y:auto;">
                     <div class="alert alert-info small mb-3">
                         <i class="bi bi-info-circle me-2"></i>
                         <strong>Règle :</strong> Seul le mode <strong>RI (Réquisitoire Introductif)</strong> envoie le dossier au cabinet d'instruction.

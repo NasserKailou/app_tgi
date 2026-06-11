@@ -210,4 +210,135 @@ class SituationController extends Controller
         fclose($out);
         exit;
     }
+
+    /**
+     * Situation périodique des dossiers CRPC
+     * GET /situation/crpc
+     */
+    public function crpc(): void
+    {
+        Auth::requireLogin();
+        Auth::requireRole(['admin','procureur','substitut_procureur','president','greffier']);
+        $user  = Auth::currentUser();
+        $flash = $this->getFlash();
+
+        // ── Paramètres de filtre ──────────────────────────────────────────
+        $dateDebut   = $_GET['date_debut']   ?? date('Y-m-01');
+        $dateFin     = $_GET['date_fin']     ?? date('Y-m-d');
+        $substitutId = (int)($_GET['substitut_id'] ?? 0);
+        $statutFilter= $_GET['statut']       ?? '';
+        $exportCsv   = ($_GET['export']      ?? '') === 'csv';
+
+        // ── Requête principale ────────────────────────────────────────────
+        $where  = ["p.date_reception BETWEEN :dd AND :df", "p.mode_poursuite = 'CRPC'"];
+        $params = ['dd' => $dateDebut, 'df' => $dateFin];
+
+        if ($substitutId)  { $where[] = "p.substitut_id = :sub";      $params['sub']    = $substitutId; }
+        if ($statutFilter) { $where[] = "cd.statut = :statut";         $params['statut'] = $statutFilter; }
+
+        $whereSQL = 'WHERE ' . implode(' AND ', $where);
+
+        $sql = "SELECT cd.*,
+                       p.numero_rg  AS pv_numero_rg,
+                       p.numero_pv  AS pv_numero_pv,
+                       p.date_reception,
+                       us.nom       AS sub_nom,
+                       us.prenom    AS sub_prenom
+                FROM crpc_dossiers cd
+                JOIN pv p   ON cd.pv_id      = p.id
+                LEFT JOIN users us ON p.substitut_id = us.id
+                $whereSQL
+                ORDER BY cd.date_mise_en_oeuvre DESC, p.date_reception DESC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        $crpcList = $stmt->fetchAll();
+
+        // ── Charger les personnes pour chaque dossier ────────────────────
+        foreach ($crpcList as &$d) {
+            $pStmt = $this->db->prepare(
+                "SELECT * FROM crpc_personnes WHERE crpc_id = :id ORDER BY numero_ordre, id"
+            );
+            $pStmt->execute(['id' => $d['id']]);
+            $d['personnes'] = $pStmt->fetchAll();
+        }
+        unset($d);
+
+        // ── Statistiques ─────────────────────────────────────────────────
+        $total    = count($crpcList);
+        $byStatut = [];
+        foreach ($crpcList as $d) {
+            $byStatut[$d['statut']] = ($byStatut[$d['statut']] ?? 0) + 1;
+        }
+
+        // ── Nom du substitut filtré (pour affichage) ─────────────────────
+        $substitutNom = '';
+        if ($substitutId) {
+            $sRow = $this->db->prepare("SELECT prenom, nom FROM users WHERE id = :id");
+            $sRow->execute(['id' => $substitutId]);
+            $sRow = $sRow->fetch();
+            $substitutNom = $sRow ? trim($sRow['prenom'].' '.$sRow['nom']) : '';
+        }
+
+        // ── Export CSV ────────────────────────────────────────────────────
+        if ($exportCsv) {
+            $filename = 'situation_crpc_' . $dateDebut . '_' . $dateFin . '.csv';
+            header('Content-Type: text/csv; charset=UTF-8');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+            header('Pragma: no-cache');
+            $out = fopen('php://output', 'w');
+            fputs($out, "\xEF\xBB\xBF");
+            fputcsv($out, [
+                'N° RG','N° PV','Date CRPC','Personne(s)',
+                'Qualification','Texte applicable','Peine prévue',
+                'Avocat','Peine proposée','Sursis sub.','Amende proposée (FCFA)',
+                'Date audience homo.','Homologation','Peine homologuée',
+                'Sursis homo.','Amende homologuée (FCFA)',
+                'Motif refus','Substitut','Statut'
+            ], ';');
+            $statMap = ['en_cours'=>'En cours','homologuee'=>'Homologuée','refusee'=>'Refusée','abandonnee'=>'Abandonnée'];
+            foreach ($crpcList as $d) {
+                $personnes  = implode(' / ', array_map(fn($p) => strtoupper($p['nom_prenom']), $d['personnes']));
+                $homoLabel  = match((string)$d['homologation']) { '1'=>'Oui','0'=>'Non', default=>'En attente' };
+                fputcsv($out, [
+                    $d['pv_numero_rg'],
+                    $d['pv_numero_pv'],
+                    $d['date_mise_en_oeuvre'] ? date('d/m/Y', strtotime($d['date_mise_en_oeuvre'])) : '',
+                    $personnes,
+                    $d['qualification_faits'],
+                    $d['texte_applicable'],
+                    $d['peine_prevue'],
+                    $d['assistance_avocat'] ? ('Oui — '.($d['nom_avocat']??'')) : ($d['renonciation_avocat'] ? 'Renonciation' : 'Non'),
+                    $d['peine_emprisonnement'],
+                    $d['sursis_substitut'] ? 'Oui' : 'Non',
+                    $d['amende_proposee'] ?? '',
+                    $d['date_audience_homologation'] ? date('d/m/Y', strtotime($d['date_audience_homologation'])) : '',
+                    $homoLabel,
+                    $d['peine_emprisonnement_homo'],
+                    $d['sursis_homologue'] ? 'Oui' : 'Non',
+                    $d['amende_homologuee'] ?? '',
+                    $d['motif_refus_homologation'],
+                    trim($d['sub_prenom'].' '.$d['sub_nom']),
+                    $statMap[$d['statut']] ?? $d['statut'],
+                ], ';');
+            }
+            fclose($out);
+            exit;
+        }
+
+        // ── Listes de filtres ─────────────────────────────────────────────
+        $substituts = $this->db->query(
+            "SELECT u.id, u.nom, u.prenom FROM users u
+             JOIN roles r ON u.role_id = r.id
+             WHERE r.code = 'substitut_procureur' AND u.actif = 1
+             ORDER BY u.nom"
+        )->fetchAll();
+
+        $this->view('situation/crpc', compact(
+            'user','flash',
+            'crpcList','total','byStatut',
+            'dateDebut','dateFin','substitutId','substitutNom','statutFilter',
+            'substituts'
+        ));
+    }
 }

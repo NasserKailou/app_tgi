@@ -106,6 +106,7 @@ $router->get('/api/pv/search-rp',              'PVController@apiSearchRP');
 // Situation périodique des PVs
 $router->get('/situation/pv',                  'SituationController@index');
 $router->get('/situation/pv/export',           'SituationController@export');
+$router->get('/situation/crpc',                'SituationController@crpc');
 
 // Tableau de bord analytique avancé
 $router->get('/analytics',                     'AnalyticsController@index');
