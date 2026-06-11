@@ -182,6 +182,18 @@ $canMenu = function(string $code) use ($_uid): bool {
         </a>
         <?php endif; ?>
 
+        <!-- ══════════ STATISTIQUES & RAPPORTS ══════════ -->
+        <div class="sidebar-section">Statistiques &amp; Rapports</div>
+        <a href="<?= BASE_URL ?>/analytics" class="sidebar-link <?= isActive('/analytics', $currentPath) ?>">
+            <i class="bi bi-graph-up-arrow" style="color:#a78bfa;"></i><span>Tableau analytique</span>
+        </a>
+        <a href="<?= BASE_URL ?>/situation/pv" class="sidebar-link <?= isActive('/situation/pv', $currentPath) ?>">
+            <i class="bi bi-bar-chart-line"></i><span>Situation des PVs</span>
+        </a>
+        <a href="<?= BASE_URL ?>/rapports" class="sidebar-link <?= isActive('/rapports', $currentPath) ?>">
+            <i class="bi bi-file-earmark-bar-graph"></i><span>Rapports</span>
+        </a>
+
         <!-- ══════════ CONFIGURATION SYSTÈME ══════════ -->
         <div class="sidebar-section">Configuration Système</div>
         <?php if ($canMenu('alertes')): ?>

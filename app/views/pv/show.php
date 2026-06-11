@@ -579,7 +579,12 @@
             <div class="card-header bg-white fw-semibold"><i class="bi bi-play-circle me-2 text-primary"></i>Actions</div>
             <div class="card-body d-grid gap-2">
 
-                <?php if (Auth::hasRole(['admin','procureur','president']) && $pv['statut']==='recu'): ?>
+                <?php
+                $canAffecter = Auth::hasRole(['admin','procureur','president'])
+                    || (Auth::hasRole(['greffier'])
+                        && DroitsController::hasFuncAccess((int)($user['id']??0), 'pv_affecter'));
+                ?>
+                <?php if ($canAffecter && $pv['statut']==='recu'): ?>
                 <!-- Affecter substitut -->
                 <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#modalAffecter">
                     <i class="bi bi-person-check me-2"></i>Affecter un substitut
@@ -692,7 +697,7 @@
 
 <!-- Modal Transférer (nouveau workflow basé sur le mode de poursuite) -->
 <div class="modal fade" id="modalTransferer" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header bg-success text-white">
                 <h5 class="modal-title"><i class="bi bi-send me-2"></i>Transférer le PV — Décision du substitut</h5>
@@ -704,7 +709,7 @@
                     <div class="alert alert-info small mb-3">
                         <i class="bi bi-info-circle me-2"></i>
                         <strong>Règle :</strong> Seul le mode <strong>RI (Réquisitoire Introductif)</strong> envoie le dossier au cabinet d'instruction.
-                        Les modes CD, FD, CRPC passent directement en audience.
+                        Les modes <strong>CD, FD, CRPC</strong> passent directement en audience.
                     </div>
 
                     <!-- Mode de poursuite -->
@@ -716,7 +721,7 @@
                             <option value="RI">RI — Réquisitoire Introductif → Cabinet d'instruction</option>
                             <option value="CD">CD — Citation Directe → Audience directe</option>
                             <option value="FD">FD — Flagrant Délit → Audience directe</option>
-                            <option value="CRPC">CRPC → Audience directe</option>
+                            <option value="CRPC">CRPC — Comparution sur Reconnaissance Préalable de Culpabilité</option>
                             <option value="autre">Autre → Audience directe</option>
                         </select>
                     </div>
@@ -752,6 +757,315 @@
                         Ce dossier sera envoyé directement en audience (sans cabinet d'instruction).
                     </div>
 
+                    <!-- ══════════════════════════════════════════════════════════════════ -->
+                    <!-- BLOC CRPC — affiché uniquement si mode_poursuite = CRPC           -->
+                    <!-- ══════════════════════════════════════════════════════════════════ -->
+                    <div id="crpcBlock" style="display:none">
+                        <div class="card border-0 mb-3" style="border-left:4px solid #6f42c1 !important;">
+                            <div class="card-header text-white fw-semibold d-flex align-items-center" style="background:#6f42c1;">
+                                <i class="bi bi-file-earmark-text me-2"></i>
+                                Fiche CRPC — Comparution sur Reconnaissance Préalable de Culpabilité
+                                <span class="badge bg-light text-dark ms-2 small fw-normal">TGI-HC Niamey</span>
+                            </div>
+                            <div class="card-body bg-light p-3">
+
+                                <!-- Section I : Identification -->
+                                <div class="border rounded p-3 bg-white mb-3">
+                                    <h6 class="fw-bold text-primary mb-3">
+                                        <i class="bi bi-i-circle me-1"></i>I. Identification du dossier
+                                    </h6>
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-semibold small">Date de mise en œuvre de la CRPC <span class="text-danger">*</span></label>
+                                            <input type="date" name="crpc_date_mise_en_oeuvre" class="form-control form-control-sm"
+                                                   value="<?= date('Y-m-d') ?>">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-semibold small">Substitut ayant conduit la procédure</label>
+                                            <input type="text" name="crpc_substitut_nom" class="form-control form-control-sm"
+                                                   value="<?= htmlspecialchars(($pv['substitut_prenom']??'').' '.($pv['substitut_nom']??'')) ?>"
+                                                   placeholder="Nom du substitut">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Section II : Personnes poursuivies -->
+                                <div class="border rounded p-3 bg-white mb-3">
+                                    <h6 class="fw-bold text-primary mb-3">
+                                        <i class="bi bi-people me-1"></i>II. Identification des personnes poursuivies
+                                    </h6>
+                                    <div id="crpcPersonnes">
+                                        <?php
+                                        $mecsCrpc = $misesEnCause ?? [];
+                                        $mecsCrpcIdx = 1;
+                                        foreach ($mecsCrpc as $mec):
+                                        ?>
+                                        <div class="crpc-personne border rounded p-2 mb-2 bg-light">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <span class="fw-semibold small text-secondary">Personne n° <?= $mecsCrpcIdx ?></span>
+                                                <?php if ($mecsCrpcIdx > 1): ?>
+                                                <button type="button" class="btn btn-xs btn-outline-danger btn-sm" onclick="removeCrpcPersonne(this)">
+                                                    <i class="bi bi-x"></i>
+                                                </button>
+                                                <?php endif; ?>
+                                            </div>
+                                            <div class="row g-2">
+                                                <div class="col-12">
+                                                    <input type="hidden" name="crpc_mec_id[]" value="<?= $mec['id'] ?>">
+                                                    <input type="text" name="crpc_nom_prenom[]" class="form-control form-control-sm"
+                                                           value="<?= htmlspecialchars(strtoupper($mec['nom']).' '.($mec['prenom']??'')) ?>"
+                                                           placeholder="Nom et prénom" required>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <select name="crpc_sexe[]" class="form-select form-select-sm">
+                                                        <option value="">Sexe</option>
+                                                        <option value="M" <?= ($mec['sexe']??'') === 'M' ? 'selected':'' ?>>M</option>
+                                                        <option value="F" <?= ($mec['sexe']??'') === 'F' ? 'selected':'' ?>>F</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <input type="number" name="crpc_age[]" class="form-control form-control-sm"
+                                                           value="<?= !empty($mec['date_naissance']) ? (int)((time()-strtotime($mec['date_naissance']))/31536000) : '' ?>"
+                                                           placeholder="Âge" min="1" max="120">
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <input type="text" name="crpc_nationalite[]" class="form-control form-control-sm"
+                                                           value="<?= htmlspecialchars($mec['nationalite']??'Nigérienne') ?>"
+                                                           placeholder="Nationalité">
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <input type="text" name="crpc_profession[]" class="form-control form-control-sm"
+                                                           value="<?= htmlspecialchars($mec['profession']??'') ?>"
+                                                           placeholder="Profession">
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <input type="text" name="crpc_quartier[]" class="form-control form-control-sm"
+                                                           value="<?= htmlspecialchars($mec['adresse']??'') ?>"
+                                                           placeholder="Quartier / Adresse">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <?php $mecsCrpcIdx++; endforeach; ?>
+                                        <?php if (empty($mecsCrpc)): ?>
+                                        <div class="crpc-personne border rounded p-2 mb-2 bg-light">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <span class="fw-semibold small text-secondary">Personne n° 1</span>
+                                            </div>
+                                            <div class="row g-2">
+                                                <div class="col-12">
+                                                    <input type="hidden" name="crpc_mec_id[]" value="">
+                                                    <input type="text" name="crpc_nom_prenom[]" class="form-control form-control-sm"
+                                                           placeholder="Nom et prénom" required>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <select name="crpc_sexe[]" class="form-select form-select-sm">
+                                                        <option value="">Sexe</option>
+                                                        <option value="M">M</option>
+                                                        <option value="F">F</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <input type="number" name="crpc_age[]" class="form-control form-control-sm"
+                                                           placeholder="Âge" min="1" max="120">
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <input type="text" name="crpc_nationalite[]" class="form-control form-control-sm"
+                                                           value="Nigérienne" placeholder="Nationalité">
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <input type="text" name="crpc_profession[]" class="form-control form-control-sm"
+                                                           placeholder="Profession">
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <input type="text" name="crpc_quartier[]" class="form-control form-control-sm"
+                                                           placeholder="Quartier / Adresse">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <?php endif; ?>
+                                    </div>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm mt-1" onclick="addCrpcPersonne()">
+                                        <i class="bi bi-plus-circle me-1"></i>Ajouter une personne
+                                    </button>
+                                </div>
+
+                                <!-- Section III : Infractions poursuivies -->
+                                <div class="border rounded p-3 bg-white mb-3">
+                                    <h6 class="fw-bold text-primary mb-3">
+                                        <i class="bi bi-gavel me-1"></i>III. Infraction(s) poursuivie(s)
+                                    </h6>
+                                    <div class="row g-3">
+                                        <div class="col-12">
+                                            <label class="form-label fw-semibold small">Qualification des faits <span class="text-danger">*</span></label>
+                                            <input type="text" name="crpc_qualification_faits" class="form-control form-control-sm"
+                                                   value="<?= htmlspecialchars($pv['qualification_details']??'') ?>"
+                                                   placeholder="Ex : Vol aggravé, Escroquerie…" required>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-semibold small">Date des faits</label>
+                                            <input type="date" name="crpc_date_faits" class="form-control form-control-sm">
+                                        </div>
+                                        <div class="col-md-8">
+                                            <label class="form-label fw-semibold small">Texte applicable <small class="text-muted">(articles, lois)</small></label>
+                                            <input type="text" name="crpc_texte_applicable" class="form-control form-control-sm"
+                                                   value="<?= htmlspecialchars($pv['lois_applicables']??'') ?>"
+                                                   placeholder="Ex : Art. 220 CP, Loi n°2015-08…">
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label fw-semibold small">Peine prévue par les textes</label>
+                                            <textarea name="crpc_peine_prevue" class="form-control form-control-sm" rows="2"
+                                                      placeholder="Ex : Emprisonnement de 1 à 5 ans et/ou amende de 50 000 à 500 000 FCFA"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Section IV : Choix du conseil -->
+                                <div class="border rounded p-3 bg-white mb-3">
+                                    <h6 class="fw-bold text-primary mb-3">
+                                        <i class="bi bi-briefcase me-1"></i>IV. Choix du conseil
+                                    </h6>
+                                    <div class="row g-3 align-items-center">
+                                        <div class="col-md-6">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" name="crpc_assistance_avocat" value="1"
+                                                       id="crpcAssistanceAvocat" onchange="toggleAvocatNom(this.checked)">
+                                                <label class="form-check-label fw-semibold small" for="crpcAssistanceAvocat">
+                                                    Assistance d'un avocat
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" name="crpc_renonciation_avocat" value="1"
+                                                       id="crpcRenonciationAvocat">
+                                                <label class="form-check-label fw-semibold small" for="crpcRenonciationAvocat">
+                                                    Renonciation expresse à un avocat
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-12" id="nomAvocatBlock" style="display:none">
+                                            <label class="form-label fw-semibold small">Nom de l'avocat</label>
+                                            <input type="text" name="crpc_nom_avocat" class="form-control form-control-sm"
+                                                   placeholder="Maître…">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Section : Peine proposée par le substitut -->
+                                <div class="border rounded p-3 bg-white mb-3">
+                                    <h6 class="fw-bold text-primary mb-3">
+                                        <i class="bi bi-balance-scale me-1"></i>Peine proposée par le substitut
+                                    </h6>
+                                    <div class="row g-3">
+                                        <div class="col-md-8">
+                                            <label class="form-label fw-semibold small">Peine d'emprisonnement proposée</label>
+                                            <input type="text" name="crpc_peine_emprisonnement" class="form-control form-control-sm"
+                                                   placeholder="Ex : 18 mois dont 6 avec sursis">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-semibold small">Sursis</label>
+                                            <div class="d-flex gap-3 mt-1">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="crpc_sursis_substitut" value="1" id="sursisSub1">
+                                                    <label class="form-check-label small" for="sursisSub1">Oui</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="crpc_sursis_substitut" value="0" id="sursisSub0" checked>
+                                                    <label class="form-check-label small" for="sursisSub0">Non</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-semibold small">Amende proposée (FCFA)</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="number" name="crpc_amende_proposee" class="form-control"
+                                                       placeholder="0" min="0" step="1000">
+                                                <span class="input-group-text">FCFA</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Section V : Homologation -->
+                                <div class="border rounded p-3 bg-white mb-3">
+                                    <h6 class="fw-bold text-primary mb-3">
+                                        <i class="bi bi-check2-square me-1"></i>V. Homologation du Président du Tribunal
+                                        <span class="badge bg-secondary ms-2 small fw-normal">À compléter après audience</span>
+                                    </h6>
+                                    <div class="row g-3">
+                                        <div class="col-md-5">
+                                            <label class="form-label fw-semibold small">Date de l'audience d'homologation</label>
+                                            <input type="date" name="crpc_date_audience_homologation" class="form-control form-control-sm">
+                                        </div>
+                                        <div class="col-md-7">
+                                            <label class="form-label fw-semibold small">Homologation</label>
+                                            <div class="d-flex gap-3 mt-1">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="crpc_homologation" value="1"
+                                                           id="homo1" onchange="toggleHomoRefus(false)">
+                                                    <label class="form-check-label small fw-semibold text-success" for="homo1">✓ Oui — Homologuée</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="crpc_homologation" value="0"
+                                                           id="homo0" onchange="toggleHomoRefus(true)">
+                                                    <label class="form-check-label small fw-semibold text-danger" for="homo0">✗ Non — Refusée</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="crpc_homologation" value=""
+                                                           id="homoNA" checked onchange="toggleHomoRefus(false)">
+                                                    <label class="form-check-label small text-muted" for="homoNA">En attente</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-12 d-none" id="homoDetails">
+                                            <div class="row g-2">
+                                                <div class="col-md-8">
+                                                    <label class="form-label fw-semibold small">Peine d'emprisonnement homologuée</label>
+                                                    <input type="text" name="crpc_peine_emprisonnement_homo" class="form-control form-control-sm"
+                                                           placeholder="Ex : 12 mois ferme">
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label fw-semibold small">Sursis homologué</label>
+                                                    <div class="d-flex gap-3 mt-1">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="radio" name="crpc_sursis_homologue" value="1" id="sursisH1">
+                                                            <label class="form-check-label small" for="sursisH1">Oui</label>
+                                                        </div>
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="radio" name="crpc_sursis_homologue" value="0" id="sursisH0" checked>
+                                                            <label class="form-check-label small" for="sursisH0">Non</label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label fw-semibold small">Amende homologuée (FCFA)</label>
+                                                    <div class="input-group input-group-sm">
+                                                        <input type="number" name="crpc_amende_homologuee" class="form-control"
+                                                               placeholder="0" min="0" step="1000">
+                                                        <span class="input-group-text">FCFA</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-12 d-none" id="homoRefusMotif">
+                                            <label class="form-label fw-semibold small text-danger">Motif du refus <span class="text-danger">*</span></label>
+                                            <textarea name="crpc_motif_refus_homologation" class="form-control form-control-sm border-danger" rows="2"
+                                                      placeholder="Indiquer le motif du refus d'homologation…"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Notes complémentaires -->
+                                <div class="border rounded p-3 bg-white">
+                                    <label class="form-label fw-semibold small"><i class="bi bi-sticky me-1"></i>Notes complémentaires CRPC</label>
+                                    <textarea name="crpc_notes" class="form-control form-control-sm" rows="2"
+                                              placeholder="Observations, circonstances particulières…"></textarea>
+                                </div>
+
+                            </div><!-- /card-body -->
+                        </div><!-- /card CRPC -->
+                    </div><!-- /#crpcBlock -->
+
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Objet du dossier <span class="text-danger">*</span></label>
                         <textarea name="objet" class="form-control" rows="3" required><?= htmlspecialchars($pv['description_faits']??'') ?></textarea>
@@ -770,11 +1084,49 @@
 <script>
 function onModeChange(val) {
     var isRI   = (val === 'RI');
-    document.getElementById('cabinetBlock').style.display       = isRI ? 'block' : 'none';
-    document.getElementById('audienceDirecteInfo').style.display= (val && !isRI) ? 'block' : 'none';
+    var isCRPC = (val === 'CRPC');
+    document.getElementById('cabinetBlock').style.display        = isRI   ? 'block' : 'none';
+    document.getElementById('audienceDirecteInfo').style.display = (val && !isRI) ? 'block' : 'none';
+    document.getElementById('crpcBlock').style.display           = isCRPC ? 'block' : 'none';
 }
 function toggleCabinet(show){
     // legacy compat
+}
+function toggleAvocatNom(show) {
+    document.getElementById('nomAvocatBlock').style.display = show ? 'block' : 'none';
+}
+function toggleHomoRefus(refus) {
+    var det = document.getElementById('homoDetails');
+    var ref = document.getElementById('homoRefusMotif');
+    if (refus) {
+        det.classList.add('d-none');
+        ref.classList.remove('d-none');
+    } else {
+        det.classList.remove('d-none');
+        ref.classList.add('d-none');
+    }
+}
+var crpcPersonneCount = <?= max(1, count($misesEnCause ?? [])) ?>;
+function addCrpcPersonne() {
+    crpcPersonneCount++;
+    var n = crpcPersonneCount;
+    var tpl = '<div class="crpc-personne border rounded p-2 mb-2 bg-light">' +
+        '<div class="d-flex justify-content-between align-items-center mb-2">' +
+        '<span class="fw-semibold small text-secondary">Personne n\u00b0 ' + n + '</span>' +
+        '<button type="button" class="btn btn-xs btn-outline-danger btn-sm" onclick="removeCrpcPersonne(this)"><i class="bi bi-x"></i></button>' +
+        '</div>' +
+        '<div class="row g-2">' +
+        '<div class="col-12"><input type="hidden" name="crpc_mec_id[]" value=""><input type="text" name="crpc_nom_prenom[]" class="form-control form-control-sm" placeholder="Nom et pr\u00e9nom" required></div>' +
+        '<div class="col-md-2"><select name="crpc_sexe[]" class="form-select form-select-sm"><option value="">Sexe</option><option value="M">M</option><option value="F">F</option></select></div>' +
+        '<div class="col-md-2"><input type="number" name="crpc_age[]" class="form-control form-control-sm" placeholder="\u00c2ge" min="1" max="120"></div>' +
+        '<div class="col-md-4"><input type="text" name="crpc_nationalite[]" class="form-control form-control-sm" value="Nig\u00e9rienne" placeholder="Nationalit\u00e9"></div>' +
+        '<div class="col-md-4"><input type="text" name="crpc_profession[]" class="form-control form-control-sm" placeholder="Profession"></div>' +
+        '<div class="col-md-6"><input type="text" name="crpc_quartier[]" class="form-control form-control-sm" placeholder="Quartier / Adresse"></div>' +
+        '</div></div>';
+    document.getElementById('crpcPersonnes').insertAdjacentHTML('beforeend', tpl);
+}
+function removeCrpcPersonne(btn) {
+    btn.closest('.crpc-personne').remove();
 }
 function suggererCabinet(){
     fetch('<?= BASE_URL ?>/api/cabinets/charge')

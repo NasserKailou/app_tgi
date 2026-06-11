@@ -103,6 +103,14 @@ $router->post('/pv/delete/{id}',               'PVController@delete');
 $router->post('/pv/fusionner/{id}',            'PVController@fusionner');
 $router->get('/api/pv/search-rp',              'PVController@apiSearchRP');
 
+// Situation périodique des PVs
+$router->get('/situation/pv',                  'SituationController@index');
+$router->get('/situation/pv/export',           'SituationController@export');
+
+// Tableau de bord analytique avancé
+$router->get('/analytics',                     'AnalyticsController@index');
+$router->get('/api/analytics/data',            'AnalyticsController@apiData');
+
 // Mises en cause
 $router->post('/pv/mise-en-cause/store/{pvId}',      'MiseEnCauseController@store');
 $router->get('/pv/mise-en-cause/edit/{id}',          'MiseEnCauseController@edit');
