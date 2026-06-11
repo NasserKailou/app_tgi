@@ -5,6 +5,19 @@
  *   GET /analytics          → index()   (page principale)
  *   GET /api/analytics/data → apiData() (données JSON pour graphiques)
  */
+
+/**
+ * Retourne le nombre de jours dans un mois donné.
+ * Remplace cal_days_in_month(CAL_GREGORIAN, $m, $y) qui nécessite
+ * l'extension "calendar" (non disponible sur tous les serveurs).
+ * Utilise uniquement date() — aucune extension requise.
+ */
+if (!function_exists('days_in_month')) {
+    function days_in_month(int $month, int $year): int {
+        return (int) date('t', mktime(0, 0, 0, $month, 1, $year));
+    }
+}
+
 class AnalyticsController extends Controller
 {
     public function index(): void
@@ -21,7 +34,7 @@ class AnalyticsController extends Controller
 
         $dd = sprintf('%04d-%02d-01', $annee, $moisDebut);
         $df = sprintf('%04d-%02d-%02d', $annee, $moisFin,
-            cal_days_in_month(CAL_GREGORIAN, $moisFin, $annee));
+            days_in_month($moisFin, $annee));
 
         // ── 1. Totaux généraux ────────────────────────────────────────────
         $totPV = (int)$this->db->query("SELECT COUNT(*) FROM pv")->fetchColumn();
@@ -52,7 +65,7 @@ class AnalyticsController extends Controller
         $pvParMois = [];
         for ($m = 1; $m <= 12; $m++) {
             $dm = sprintf('%04d-%02d-01', $annee, $m);
-            $fm = sprintf('%04d-%02d-%02d', $annee, $m, cal_days_in_month(CAL_GREGORIAN, $m, $annee));
+            $fm = sprintf('%04d-%02d-%02d', $annee, $m, days_in_month($m, $annee));
             $st = $this->db->prepare("SELECT COUNT(*) FROM pv WHERE date_reception BETWEEN ? AND ?");
             $st->execute([$dm, $fm]);
             $pvParMois[$m] = (int)$st->fetchColumn();
@@ -153,7 +166,7 @@ class AnalyticsController extends Controller
         $tauxResolution = [];
         for ($m = 1; $m <= 12; $m++) {
             $dm = sprintf('%04d-%02d-01', $annee, $m);
-            $fm = sprintf('%04d-%02d-%02d', $annee, $m, cal_days_in_month(CAL_GREGORIAN, $m, $annee));
+            $fm = sprintf('%04d-%02d-%02d', $annee, $m, days_in_month($m, $annee));
             $stA = $this->db->prepare("SELECT COUNT(*) FROM pv WHERE date_reception BETWEEN ? AND ?");
             $stA->execute([$dm, $fm]);
             $tot = (int)$stA->fetchColumn();
@@ -185,7 +198,7 @@ class AnalyticsController extends Controller
         $anneeN1 = $annee - 1;
         $ddN1    = sprintf('%04d-%02d-01', $anneeN1, $moisDebut);
         $dfN1    = sprintf('%04d-%02d-%02d', $anneeN1, $moisFin,
-            cal_days_in_month(CAL_GREGORIAN, $moisFin, $anneeN1));
+            days_in_month($moisFin, $anneeN1));
         $stN1 = $this->db->prepare("SELECT COUNT(*) FROM pv WHERE date_reception BETWEEN ? AND ?");
         $stN1->execute([$ddN1, $dfN1]);
         $totN1 = (int)$stN1->fetchColumn();
@@ -219,7 +232,7 @@ class AnalyticsController extends Controller
         $pvMois = [];
         for ($m = 1; $m <= 12; $m++) {
             $dm = sprintf('%04d-%02d-01', $annee, $m);
-            $fm = sprintf('%04d-%02d-%02d', $annee, $m, cal_days_in_month(CAL_GREGORIAN, $m, $annee));
+            $fm = sprintf('%04d-%02d-%02d', $annee, $m, days_in_month($m, $annee));
             $st = $this->db->prepare("SELECT COUNT(*) FROM pv WHERE date_reception BETWEEN ? AND ?");
             $st->execute([$dm, $fm]);
             $pvMois[] = (int)$st->fetchColumn();
