@@ -1003,7 +1003,7 @@
                                         <div class="col-md-6">
                                             <div class="form-check form-switch">
                                                 <input class="form-check-input" type="checkbox" name="crpc_assistance_avocat" value="1"
-                                                       id="crpcAssistanceAvocat" onchange="toggleAvocatNom(this.checked)">
+                                                       id="crpcAssistanceAvocat">
                                                 <label class="form-check-label fw-semibold small" for="crpcAssistanceAvocat">
                                                     Assistance d'un avocat
                                                 </label>
@@ -1018,7 +1018,7 @@
                                                 </label>
                                             </div>
                                         </div>
-                                        <div class="col-12" id="nomAvocatBlock" style="display:none">
+                                        <div class="col-12" id="nomAvocatBlock">
                                             <label class="form-label fw-semibold small">Nom de l'avocat</label>
                                             <input type="text" name="crpc_nom_avocat" class="form-control form-control-sm"
                                                    placeholder="Maître…">
@@ -1172,9 +1172,7 @@ function onModeChange(val) {
 function toggleCabinet(show){
     // legacy compat
 }
-function toggleAvocatNom(show) {
-    document.getElementById('nomAvocatBlock').style.display = show ? 'block' : 'none';
-}
+
 function toggleHomoRefus(refus) {
     var det = document.getElementById('homoDetails');
     var ref = document.getElementById('homoRefusMotif');

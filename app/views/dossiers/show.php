@@ -29,6 +29,19 @@
     <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabDetenus">Détenus (<?=count($detenus)?>)</a></li>
     <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabPieces"><i class="bi bi-paperclip"></i> Pièces jointes</a></li>
     <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabHistorique">Historique</a></li>
+    <?php if (!empty($dossier['mode_poursuite']) && strtoupper($dossier['mode_poursuite']) === 'CRPC'): ?>
+    <li class="nav-item">
+        <a class="nav-link<?= !empty($crpcDossier) ? ' text-purple fw-semibold' : '' ?>" data-bs-toggle="tab" href="#tabCrpc"
+           style="<?= !empty($crpcDossier) ? 'color:#6f42c1;' : '' ?>">
+            <i class="bi bi-file-earmark-text me-1" style="color:#6f42c1;"></i>CRPC
+            <?php if (!empty($crpcDossier)): ?>
+            <span class="badge ms-1" style="background:#6f42c1;font-size:.7rem;">
+                <?= $crpcDossier['statut'] === 'homologuee' ? '✓' : ($crpcDossier['statut'] === 'refusee' ? '✗' : '…') ?>
+            </span>
+            <?php endif; ?>
+        </a>
+    </li>
+    <?php endif; ?>
 </ul>
 
 <div class="tab-content">
@@ -384,6 +397,277 @@
         </div>
         <?php endif; ?>
     </div>
+
+    <!-- CRPC -->
+    <?php if (!empty($dossier['mode_poursuite']) && strtoupper($dossier['mode_poursuite']) === 'CRPC'): ?>
+    <div class="tab-pane fade" id="tabCrpc">
+        <?php if (empty($crpcDossier)): ?>
+        <div class="alert alert-warning d-flex align-items-center gap-2">
+            <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+            <div>Aucune fiche CRPC enregistrée pour ce dossier.
+                <?php if (!empty($dossier['pv_id']) && Auth::hasRole(['admin','procureur','substitut_procureur'])): ?>
+                <a href="<?= BASE_URL ?>/pv/show/<?= $dossier['pv_id'] ?>" class="alert-link ms-1">
+                    Aller au PV pour créer la fiche CRPC
+                </a>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php else: ?>
+
+        <!-- En-tête CRPC avec actions -->
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div>
+                <h5 class="fw-bold mb-1" style="color:#6f42c1;">
+                    <i class="bi bi-file-earmark-text me-2"></i>Fiche CRPC — Comparution sur Reconnaissance Préalable de Culpabilité
+                </h5>
+                <div class="d-flex gap-2 flex-wrap mt-1">
+                    <?php
+                    $statutCrpcLabels = ['en_cours'=>['secondary','En cours'],'homologuee'=>['success','Homologuée'],'refusee'=>['danger','Refusée'],'abandonnee'=>['dark','Abandonnée']];
+                    [$scc,$scl] = $statutCrpcLabels[$crpcDossier['statut']??'en_cours'] ?? ['secondary','En cours'];
+                    ?>
+                    <span class="badge bg-<?= $scc ?> fs-6"><?= $scl ?></span>
+                    <?php if (!empty($crpcDossier['date_mise_en_oeuvre'])): ?>
+                    <span class="badge bg-light text-dark border">
+                        <i class="bi bi-calendar me-1"></i>
+                        <?= date('d/m/Y', strtotime($crpcDossier['date_mise_en_oeuvre'])) ?>
+                    </span>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php if (Auth::hasRole(['admin','procureur','substitut_procureur','cabinet'])): ?>
+            <a href="<?= BASE_URL ?>/crpc/edit/<?= $crpcDossier['id'] ?>" class="btn btn-sm fw-semibold text-white" style="background:#6f42c1;">
+                <i class="bi bi-pencil-square me-1"></i>Modifier la fiche CRPC
+            </a>
+            <?php endif; ?>
+        </div>
+
+        <!-- Section I : Identification -->
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header fw-bold text-white small" style="background:#6f42c1;">
+                <i class="bi bi-i-circle me-1"></i>I. Identification du dossier
+            </div>
+            <div class="card-body">
+                <div class="row g-3 small">
+                    <div class="col-md-4">
+                        <span class="text-muted">Date de mise en œuvre</span><br>
+                        <strong><?= !empty($crpcDossier['date_mise_en_oeuvre']) ? date('d/m/Y', strtotime($crpcDossier['date_mise_en_oeuvre'])) : '—' ?></strong>
+                    </div>
+                    <div class="col-md-4">
+                        <span class="text-muted">Substitut ayant conduit la procédure</span><br>
+                        <strong><?= htmlspecialchars(trim(($crpcDossier['sub_prenom'] ?? '') . ' ' . ($crpcDossier['sub_nom'] ?? '')) ?: '—') ?></strong>
+                    </div>
+                    <div class="col-md-4">
+                        <span class="text-muted">Statut</span><br>
+                        <span class="badge bg-<?= $scc ?>"><?= $scl ?></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section II : Personnes poursuivies -->
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header fw-bold text-white small" style="background:#6f42c1;">
+                <i class="bi bi-people me-1"></i>II. Identification des personnes poursuivies
+            </div>
+            <div class="card-body p-0">
+                <?php if (!empty($crpcPersonnes)): ?>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0 small">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Nom et Prénom</th>
+                                <th>Sexe</th>
+                                <th>Âge</th>
+                                <th>Nationalité</th>
+                                <th>Profession</th>
+                                <th>Quartier/Adresse</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <?php foreach ($crpcPersonnes as $ci => $pers): ?>
+                            <tr>
+                                <td><?= $ci + 1 ?></td>
+                                <td><strong class="text-uppercase"><?= htmlspecialchars($pers['nom_prenom'] ?? '—') ?></strong></td>
+                                <td><?= htmlspecialchars($pers['sexe'] ?? '—') ?></td>
+                                <td><?= htmlspecialchars($pers['age'] ?? '—') ?></td>
+                                <td><?= htmlspecialchars($pers['nationalite'] ?? '—') ?></td>
+                                <td><?= htmlspecialchars($pers['profession'] ?? '—') ?></td>
+                                <td><?= htmlspecialchars($pers['quartier'] ?? '—') ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <?php else: ?>
+                <div class="text-muted p-3 small">Aucune personne enregistrée.</div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <!-- Section III : Infractions -->
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header fw-bold text-white small" style="background:#6f42c1;">
+                <i class="bi bi-gavel me-1"></i>III. Infraction(s) poursuivie(s)
+            </div>
+            <div class="card-body">
+                <div class="row g-3 small">
+                    <div class="col-md-6">
+                        <span class="text-muted">Qualification des faits</span><br>
+                        <strong><?= htmlspecialchars($crpcDossier['qualification_faits'] ?? '—') ?></strong>
+                    </div>
+                    <div class="col-md-3">
+                        <span class="text-muted">Date des faits</span><br>
+                        <strong><?= !empty($crpcDossier['date_faits']) ? date('d/m/Y', strtotime($crpcDossier['date_faits'])) : '—' ?></strong>
+                    </div>
+                    <div class="col-md-3">
+                        <span class="text-muted">Texte applicable</span><br>
+                        <strong><?= htmlspecialchars($crpcDossier['texte_applicable'] ?? '—') ?></strong>
+                    </div>
+                    <?php if (!empty($crpcDossier['peine_prevue'])): ?>
+                    <div class="col-12">
+                        <span class="text-muted">Peine prévue par les textes</span><br>
+                        <?= nl2br(htmlspecialchars($crpcDossier['peine_prevue'])) ?>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section IV : Choix du conseil -->
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header fw-bold text-white small" style="background:#6f42c1;">
+                <i class="bi bi-briefcase me-1"></i>IV. Choix du conseil
+            </div>
+            <div class="card-body">
+                <div class="row g-3 small">
+                    <div class="col-md-6">
+                        <span class="text-muted">Assistance d'un avocat</span><br>
+                        <?php if (!empty($crpcDossier['assistance_avocat'])): ?>
+                        <span class="badge bg-success"><i class="bi bi-check-lg me-1"></i>Oui</span>
+                        <?php if (!empty($crpcDossier['nom_avocat'])): ?>
+                        — <strong>Maître <?= htmlspecialchars($crpcDossier['nom_avocat']) ?></strong>
+                        <?php endif; ?>
+                        <?php else: ?>
+                        <span class="badge bg-secondary">Non</span>
+                        <?php endif; ?>
+                    </div>
+                    <div class="col-md-6">
+                        <span class="text-muted">Renonciation expresse à un avocat</span><br>
+                        <?php if (!empty($crpcDossier['renonciation_avocat'])): ?>
+                        <span class="badge bg-warning text-dark"><i class="bi bi-check-lg me-1"></i>Oui</span>
+                        <?php else: ?>
+                        <span class="badge bg-secondary">Non</span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section V : Peine proposée -->
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header fw-bold text-white small" style="background:#6f42c1;">
+                <i class="bi bi-balance-scale me-1"></i>V. Peine proposée par le substitut
+            </div>
+            <div class="card-body">
+                <div class="row g-3 small">
+                    <div class="col-md-5">
+                        <span class="text-muted">Peine d'emprisonnement proposée</span><br>
+                        <strong><?= htmlspecialchars($crpcDossier['peine_emprisonnement'] ?? '—') ?></strong>
+                    </div>
+                    <div class="col-md-3">
+                        <span class="text-muted">Sursis proposé</span><br>
+                        <?php if (isset($crpcDossier['sursis_substitut'])): ?>
+                        <span class="badge <?= $crpcDossier['sursis_substitut'] ? 'bg-info text-dark' : 'bg-secondary' ?>">
+                            <?= $crpcDossier['sursis_substitut'] ? 'Oui' : 'Non' ?>
+                        </span>
+                        <?php else: ?>—<?php endif; ?>
+                    </div>
+                    <div class="col-md-4">
+                        <span class="text-muted">Amende proposée</span><br>
+                        <strong><?= (isset($crpcDossier['amende_proposee']) && $crpcDossier['amende_proposee'] !== null) ? number_format((float)$crpcDossier['amende_proposee'], 0, ',', ' ') . ' FCFA' : '—' ?></strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section VI : Homologation -->
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header fw-bold text-white small" style="background:#6f42c1;">
+                <i class="bi bi-check2-square me-1"></i>VI. Homologation du Président du Tribunal
+            </div>
+            <div class="card-body">
+                <div class="row g-3 small">
+                    <div class="col-md-4">
+                        <span class="text-muted">Date d'audience d'homologation</span><br>
+                        <strong><?= !empty($crpcDossier['date_audience_homologation']) ? date('d/m/Y', strtotime($crpcDossier['date_audience_homologation'])) : '—' ?></strong>
+                    </div>
+                    <div class="col-md-4">
+                        <span class="text-muted">Décision d'homologation</span><br>
+                        <?php
+                        if (isset($crpcDossier['homologation']) && $crpcDossier['homologation'] !== null && $crpcDossier['homologation'] !== '') {
+                            if ((string)$crpcDossier['homologation'] === '1') {
+                                echo '<span class="badge bg-success fs-6"><i class="bi bi-check-circle me-1"></i>Homologuée</span>';
+                            } else {
+                                echo '<span class="badge bg-danger fs-6"><i class="bi bi-x-circle me-1"></i>Refusée</span>';
+                            }
+                        } else {
+                            echo '<span class="badge bg-secondary">En attente</span>';
+                        }
+                        ?>
+                    </div>
+                    <?php if (isset($crpcDossier['homologation']) && (string)$crpcDossier['homologation'] === '1'): ?>
+                    <div class="col-md-4">
+                        <span class="text-muted">Peine homologuée</span><br>
+                        <strong><?= htmlspecialchars($crpcDossier['peine_emprisonnement_homo'] ?? '—') ?></strong>
+                        <?php if (isset($crpcDossier['sursis_homologue'])): ?>
+                        <span class="badge ms-1 <?= $crpcDossier['sursis_homologue'] ? 'bg-info text-dark' : 'bg-secondary' ?> small">
+                            Sursis: <?= $crpcDossier['sursis_homologue'] ? 'Oui' : 'Non' ?>
+                        </span>
+                        <?php endif; ?>
+                    </div>
+                    <?php if (isset($crpcDossier['amende_homologuee']) && $crpcDossier['amende_homologuee'] !== null): ?>
+                    <div class="col-md-4">
+                        <span class="text-muted">Amende homologuée</span><br>
+                        <strong><?= number_format((float)$crpcDossier['amende_homologuee'], 0, ',', ' ') ?> FCFA</strong>
+                    </div>
+                    <?php endif; ?>
+                    <?php elseif (isset($crpcDossier['homologation']) && (string)$crpcDossier['homologation'] === '0' && !empty($crpcDossier['motif_refus_homologation'])): ?>
+                    <div class="col-12">
+                        <span class="text-muted text-danger">Motif du refus</span><br>
+                        <div class="border border-danger rounded p-2 bg-light small">
+                            <?= nl2br(htmlspecialchars($crpcDossier['motif_refus_homologation'])) ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+
+        <?php if (!empty($crpcDossier['notes'])): ?>
+        <!-- Notes -->
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header fw-bold text-white small" style="background:#6f42c1;">
+                <i class="bi bi-sticky me-1"></i>Notes complémentaires
+            </div>
+            <div class="card-body small">
+                <?= nl2br(htmlspecialchars($crpcDossier['notes'])) ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- Bouton Modifier (bas) -->
+        <?php if (Auth::hasRole(['admin','procureur','substitut_procureur','cabinet'])): ?>
+        <div class="d-flex justify-content-end mt-3">
+            <a href="<?= BASE_URL ?>/crpc/edit/<?= $crpcDossier['id'] ?>" class="btn fw-semibold text-white" style="background:#6f42c1;">
+                <i class="bi bi-pencil-square me-1"></i>Modifier la fiche CRPC
+            </a>
+        </div>
+        <?php endif; ?>
+
+        <?php endif; /* crpcDossier */ ?>
+    </div>
+    <?php endif; /* mode_poursuite === CRPC */ ?>
 </div>
 
 <!-- Modal instruction -->

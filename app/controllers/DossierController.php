@@ -150,7 +150,37 @@ class DossierController extends Controller {
         $juges     = $jugesStmt->fetchAll();
         $greffiers = $this->db->query("SELECT u.* FROM users u JOIN roles r ON u.role_id=r.id WHERE r.code='greffier' AND u.actif=1")->fetchAll();
 
-        $this->view('dossiers/show', compact('dossier','parties','audiences','jugements','mouvements','detenus','misesEnCause','cabinets','salles','juges','greffiers','flash','user'));
+        // Fiche CRPC liée à ce dossier (si mode_poursuite = CRPC)
+        $crpcDossier  = null;
+        $crpcPersonnes = [];
+        if (!empty($dossier['mode_poursuite']) && strtoupper($dossier['mode_poursuite']) === 'CRPC') {
+            try {
+                $crpcStmt = $this->db->prepare(
+                    "SELECT cd.*,
+                            us.nom AS sub_nom, us.prenom AS sub_prenom
+                     FROM crpc_dossiers cd
+                     LEFT JOIN users us ON cd.substitut_id = us.id
+                     WHERE cd.dossier_id = ?
+                     ORDER BY cd.id DESC
+                     LIMIT 1"
+                );
+                $crpcStmt->execute([(int)$id]);
+                $crpcDossier = $crpcStmt->fetch() ?: null;
+
+                if ($crpcDossier) {
+                    $persStmt = $this->db->prepare(
+                        "SELECT * FROM crpc_personnes WHERE crpc_id = ? ORDER BY numero_ordre, id"
+                    );
+                    $persStmt->execute([$crpcDossier['id']]);
+                    $crpcPersonnes = $persStmt->fetchAll();
+                }
+            } catch (\Exception $e) {
+                $crpcDossier  = null;
+                $crpcPersonnes = [];
+            }
+        }
+
+        $this->view('dossiers/show', compact('dossier','parties','audiences','jugements','mouvements','detenus','misesEnCause','cabinets','salles','juges','greffiers','flash','user','crpcDossier','crpcPersonnes'));
     }
 
     public function edit(string $id): void {
