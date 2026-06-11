@@ -308,6 +308,81 @@
         </div>
         <?php endif; ?>
 
+        <!-- ══════════ FICHE CRPC (si mode = CRPC) ══════════ -->
+        <?php if (!empty($crpcDossier) && $isSubstitut): ?>
+        <?php
+        $crpcStatutMap = [
+            'en_cours'   => ['En cours',    'bg-warning text-dark'],
+            'homologuee' => ['Homologuée',  'bg-success text-white'],
+            'refusee'    => ['Refusée',     'bg-danger text-white'],
+            'abandonnee' => ['Abandonnée',  'bg-secondary text-white'],
+        ];
+        [$crpcSLbl,$crpcSCls] = $crpcStatutMap[$crpcDossier['statut'] ?? 'en_cours'] ?? ['—','bg-secondary'];
+        ?>
+        <div class="card border-0 shadow-sm mb-4" style="border-left:4px solid #6f42c1 !important;">
+            <div class="card-header fw-semibold d-flex align-items-center justify-content-between"
+                 style="background:#f0edf8;color:#4a1fb8;">
+                <span>
+                    <i class="bi bi-file-earmark-text me-2" style="color:#6f42c1;"></i>
+                    Fiche CRPC — Comparution sur Reconnaissance Préalable de Culpabilité
+                </span>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge <?= $crpcSCls ?>"><?= $crpcSLbl ?></span>
+                    <a href="<?= BASE_URL ?>/crpc/edit/<?= $crpcDossier['id'] ?>"
+                       class="btn btn-sm fw-semibold text-white"
+                       style="background:#6f42c1;border-color:#6f42c1;">
+                        <i class="bi bi-pencil me-1"></i>Modifier la fiche CRPC
+                    </a>
+                </div>
+            </div>
+            <div class="card-body p-3">
+                <div class="row g-2 small">
+                    <div class="col-md-4">
+                        <span class="text-muted d-block">Date de mise en œuvre</span>
+                        <strong><?= !empty($crpcDossier['date_mise_en_oeuvre']) ? date('d/m/Y', strtotime($crpcDossier['date_mise_en_oeuvre'])) : '—' ?></strong>
+                    </div>
+                    <div class="col-md-4">
+                        <span class="text-muted d-block">Qualification des faits</span>
+                        <strong><?= htmlspecialchars($crpcDossier['qualification_faits'] ?? '—') ?></strong>
+                    </div>
+                    <div class="col-md-4">
+                        <span class="text-muted d-block">Peine d'emprisonnement proposée</span>
+                        <strong><?= htmlspecialchars($crpcDossier['peine_emprisonnement'] ?? '—') ?></strong>
+                        <?php if ($crpcDossier['sursis_substitut']): ?><span class="badge bg-info text-dark ms-1">Sursis</span><?php endif; ?>
+                    </div>
+                    <div class="col-md-4">
+                        <span class="text-muted d-block">Avocat</span>
+                        <?php if ($crpcDossier['assistance_avocat']): ?>
+                        <span class="badge bg-success">Oui</span>
+                        <?= !empty($crpcDossier['nom_avocat']) ? ' — '.htmlspecialchars($crpcDossier['nom_avocat']) : '' ?>
+                        <?php elseif ($crpcDossier['renonciation_avocat']): ?>
+                        <span class="badge bg-warning text-dark">Renonciation</span>
+                        <?php else: ?>
+                        <span class="badge bg-secondary">Non</span>
+                        <?php endif; ?>
+                    </div>
+                    <div class="col-md-4">
+                        <span class="text-muted d-block">Homologation</span>
+                        <?php if ((string)$crpcDossier['homologation'] === '1'): ?>
+                        <span class="badge bg-success">✓ Homologuée</span>
+                        <?= !empty($crpcDossier['date_audience_homologation']) ? ' le '.date('d/m/Y', strtotime($crpcDossier['date_audience_homologation'])) : '' ?>
+                        <?php elseif ((string)$crpcDossier['homologation'] === '0'): ?>
+                        <span class="badge bg-danger">✗ Refusée</span>
+                        <?php else: ?>
+                        <span class="badge bg-secondary">En attente</span>
+                        <?php endif; ?>
+                    </div>
+                    <?php if (!empty($crpcDossier['amende_proposee'])): ?>
+                    <div class="col-md-4">
+                        <span class="text-muted d-block">Amende proposée</span>
+                        <strong><?= number_format((float)$crpcDossier['amende_proposee'], 0, ',', ' ') ?> FCFA</strong>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <!-- ══════════ MISES EN CAUSE ══════════ -->
         <div class="card border-0 shadow-sm mb-4" id="mises-en-cause">
             <div class="card-header bg-white d-flex align-items-center justify-content-between fw-semibold">
@@ -697,15 +772,15 @@
 
 <!-- Modal Transférer (nouveau workflow basé sur le mode de poursuite) -->
 <div class="modal fade" id="modalTransferer" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable" style="max-height:95vh;">
-        <div class="modal-content" style="max-height:95vh;">
-            <div class="modal-header bg-success text-white flex-shrink-0">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
                 <h5 class="modal-title"><i class="bi bi-send me-2"></i>Transférer le PV — Décision du substitut</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form method="POST" action="<?= BASE_URL ?>/pv/transferer/<?= $pv['id'] ?>">
+            <div class="modal-body">
+            <form id="formTransferer" method="POST" action="<?= BASE_URL ?>/pv/transferer/<?= $pv['id'] ?>">
                 <?= CSRF::field() ?>
-                <div class="modal-body" style="overflow-y:auto;">
                     <div class="alert alert-info small mb-3">
                         <i class="bi bi-info-circle me-2"></i>
                         <strong>Règle :</strong> Seul le mode <strong>RI (Réquisitoire Introductif)</strong> envoie le dossier au cabinet d'instruction.
@@ -1071,13 +1146,14 @@
                         <textarea name="objet" class="form-control" rows="3" required><?= htmlspecialchars($pv['description_faits']??'') ?></textarea>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="bi bi-send me-2"></i>Transférer
-                    </button>
-                </div>
             </form>
+            </div><!-- /.modal-body -->
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="submit" form="formTransferer" class="btn btn-success">
+                    <i class="bi bi-send me-2"></i>Transférer
+                </button>
+            </div>
         </div>
     </div>
 </div>

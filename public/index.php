@@ -103,6 +103,10 @@ $router->post('/pv/delete/{id}',               'PVController@delete');
 $router->post('/pv/fusionner/{id}',            'PVController@fusionner');
 $router->get('/api/pv/search-rp',              'PVController@apiSearchRP');
 
+// CRPC — édition d'une fiche CRPC existante
+$router->get('/crpc/edit/{id}',                'PVController@editCrpc');
+$router->post('/crpc/update/{id}',             'PVController@updateCrpc');
+
 // Situation périodique des PVs
 $router->get('/situation/pv',                  'SituationController@index');
 $router->get('/situation/pv/export',           'SituationController@export');

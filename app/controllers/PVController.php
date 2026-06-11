@@ -278,9 +278,25 @@ class PVController extends Controller {
             'substitut'=> array_values($pv['infractions_substitut'] ?? []),
         ];
 
+        // Fiche CRPC liée à ce PV (si mode_poursuite = CRPC)
+        $crpcDossier  = null;
+        if (($pv['mode_poursuite'] ?? '') === 'CRPC') {
+            $crpcStmt = $this->db->prepare(
+                "SELECT cd.*, cp.id AS has_personnes
+                 FROM crpc_dossiers cd
+                 LEFT JOIN crpc_personnes cp ON cp.crpc_id = cd.id
+                 WHERE cd.pv_id = ?
+                 GROUP BY cd.id
+                 ORDER BY cd.created_at DESC LIMIT 1"
+            );
+            $crpcStmt->execute([(int)$id]);
+            $crpcDossier = $crpcStmt->fetch() ?: null;
+        }
+
         $this->view('pv/show', compact(
             'pv','flash','user','substituts','cabinets','infractions',
-            'dossier','misesEnCause','pvsMemeRP','pvDocuments','isSubstitut','pvInfractions'
+            'dossier','misesEnCause','pvsMemeRP','pvDocuments','isSubstitut','pvInfractions',
+            'crpcDossier'
         ));
     }
 
@@ -771,6 +787,179 @@ class PVController extends Controller {
         $label = $destination === 'instruction' ? "Cabinet d'instruction" : 'Audience directe';
         $this->flash('success', "Dossier créé : {$numeroRG}" . ($numeroRI ? " / RI {$numeroRI}" : '') . " → {$label}.");
         $this->redirect('/dossiers/show/' . $dossierId);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Modifier la fiche CRPC (GET : formulaire d'édition)
+    // Route : GET /crpc/edit/{crpc_id}
+    // ──────────────────────────────────────────────────────────────────────────
+    public function editCrpc(string $crpcId): void
+    {
+        Auth::requireLogin();
+        Auth::requireRole(['admin','procureur','substitut_procureur']);
+        $user  = Auth::currentUser();
+        $flash = $this->getFlash();
+
+        // Charger la fiche CRPC
+        $stmtC = $this->db->prepare(
+            "SELECT cd.*, p.numero_rg AS pv_numero_rg, p.numero_pv AS pv_numero_pv,
+                    p.id AS pv_id_ref, p.description_faits,
+                    p.qualification_details, p.lois_applicables,
+                    us.nom AS substitut_nom, us.prenom AS substitut_prenom
+             FROM crpc_dossiers cd
+             JOIN pv p   ON cd.pv_id     = p.id
+             LEFT JOIN users us ON p.substitut_id = us.id
+             WHERE cd.id = ?"
+        );
+        $stmtC->execute([(int)$crpcId]);
+        $crpc = $stmtC->fetch();
+        if (!$crpc) {
+            $this->flash('error', 'Dossier CRPC introuvable.');
+            $this->redirect('/pv');
+            return;
+        }
+
+        // Charger le PV associé
+        $stmtP = $this->db->prepare("SELECT * FROM pv WHERE id = ?");
+        $stmtP->execute([$crpc['pv_id']]);
+        $pv = $stmtP->fetch();
+
+        // Cacher le nom du substitut dans un champ calculé pour affichage
+        $crpc['substitut_nom_cache'] = trim(($crpc['substitut_prenom'] ?? '') . ' ' . ($crpc['substitut_nom'] ?? ''));
+
+        // Charger les personnes poursuivies
+        $stmtPers = $this->db->prepare(
+            "SELECT * FROM crpc_personnes WHERE crpc_id = ? ORDER BY numero_ordre, id"
+        );
+        $stmtPers->execute([(int)$crpcId]);
+        $crpcPersonnes = $stmtPers->fetchAll();
+
+        $this->view('crpc/edit', compact('user', 'flash', 'crpc', 'pv', 'crpcPersonnes'));
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Sauvegarder les modifications CRPC (POST)
+    // Route : POST /crpc/update/{crpc_id}
+    // ──────────────────────────────────────────────────────────────────────────
+    public function updateCrpc(string $crpcId): void
+    {
+        Auth::requireLogin();
+        CSRF::check();
+        Auth::requireRole(['admin','procureur','substitut_procureur']);
+
+        // Charger la fiche CRPC (vérification d'existence)
+        $stmtC = $this->db->prepare("SELECT * FROM crpc_dossiers WHERE id = ?");
+        $stmtC->execute([(int)$crpcId]);
+        $crpc = $stmtC->fetch();
+        if (!$crpc) {
+            $this->flash('error', 'Dossier CRPC introuvable.');
+            $this->redirect('/pv');
+            return;
+        }
+
+        $pvId = $crpc['pv_id'];
+
+        // Résoudre la valeur homologation
+        $homoRaw = $_POST['crpc_homologation'] ?? '';
+        $homoVal = ($homoRaw === '') ? null : (int)$homoRaw;
+
+        // Calculer le statut automatiquement si non fourni ou cohérent avec homo
+        $statutPost = $_POST['crpc_statut'] ?? '';
+        if ($homoVal === 1 && $statutPost !== 'abandonnee') {
+            $statut = 'homologuee';
+        } elseif ($homoVal === 0 && $statutPost !== 'abandonnee') {
+            $statut = 'refusee';
+        } elseif ($statutPost) {
+            $statut = $statutPost;
+        } else {
+            $statut = 'en_cours';
+        }
+
+        // Mise à jour de la fiche CRPC principale
+        $upd = $this->db->prepare(
+            "UPDATE crpc_dossiers SET
+               date_mise_en_oeuvre          = :dmeo,
+               qualification_faits          = :qual,
+               date_faits                   = :dfaits,
+               texte_applicable             = :texte,
+               peine_prevue                 = :peine,
+               assistance_avocat            = :asavo,
+               renonciation_avocat          = :renavo,
+               nom_avocat                   = :nomavo,
+               peine_emprisonnement         = :peimp,
+               sursis_substitut             = :sursis,
+               amende_proposee              = :amende,
+               date_audience_homologation   = :dahom,
+               homologation                 = :homo,
+               peine_emprisonnement_homo    = :peiho,
+               sursis_homologue             = :surho,
+               amende_homologuee            = :amho,
+               motif_refus_homologation     = :motref,
+               notes                        = :notes,
+               statut                       = :statut
+             WHERE id = :id"
+        );
+        $upd->execute([
+            'dmeo'   => !empty($_POST['crpc_date_mise_en_oeuvre']) ? $_POST['crpc_date_mise_en_oeuvre'] : null,
+            'qual'   => $this->sanitize($_POST['crpc_qualification_faits'] ?? ''),
+            'dfaits' => !empty($_POST['crpc_date_faits']) ? $_POST['crpc_date_faits'] : null,
+            'texte'  => $this->sanitize($_POST['crpc_texte_applicable'] ?? ''),
+            'peine'  => $this->sanitize($_POST['crpc_peine_prevue'] ?? ''),
+            'asavo'  => isset($_POST['crpc_assistance_avocat']) ? 1 : 0,
+            'renavo' => isset($_POST['crpc_renonciation_avocat']) ? 1 : 0,
+            'nomavo' => $this->sanitize($_POST['crpc_nom_avocat'] ?? ''),
+            'peimp'  => $this->sanitize($_POST['crpc_peine_emprisonnement'] ?? ''),
+            'sursis' => (int)($_POST['crpc_sursis_substitut'] ?? 0),
+            'amende' => !empty($_POST['crpc_amende_proposee']) ? (float)$_POST['crpc_amende_proposee'] : null,
+            'dahom'  => !empty($_POST['crpc_date_audience_homologation']) ? $_POST['crpc_date_audience_homologation'] : null,
+            'homo'   => $homoVal,
+            'peiho'  => $this->sanitize($_POST['crpc_peine_emprisonnement_homo'] ?? ''),
+            'surho'  => (int)($_POST['crpc_sursis_homologue'] ?? 0),
+            'amho'   => !empty($_POST['crpc_amende_homologuee']) ? (float)$_POST['crpc_amende_homologuee'] : null,
+            'motref' => $this->sanitize($_POST['crpc_motif_refus_homologation'] ?? ''),
+            'notes'  => $this->sanitize($_POST['crpc_notes'] ?? ''),
+            'statut' => $statut,
+            'id'     => (int)$crpcId,
+        ]);
+
+        // ── Mettre à jour les personnes poursuivies ──────────────────────────
+        $nomsArr     = (array)($_POST['crpc_nom_prenom']    ?? []);
+        $sexeArr     = (array)($_POST['crpc_sexe']          ?? []);
+        $ageArr      = (array)($_POST['crpc_age']           ?? []);
+        $natArr      = (array)($_POST['crpc_nationalite']   ?? []);
+        $profArr     = (array)($_POST['crpc_profession']    ?? []);
+        $quartArr    = (array)($_POST['crpc_quartier']      ?? []);
+        $mecArr      = (array)($_POST['crpc_mec_id']        ?? []);
+        $personneIds = (array)($_POST['crpc_personne_id']   ?? []);
+
+        // Supprimer toutes les personnes existantes puis réinsérer
+        $this->db->prepare("DELETE FROM crpc_personnes WHERE crpc_id = ?")->execute([(int)$crpcId]);
+
+        $insPers = $this->db->prepare(
+            "INSERT INTO crpc_personnes
+             (crpc_id, mec_id, numero_ordre, nom_prenom, sexe, age, nationalite, profession, quartier)
+             VALUES (?,?,?,?,?,?,?,?,?)"
+        );
+        foreach ($nomsArr as $i => $nom) {
+            $nom = $this->sanitize(trim($nom));
+            if (!$nom) continue;
+            $mecId = !empty($mecArr[$i]) ? (int)$mecArr[$i] : null;
+            $age   = !empty($ageArr[$i])  ? (int)$ageArr[$i]  : null;
+            $insPers->execute([
+                (int)$crpcId,
+                $mecId,
+                $i + 1,
+                $nom,
+                $sexeArr[$i] ?? null,
+                $age,
+                $this->sanitize($natArr[$i] ?? 'Nigérienne'),
+                $this->sanitize($profArr[$i] ?? ''),
+                $this->sanitize($quartArr[$i] ?? ''),
+            ]);
+        }
+
+        $this->flash('success', 'Fiche CRPC mise à jour avec succès.');
+        $this->redirect('/pv/show/' . $pvId);
     }
 
     // Fusionner plusieurs PVs (même RP) dans un seul dossier
