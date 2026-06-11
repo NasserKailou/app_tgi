@@ -184,15 +184,26 @@ $canMenu = function(string $code) use ($_uid): bool {
 
         <!-- ══════════ STATISTIQUES & RAPPORTS ══════════ -->
         <div class="sidebar-section">Statistiques &amp; Rapports</div>
+        <?php if ($canMenu('analytics')): ?>
         <a href="<?= BASE_URL ?>/analytics" class="sidebar-link <?= isActive('/analytics', $currentPath) ?>">
             <i class="bi bi-graph-up-arrow" style="color:#a78bfa;"></i><span>Tableau analytique</span>
         </a>
+        <?php endif; ?>
+        <?php if ($canMenu('situation_pv')): ?>
         <a href="<?= BASE_URL ?>/situation/pv" class="sidebar-link <?= isActive('/situation/pv', $currentPath) ?>">
             <i class="bi bi-bar-chart-line"></i><span>Situation des PVs</span>
         </a>
+        <?php endif; ?>
+        <?php if ($canMenu('situation_crpc')): ?>
+        <a href="<?= BASE_URL ?>/situation/crpc" class="sidebar-link <?= isActive('/situation/crpc', $currentPath) ?>">
+            <i class="bi bi-file-earmark-text" style="color:#6f42c1;"></i><span>Situation CRPC</span>
+        </a>
+        <?php endif; ?>
+        <?php if ($canMenu('rapports')): ?>
         <a href="<?= BASE_URL ?>/rapports" class="sidebar-link <?= isActive('/rapports', $currentPath) ?>">
             <i class="bi bi-file-earmark-bar-graph"></i><span>Rapports</span>
         </a>
+        <?php endif; ?>
 
         <!-- ══════════ CONFIGURATION SYSTÈME ══════════ -->
         <div class="sidebar-section">Configuration Système</div>
