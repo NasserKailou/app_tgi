@@ -20,19 +20,19 @@ CREATE TABLE IF NOT EXISTS `crpc_dossiers` (
   `peine_prevue`                varchar(500)  DEFAULT NULL COMMENT 'Peine prévue par les textes',
 
   -- ── Choix du conseil ─────────────────────────────────────────
-  `assistance_avocat`           tinyint(1)    DEFAULT 0  COMMENT '1 = assistance d'un avocat Oui',
+  `assistance_avocat`           tinyint(1)    DEFAULT 0  COMMENT '1 = assistance d''un avocat Oui',
   `renonciation_avocat`         tinyint(1)    DEFAULT 0  COMMENT '1 = renonciation expresse à un avocat',
-  `nom_avocat`                  varchar(255)  DEFAULT NULL COMMENT 'Nom de l'avocat si assistance',
+  `nom_avocat`                  varchar(255)  DEFAULT NULL COMMENT 'Nom de l''avocat si assistance',
 
   -- ── Peine proposée par le substitut ─────────────────────────
-  `peine_emprisonnement`        varchar(255)  DEFAULT NULL COMMENT 'Peine d'emprisonnement proposée',
+  `peine_emprisonnement`        varchar(255)  DEFAULT NULL COMMENT 'Peine d''emprisonnement proposée',
   `sursis_substitut`            tinyint(1)    DEFAULT 0  COMMENT 'Sursis proposé par le substitut',
   `amende_proposee`             decimal(15,2) DEFAULT NULL COMMENT 'Montant amende proposée (FCFA)',
 
   -- ── Homologation du Président du Tribunal ───────────────────
-  `date_audience_homologation`  date          DEFAULT NULL COMMENT 'Date audience d'homologation',
+  `date_audience_homologation`  date          DEFAULT NULL COMMENT 'Date audience d''homologation',
   `homologation`                tinyint(1)    DEFAULT NULL COMMENT '1=Oui, 0=Non, NULL=En attente',
-  `peine_emprisonnement_homo`   varchar(500)  DEFAULT NULL COMMENT 'Peine d'emprisonnement homologuée',
+  `peine_emprisonnement_homo`   varchar(500)  DEFAULT NULL COMMENT 'Peine d''emprisonnement homologuée',
   `sursis_homologue`            tinyint(1)    DEFAULT 0  COMMENT 'Sursis homologué',
   `amende_homologuee`           decimal(15,2) DEFAULT NULL COMMENT 'Amende homologuée (FCFA)',
   `motif_refus_homologation`    text          DEFAULT NULL COMMENT 'Motif du refus si homologation = Non',
