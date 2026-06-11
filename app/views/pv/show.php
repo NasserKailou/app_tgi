@@ -1146,14 +1146,18 @@
                         <textarea name="objet" class="form-control" rows="3" required><?= htmlspecialchars($pv['description_faits']??'') ?></textarea>
                     </div>
                 </div>
+                <!-- Barre d'action sticky — toujours visible en bas du scroll -->
+                <div class="d-flex justify-content-end gap-2 pt-3 mt-2 border-top bg-white"
+                     style="position:sticky;bottom:0;z-index:10;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle me-1"></i>Annuler
+                    </button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-send me-1"></i>Transférer
+                    </button>
+                </div>
             </form>
             </div><!-- /.modal-body -->
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="submit" form="formTransferer" class="btn btn-success">
-                    <i class="bi bi-send me-2"></i>Transférer
-                </button>
-            </div>
         </div>
     </div>
 </div>
