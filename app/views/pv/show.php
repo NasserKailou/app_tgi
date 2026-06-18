@@ -659,10 +659,14 @@
                     || (Auth::hasRole(['greffier'])
                         && DroitsController::hasFuncAccess((int)($user['id']??0), 'pv_affecter'));
                 ?>
-                <?php if ($canAffecter && $pv['statut']==='recu'): ?>
-                <!-- Affecter substitut -->
+                <?php if ($canAffecter): ?>
+                <!-- Affecter / Réaffecter substitut -->
                 <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#modalAffecter">
+                    <?php if ($pv['substitut_id']): ?>
+                    <i class="bi bi-person-gear me-2"></i>Changer de substitut
+                    <?php else: ?>
                     <i class="bi bi-person-check me-2"></i>Affecter un substitut
+                    <?php endif; ?>
                 </button>
                 <?php endif; ?>
 
@@ -727,27 +731,63 @@
 </div>
 <?php endif; ?>
 
-<!-- Modal Affecter -->
+<!-- Modal Affecter / Réaffecter substitut -->
 <div class="modal fade" id="modalAffecter" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title">Affecter un substitut</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header <?= $pv['substitut_id'] ? 'bg-warning' : 'bg-warning' ?>">
+                <h5 class="modal-title fw-semibold">
+                    <?php if ($pv['substitut_id']): ?>
+                    <i class="bi bi-person-gear me-2"></i>Changer de substitut
+                    <?php else: ?>
+                    <i class="bi bi-person-check me-2"></i>Affecter un substitut
+                    <?php endif; ?>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
             <form method="POST" action="<?= BASE_URL ?>/pv/affecter/<?= $pv['id'] ?>">
                 <?= CSRF::field() ?>
                 <div class="modal-body">
-                    <label class="form-label">Substitut du procureur</label>
+                    <?php if ($pv['substitut_id']): ?>
+                    <div class="alert alert-warning py-2 small mb-3">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Substitut actuel : <strong><?= htmlspecialchars($pv['substitut_prenom'].' '.$pv['substitut_nom']) ?></strong>
+                        <?php if ($pv['date_affectation_substitut']): ?>
+                        <span class="text-muted ms-1">(depuis le <?= date('d/m/Y', strtotime($pv['date_affectation_substitut'])) ?>)</span>
+                        <?php endif; ?>
+                        <br>L'ancienne affectation sera tracée dans l'historique du PV.
+                    </div>
+                    <?php endif; ?>
+                    <label class="form-label fw-semibold">Nouveau substitut du procureur <span class="text-danger">*</span></label>
                     <select name="substitut_id" class="form-select" required id="selectSubstitut">
                         <option value="">— Sélectionner —</option>
                         <?php foreach ($substituts as $s): ?>
-                        <option value="<?= $s['id'] ?>"><?= htmlspecialchars($s['prenom'].' '.$s['nom']) ?></option>
+                        <option value="<?= $s['id'] ?>"
+                            <?= ((int)$s['id'] === (int)$pv['substitut_id']) ? 'disabled class="text-muted"' : '' ?>>
+                            <?= htmlspecialchars($s['prenom'].' '.$s['nom']) ?>
+                            <?= ((int)$s['id'] === (int)$pv['substitut_id']) ? ' (actuel)' : '' ?>
+                        </option>
                         <?php endforeach; ?>
                     </select>
                     <div id="substitutChargeInfo" class="small text-muted mt-1"></div>
                     <button type="button" class="btn btn-outline-success btn-sm mt-2" onclick="suggererSubstitut()">
                         <i class="bi bi-magic me-1"></i>Suggérer le moins chargé
                     </button>
+                    <?php if ($pv['substitut_id']): ?>
+                    <div class="mt-3">
+                        <label class="form-label small fw-semibold">Motif du changement <span class="text-muted">(optionnel)</span></label>
+                        <input type="text" name="motif_reaffectation" class="form-control form-control-sm"
+                               placeholder="Ex : Absent, Empêchement, Récusation…">
+                    </div>
+                    <?php endif; ?>
                 </div>
-                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button><button type="submit" class="btn btn-warning">Affecter</button></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-person-check me-1"></i>
+                        <?= $pv['substitut_id'] ? 'Changer le substitut' : 'Affecter' ?>
+                    </button>
+                </div>
             </form>
         </div>
     </div>
@@ -779,7 +819,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-            <form id="formTransferer" method="POST" action="<?= BASE_URL ?>/pv/transferer/<?= $pv['id'] ?>">
+            <form id="formTransferer" method="POST" action="<?= BASE_URL ?>/pv/transferer/<?= $pv['id'] ?>" novalidate>
                 <?= CSRF::field() ?>
                     <div class="alert alert-info small mb-3">
                         <i class="bi bi-info-circle me-2"></i>
@@ -887,9 +927,9 @@
                                             <div class="row g-2">
                                                 <div class="col-12">
                                                     <input type="hidden" name="crpc_mec_id[]" value="<?= $mec['id'] ?>">
-                                                    <input type="text" name="crpc_nom_prenom[]" class="form-control form-control-sm"
+                                                    <input type="text" name="crpc_nom_prenom[]" class="form-control form-control-sm crpc-nom-personne"
                                                            value="<?= htmlspecialchars(strtoupper($mec['nom']).' '.($mec['prenom']??'')) ?>"
-                                                           placeholder="Nom et prénom" required>
+                                                           placeholder="Nom et prénom">
                                                 </div>
                                                 <div class="col-md-2">
                                                     <select name="crpc_sexe[]" class="form-select form-select-sm">
@@ -929,8 +969,8 @@
                                             <div class="row g-2">
                                                 <div class="col-12">
                                                     <input type="hidden" name="crpc_mec_id[]" value="">
-                                                    <input type="text" name="crpc_nom_prenom[]" class="form-control form-control-sm"
-                                                           placeholder="Nom et prénom" required>
+                                                    <input type="text" name="crpc_nom_prenom[]" class="form-control form-control-sm crpc-nom-personne"
+                                                           placeholder="Nom et prénom">
                                                 </div>
                                                 <div class="col-md-2">
                                                     <select name="crpc_sexe[]" class="form-select form-select-sm">
@@ -974,7 +1014,8 @@
                                             <label class="form-label fw-semibold small">Qualification des faits <span class="text-danger">*</span></label>
                                             <input type="text" name="crpc_qualification_faits" class="form-control form-control-sm"
                                                    value="<?= htmlspecialchars($pv['qualification_details']??'') ?>"
-                                                   placeholder="Ex : Vol aggravé, Escroquerie…" required>
+                                                   placeholder="Ex : Vol aggravé, Escroquerie…"
+                                                   data-crpc-required="1">
                                         </div>
                                         <div class="col-md-4">
                                             <label class="form-label fw-semibold small">Date des faits</label>
@@ -1168,7 +1209,98 @@ function onModeChange(val) {
     document.getElementById('cabinetBlock').style.display        = isRI   ? 'block' : 'none';
     document.getElementById('audienceDirecteInfo').style.display = (val && !isRI) ? 'block' : 'none';
     document.getElementById('crpcBlock').style.display           = isCRPC ? 'block' : 'none';
+
+    // ── Activer/désactiver required sur les champs CRPC selon visibilité ──
+    // Empêche la validation HTML5 native de bloquer le submit quand le bloc est caché
+    var crpcFields = document.querySelectorAll('#crpcBlock input, #crpcBlock select, #crpcBlock textarea');
+    crpcFields.forEach(function(f) {
+        if (isCRPC) {
+            // Rétablir required uniquement sur les champs marqués data-crpc-required
+            if (f.dataset.crpcRequired === '1') f.required = true;
+        } else {
+            f.required = false;
+        }
+    });
 }
+
+// ── Validation JS du formulaire Transfert (novalidate sur le form) ────────────
+document.getElementById('formTransferer').addEventListener('submit', function(e) {
+    var mode  = document.getElementById('selectModePoursuite').value;
+    var objet = document.querySelector('#formTransferer textarea[name="objet"]');
+    var ok    = true;
+    var msg   = [];
+
+    if (!mode) {
+        msg.push('Veuillez sélectionner un mode de poursuite.');
+        document.getElementById('selectModePoursuite').classList.add('is-invalid');
+        ok = false;
+    } else {
+        document.getElementById('selectModePoursuite').classList.remove('is-invalid');
+    }
+
+    if (objet && !objet.value.trim()) {
+        msg.push("Veuillez saisir l'objet du dossier.");
+        objet.classList.add('is-invalid');
+        ok = false;
+    } else if (objet) {
+        objet.classList.remove('is-invalid');
+    }
+
+    // Validation champs CRPC si mode = CRPC
+    if (mode === 'CRPC') {
+        var qualif = document.querySelector('#crpcBlock input[name="crpc_qualification_faits"]');
+        if (qualif && !qualif.value.trim()) {
+            msg.push('Veuillez saisir la qualification des faits (Section III CRPC).');
+            qualif.classList.add('is-invalid');
+            ok = false;
+        } else if (qualif) {
+            qualif.classList.remove('is-invalid');
+        }
+        // Vérifier qu'au moins une personne a un nom
+        var premNom = document.querySelector('#crpcPersonnes .crpc-nom-personne, #crpcPersonnes input[name="crpc_nom_prenom[]"]');
+        if (premNom && !premNom.value.trim()) {
+            msg.push('Veuillez saisir au moins un nom de personne poursuivie (Section II CRPC).');
+            premNom.classList.add('is-invalid');
+            ok = false;
+        }
+    }
+
+    // Cabinet requis si mode RI
+    if (mode === 'RI') {
+        var cab = document.querySelector('#cabinetBlock select[name="cabinet_id"]');
+        if (cab && !cab.value) {
+            msg.push("Veuillez sélectionner un cabinet d'instruction.");
+            cab.classList.add('is-invalid');
+            ok = false;
+        } else if (cab) {
+            cab.classList.remove('is-invalid');
+        }
+    }
+
+    if (!ok) {
+        e.preventDefault();
+        // Afficher les erreurs dans une alerte en haut du form
+        var alertBox = document.getElementById('transfertValidationAlert');
+        if (!alertBox) {
+            alertBox = document.createElement('div');
+            alertBox.id = 'transfertValidationAlert';
+            alertBox.className = 'alert alert-danger alert-dismissible mb-3';
+            alertBox.innerHTML = '<button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>' +
+                '<strong><i class="bi bi-exclamation-triangle me-2"></i>Veuillez corriger les erreurs suivantes :</strong><ul class="mb-0 mt-1"></ul>';
+            this.insertBefore(alertBox, this.firstChild);
+        }
+        var ul = alertBox.querySelector('ul');
+        ul.innerHTML = '';
+        msg.forEach(function(m) { ul.innerHTML += '<li>' + m + '</li>'; });
+        alertBox.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+    }
+});
+
+// Nettoyer is-invalid au changement
+document.getElementById('formTransferer').querySelectorAll('input,select,textarea').forEach(function(el) {
+    el.addEventListener('input', function() { this.classList.remove('is-invalid'); });
+    el.addEventListener('change', function() { this.classList.remove('is-invalid'); });
+});
 function toggleCabinet(show){
     // legacy compat
 }
@@ -1194,7 +1326,7 @@ function addCrpcPersonne() {
         '<button type="button" class="btn btn-xs btn-outline-danger btn-sm" onclick="removeCrpcPersonne(this)"><i class="bi bi-x"></i></button>' +
         '</div>' +
         '<div class="row g-2">' +
-        '<div class="col-12"><input type="hidden" name="crpc_mec_id[]" value=""><input type="text" name="crpc_nom_prenom[]" class="form-control form-control-sm" placeholder="Nom et pr\u00e9nom" required></div>' +
+        '<div class="col-12"><input type="hidden" name="crpc_mec_id[]" value=""><input type="text" name="crpc_nom_prenom[]" class="form-control form-control-sm crpc-nom-personne" placeholder="Nom et pr\u00e9nom"></div>' +
         '<div class="col-md-2"><select name="crpc_sexe[]" class="form-select form-select-sm"><option value="">Sexe</option><option value="M">M</option><option value="F">F</option></select></div>' +
         '<div class="col-md-2"><input type="number" name="crpc_age[]" class="form-control form-control-sm" placeholder="\u00c2ge" min="1" max="120"></div>' +
         '<div class="col-md-4"><input type="text" name="crpc_nationalite[]" class="form-control form-control-sm" value="Nig\u00e9rienne" placeholder="Nationalit\u00e9"></div>' +

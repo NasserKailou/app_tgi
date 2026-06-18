@@ -500,9 +500,10 @@ class PVController extends Controller {
         $user = Auth::currentUser();
         $uid  = (int)($user['id'] ?? 0);
         $role = $user['role_code'] ?? '';
+        $pvId = (int)$id;
 
         // Greffier avec droit pv_affecter accordé, ou rôles standards
-        $allowedByRole    = in_array($role, ['admin','procureur','president']);
+        $allowedByRole     = in_array($role, ['admin','procureur','president']);
         $allowedByFonction = ($role === 'greffier'
             && DroitsController::hasFuncAccess($uid, 'pv_affecter'));
 
@@ -512,15 +513,79 @@ class PVController extends Controller {
             return;
         }
 
-        $substitutId = (int)($_POST['substitut_id'] ?? 0);
-        if (!$substitutId) {
+        $nouveauSubstitutId = (int)($_POST['substitut_id'] ?? 0);
+        if (!$nouveauSubstitutId) {
             $this->flash('error', 'Veuillez sélectionner un substitut.');
             $this->redirect('/pv/show/' . $id);
             return;
         }
-        $this->db->prepare("UPDATE pv SET substitut_id=:s, statut='en_traitement', date_affectation_substitut=CURDATE() WHERE id=:id")
-            ->execute(['s' => $substitutId, 'id' => (int)$id]);
-        $this->flash('success', 'PV affecté au substitut du procureur.');
+
+        // Récupérer le PV actuel pour tracer l'ancienne affectation
+        $stmtPV = $this->db->prepare("SELECT substitut_id, statut FROM pv WHERE id = ?");
+        $stmtPV->execute([$pvId]);
+        $pvActuel = $stmtPV->fetch();
+        $ancienSubstitutId = $pvActuel ? ((int)$pvActuel['substitut_id'] ?: null) : null;
+
+        // Refus si même substitut que l'actuel
+        if ($ancienSubstitutId && $ancienSubstitutId === $nouveauSubstitutId) {
+            $this->flash('error', 'Ce substitut est déjà assigné à ce PV.');
+            $this->redirect('/pv/show/' . $id);
+            return;
+        }
+
+        // Mise à jour du PV
+        $this->db->prepare(
+            "UPDATE pv SET substitut_id=:s, statut='en_traitement', date_affectation_substitut=CURDATE() WHERE id=:id"
+        )->execute(['s' => $nouveauSubstitutId, 'id' => $pvId]);
+
+        // ── Traçabilité dans mouvements_pv (si la table existe) ─────────────
+        try {
+            // Récupérer noms des substituts pour le message
+            $nomAncien  = '';
+            $nomNouveau = '';
+            if ($ancienSubstitutId) {
+                $stA = $this->db->prepare("SELECT CONCAT(prenom,' ',nom) n FROM users WHERE id=?");
+                $stA->execute([$ancienSubstitutId]);
+                $nomAncien = $stA->fetchColumn() ?: "Substitut #{$ancienSubstitutId}";
+            }
+            $stN = $this->db->prepare("SELECT CONCAT(prenom,' ',nom) n FROM users WHERE id=?");
+            $stN->execute([$nouveauSubstitutId]);
+            $nomNouveau = $stN->fetchColumn() ?: "Substitut #{$nouveauSubstitutId}";
+
+            $motif  = $this->sanitize($_POST['motif_reaffectation'] ?? '');
+            $desc   = $ancienSubstitutId
+                ? "Réaffectation : {$nomAncien} → {$nomNouveau}" . ($motif ? " — {$motif}" : '')
+                : "Affectation initiale : {$nomNouveau}";
+
+            $this->db->prepare(
+                "INSERT INTO mouvements_pv
+                 (pv_id, user_id, type_mouvement, ancien_substitut_id, nouveau_substitut_id, description, created_at)
+                 VALUES (?, ?, 'affectation_substitut', ?, ?, ?, NOW())"
+            )->execute([$pvId, $uid, $ancienSubstitutId, $nouveauSubstitutId, $desc]);
+        } catch (\Exception $e) {
+            // La table mouvements_pv peut ne pas exister — on trace dans mouvements_dossier si lié
+            try {
+                $stD = $this->db->prepare("SELECT id FROM dossiers WHERE pv_id=? LIMIT 1");
+                $stD->execute([$pvId]);
+                $dossierId = $stD->fetchColumn();
+                if ($dossierId) {
+                    $motif = $this->sanitize($_POST['motif_reaffectation'] ?? '');
+                    $desc  = $ancienSubstitutId
+                        ? "PV : réaffectation substitut → {$nomNouveau}" . ($motif ? " — {$motif}" : '')
+                        : "PV : affectation substitut → {$nomNouveau}";
+                    $this->db->prepare(
+                        "INSERT INTO mouvements_dossier
+                         (dossier_id, user_id, type_mouvement, nouveau_statut, description)
+                         VALUES (?, ?, 'affectation_substitut', 'en_traitement', ?)"
+                    )->execute([$dossierId, $uid, $desc]);
+                }
+            } catch (\Exception $e2) { /* silencieux */ }
+        }
+
+        $msgFlash = $ancienSubstitutId
+            ? "Substitut réaffecté avec succès. Historique tracé."
+            : "PV affecté au substitut du procureur.";
+        $this->flash('success', $msgFlash);
         $this->redirect('/pv/show/' . $id);
     }
 
