@@ -516,12 +516,22 @@
                                 <i class="bi bi-eye"></i> Voir
                             </button>
                             <!-- Actions sur MEC -->
-                            <?php if (DroitsController::hasFuncAccess((int)($user['id']??0), 'mec_decision') && Auth::hasRole(['admin','procureur','substitut_procureur','president'])): ?>
+                            <?php
+                            $canDecisionMec = DroitsController::hasFuncAccess((int)($user['id']??0), 'mec_decision')
+                                && Auth::hasRole(['admin','procureur','substitut_procureur','president']);
+                            $canEditMec = Auth::hasRole(['admin','procureur','substitut_procureur','president'])
+                                || (Auth::hasRole(['greffier']) && DroitsController::hasFuncAccess((int)($user['id']??0), 'mec_modifier'));
+                            $canDeleteMec = Auth::hasRole(['admin','procureur','president'])
+                                || (Auth::hasRole(['greffier']) && DroitsController::hasFuncAccess((int)($user['id']??0), 'mec_supprimer'))
+                                || Auth::hasRole(['substitut_procureur']);
+                            ?>
+                            <?php if ($canDecisionMec || $canEditMec || $canDeleteMec): ?>
                             <div class="dropdown">
                                 <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
                                     <i class="bi bi-three-dots-vertical"></i>
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end shadow">
+                                    <?php if ($canDecisionMec): ?>
                                     <li>
                                         <a class="dropdown-item text-success" href="#"
                                            onclick="setDecision(<?= $mec['id'] ?>, 'poursuivi'); return false;">
@@ -536,11 +546,15 @@
                                         </a>
                                     </li>
                                     <li><hr class="dropdown-divider"></li>
+                                    <?php endif; ?>
+                                    <?php if ($canEditMec): ?>
                                     <li>
                                         <a class="dropdown-item" href="<?= BASE_URL ?>/pv/mise-en-cause/edit/<?= $mec['id'] ?>">
                                             <i class="bi bi-pencil me-2"></i>Modifier
                                         </a>
                                     </li>
+                                    <?php endif; ?>
+                                    <?php if ($canDeleteMec): ?>
                                     <li>
                                         <form method="POST" action="<?= BASE_URL ?>/pv/mise-en-cause/delete/<?= $mec['id'] ?>"
                                               onsubmit="return confirm('Supprimer cette mise en cause ?')">
@@ -550,6 +564,7 @@
                                             </button>
                                         </form>
                                     </li>
+                                    <?php endif; ?>
                                 </ul>
                             </div>
                             <?php endif; ?>
@@ -670,11 +685,27 @@
                 </button>
                 <?php endif; ?>
 
-                <?php if (Auth::hasRole(['admin','procureur','substitut_procureur']) && $pv['statut']==='en_traitement'): ?>
+                <?php
+                // Classer : substitut/procureur/admin sur en_traitement; greffier avec droit pv_classer
+                $canClasser = ($pv['statut'] === 'en_traitement'
+                    && Auth::hasRole(['admin','procureur','substitut_procureur']))
+                    || (in_array($pv['statut'], ['recu','en_traitement'])
+                        && Auth::hasRole(['greffier'])
+                        && DroitsController::hasFuncAccess((int)($user['id']??0), 'pv_classer'));
+                // Transférer : substitut/procureur/admin sur en_traitement; greffier avec droit pv_transferer (recu ou en_traitement)
+                $canTransferer = ($pv['statut'] === 'en_traitement'
+                    && Auth::hasRole(['admin','procureur','substitut_procureur']))
+                    || (in_array($pv['statut'], ['recu','en_traitement'])
+                        && Auth::hasRole(['greffier'])
+                        && DroitsController::hasFuncAccess((int)($user['id']??0), 'pv_transferer'));
+                ?>
+                <?php if ($canClasser): ?>
                 <!-- Classer -->
                 <button class="btn btn-outline-dark" data-bs-toggle="modal" data-bs-target="#modalClasser">
                     <i class="bi bi-archive me-2"></i>Classer sans suite
                 </button>
+                <?php endif; ?>
+                <?php if ($canTransferer): ?>
                 <!-- Transférer -->
                 <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalTransferer">
                     <i class="bi bi-send me-2"></i>Transférer
@@ -1481,18 +1512,25 @@ function suggererSubstitut(){
                         <div class="input-group">
                             <span class="input-group-text"><i class="bi bi-search"></i></span>
                             <input type="text" id="mecSearchInput" class="form-control"
-                                   placeholder="Saisir au moins 2 caractères..."
+                                   placeholder="Cliquez ici ou saisissez un nom…"
                                    autocomplete="off"
-                                   oninput="searchMEC(this.value)">
+                                   oninput="searchMEC(this.value)"
+                                   onfocus="searchMEC(this.value)">
                             <button type="button" class="btn btn-outline-secondary" onclick="clearMecSearch()">
                                 <i class="bi bi-x"></i>
                             </button>
                         </div>
+                        <div class="form-text text-muted">
+                            <i class="bi bi-lightning-fill text-warning me-1"></i>
+                            Les résultats s'affichent dès le clic — se rétrécissent au fur et à mesure que vous saisissez.
+                        </div>
                     </div>
-                    <div id="mecSearchResults" class="list-group mb-3"></div>
+                    <!-- Zone résultats avec hauteur max scrollable -->
+                    <div id="mecSearchResults" class="list-group mb-3"
+                         style="max-height:280px;overflow-y:auto;border:1px solid #dee2e6;border-radius:0.375rem;"></div>
                     <input type="hidden" name="mec_source_id" id="mecSourceId">
                     <!-- Fiche détail de la MEC sélectionnée -->
-                    <div id="mecSelectedCard" style="display:none" class="border rounded p-3 bg-light">
+                    <div id="mecSelectedCard" style="display:none" class="border rounded p-3 bg-light mt-2">
                         <h6 class="fw-bold text-primary mb-3"><i class="bi bi-check-circle-fill me-2 text-success"></i>Mise en cause sélectionnée</h6>
                         <div class="d-flex gap-3">
                             <div id="mecCardPhoto" class="flex-shrink-0"></div>
@@ -1653,35 +1691,88 @@ function voirMEC(m) {
     new bootstrap.Modal(document.getElementById('modalVoirMEC')).show();
 }
 
-// ── Recherche MEC pour reconduction ──────────────────────────────────
-var mecSearchTimer = null;
+// ── Recherche MEC pour reconduction (live search — charge dès le focus) ──
+var mecSearchTimer   = null;
+var mecSearchCache   = {};   // cache simple par requête
+var mecCurrentPvId   = <?= (int)$pv['id'] ?>;
+
 function searchMEC(q) {
     clearTimeout(mecSearchTimer);
     var resultsDiv = document.getElementById('mecSearchResults');
-    if (q.length < 2) { resultsDiv.innerHTML = ''; return; }
+    var qTrim = q.trim();
+
+    // Afficher un indicateur de chargement immédiatement
+    resultsDiv.innerHTML = '<div class="list-group-item text-muted text-center py-2 small">' +
+        '<span class="spinner-border spinner-border-sm me-1"></span>Chargement…</div>';
+
+    // Délai court pour laisser l'utilisateur finir de taper (100ms si q vide, 250ms sinon)
+    var delay = qTrim.length === 0 ? 100 : 250;
     mecSearchTimer = setTimeout(function() {
-        fetch('<?= BASE_URL ?>/api/mises-en-cause/search?q=' + encodeURIComponent(q))
-        .then(r => r.json())
-        .then(data => {
-            var html = '';
-            if (data.success && data.data.length) {
-                data.data.forEach(function(m) {
-                    html += '<a href="#" class="list-group-item list-group-item-action" ' +
-                        "onclick='selectMEC(" + m.id + ", " + JSON.stringify(m).replace(/'/g, "&#39;") + "); return false;'>" +
-                        '<div class="d-flex justify-content-between align-items-center">' +
-                        '<div><strong class="text-uppercase">' + (m.nom||'') + '</strong> ' + (m.prenom||'') +
-                        (m.alias ? ' <em class="text-muted small">(' + m.alias + ')</em>' : '') +
-                        (m.est_connu_archives ? ' <span class="badge bg-danger ms-1 small">Récidiviste</span>' : '') +
-                        '<br><small class="text-muted">' + (m.profession||'') + (m.lieu_naissance ? ' — ' + m.lieu_naissance : '') + '</small></div>' +
-                        '<span class="badge bg-light text-dark border small">PV ' + (m.numero_rg||'?') + '</span>' +
-                        '</div></a>';
-                });
-            } else {
-                html = '<div class="list-group-item text-muted text-center py-2 small"><i class="bi bi-search me-1"></i>Aucune mise en cause trouvée</div>';
-            }
-            resultsDiv.innerHTML = html;
-        }).catch(function(e){ console.warn('Erreur recherche MEC:', e); });
-    }, 300);
+        var cacheKey = qTrim;
+        if (mecSearchCache[cacheKey] !== undefined) {
+            renderMecResults(mecSearchCache[cacheKey]);
+            return;
+        }
+        var url = '<?= BASE_URL ?>/api/mises-en-cause/search?exclude_pv=' + mecCurrentPvId +
+                  '&limit=50&q=' + encodeURIComponent(qTrim);
+        fetch(url)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            mecSearchCache[cacheKey] = data.success ? data.data : [];
+            renderMecResults(mecSearchCache[cacheKey]);
+        })
+        .catch(function(e) {
+            resultsDiv.innerHTML = '<div class="list-group-item text-danger text-center py-2 small">' +
+                '<i class="bi bi-wifi-off me-1"></i>Erreur de connexion</div>';
+        });
+    }, delay);
+}
+
+function renderMecResults(items) {
+    var resultsDiv = document.getElementById('mecSearchResults');
+    if (!items || items.length === 0) {
+        resultsDiv.innerHTML = '<div class="list-group-item text-muted text-center py-3 small">' +
+            '<i class="bi bi-person-slash fs-4 d-block mb-1 opacity-50"></i>Aucune mise en cause trouvée</div>';
+        return;
+    }
+    // Stocker les objets dans un tableau global pour y accéder depuis onclick
+    window._mecResultsData = items;
+    var html = '';
+    items.forEach(function(m, idx) {
+        html += '<a href="#" class="list-group-item list-group-item-action py-2" ' +
+            'onclick="selectMEC(' + m.id + ', window._mecResultsData[' + idx + ']); return false;">' +
+            '<div class="d-flex justify-content-between align-items-center gap-2">' +
+            '<div class="d-flex align-items-center gap-2">';
+        // Miniature photo
+        if (m.photo) {
+            html += '<img src="<?= BASE_URL ?>/' + m.photo + '" class="rounded flex-shrink-0" ' +
+                    'style="width:32px;height:40px;object-fit:cover;" alt="">';
+        } else {
+            html += '<div class="bg-light rounded d-flex align-items-center justify-content-center flex-shrink-0" ' +
+                    'style="width:32px;height:40px;"><i class="bi bi-person-fill text-muted"></i></div>';
+        }
+        html += '<div>' +
+            '<div class="fw-semibold text-uppercase lh-1">' + escHtml(m.nom||'') +
+            ' <span class="fw-normal text-capitalize">' + escHtml(m.prenom||'') + '</span>' +
+            (m.alias ? ' <em class="text-muted small fw-normal">(' + escHtml(m.alias) + ')</em>' : '') +
+            (parseInt(m.est_connu_archives) ? ' <span class="badge bg-danger ms-1" style="font-size:.65rem">Récidiviste</span>' : '') +
+            '</div>' +
+            '<div class="text-muted small">' +
+            (m.profession ? escHtml(m.profession) : '') +
+            (m.lieu_naissance ? (m.profession ? ' — ' : '') + escHtml(m.lieu_naissance) : '') +
+            '</div>' +
+            '</div></div>' +
+            '<div class="text-end flex-shrink-0">' +
+            '<span class="badge bg-light text-dark border small d-block mb-1">PV ' + escHtml(m.numero_rg||'?') + '</span>' +
+            (parseInt(m.nb_affaires_precedentes) > 0 ? '<span class="badge bg-secondary small">' + m.nb_affaires_precedentes + ' aff. préc.</span>' : '') +
+            '</div>' +
+            '</div></a>';
+    });
+    resultsDiv.innerHTML = html;
+}
+
+function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 function selectMEC(id, m) {
@@ -1721,11 +1812,19 @@ function clearMecSearch() {
     document.getElementById('mecSourceId').value = '';
     document.getElementById('mecSelectedCard').style.display = 'none';
     document.getElementById('btnReconduire').disabled = true;
+    window._mecResultsData = [];
+    mecSearchCache = {};  // vider le cache à chaque ouverture
 }
 
 var reconduireModal = document.getElementById('modalReconduire');
 if (reconduireModal) {
     reconduireModal.addEventListener('hidden.bs.modal', clearMecSearch);
+    // Charger immédiatement les résultats à l'ouverture du modal
+    reconduireModal.addEventListener('shown.bs.modal', function() {
+        var input = document.getElementById('mecSearchInput');
+        input.focus();
+        searchMEC('');  // charge les 50 derniers au focus
+    });
 }
 
 // ── Upload pièce jointe PV ────────────────────────────────────────────

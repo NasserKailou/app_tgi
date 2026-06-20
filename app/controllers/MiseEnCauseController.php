@@ -162,8 +162,17 @@ class MiseEnCauseController extends Controller
     public function delete(string $id): void
     {
         Auth::requireLogin();
-        Auth::requireRole(['admin', 'greffier', 'procureur', 'president']);
         CSRF::check();
+
+        $user  = Auth::currentUser();
+        $role  = $user['role_code'] ?? '';
+        $uid   = (int)($user['id'] ?? 0);
+        $allowed = in_array($role, ['admin', 'greffier', 'procureur', 'substitut_procureur', 'president']);
+        if (!$allowed) {
+            $this->flash('error', 'Vous n\'avez pas les droits pour supprimer une mise en cause.');
+            $this->redirect('/pv');
+            return;
+        }
 
         $mec = $this->getMEC((int)$id);
         if (!$mec) { $this->redirect('/pv'); }
@@ -281,20 +290,36 @@ class MiseEnCauseController extends Controller
     public function apiSearch(): void
     {
         Auth::requireLogin();
-        $q = trim($_GET['q'] ?? '');
-        if (strlen($q) < 2) {
-            $this->json(['success' => true, 'data' => []]);
+        $q      = trim($_GET['q'] ?? '');
+        $pvId   = (int)($_GET['exclude_pv'] ?? 0); // exclure les MEC déjà liés au PV courant
+        $limit  = min(50, max(1, (int)($_GET['limit'] ?? 30)));
+
+        if ($q === '') {
+            // Retourne les 50 dernières mises en cause (pour l'affichage au focus)
+            $sql  = "SELECT m.*, p.numero_rg, p.date_reception
+                     FROM mises_en_cause m
+                     JOIN pv p ON p.id = m.pv_id";
+            $sql .= $pvId ? " WHERE m.pv_id != :excl" : "";
+            $sql .= " ORDER BY m.created_at DESC LIMIT {$limit}";
+            $stmt = $this->db->prepare($sql);
+            if ($pvId) { $stmt->execute([':excl' => $pvId]); }
+            else       { $stmt->execute(); }
+            $this->json(['success' => true, 'data' => $stmt->fetchAll()]);
             return;
         }
+
         $stmt = $this->db->prepare(
             "SELECT m.*, p.numero_rg, p.date_reception
              FROM mises_en_cause m
              JOIN pv p ON p.id = m.pv_id
-             WHERE (m.nom LIKE :q OR m.prenom LIKE :q OR m.alias LIKE :q)
-             ORDER BY m.nom, m.prenom
-             LIMIT 30"
+             WHERE (m.nom LIKE :q OR m.prenom LIKE :q OR m.alias LIKE :q)"
+            . ($pvId ? " AND m.pv_id != :excl" : "")
+            . " ORDER BY m.nom, m.prenom
+             LIMIT {$limit}"
         );
-        $stmt->execute([':q' => "%{$q}%"]);
+        $params = [':q' => "%{$q}%"];
+        if ($pvId) { $params[':excl'] = $pvId; }
+        $stmt->execute($params);
         $this->json(['success' => true, 'data' => $stmt->fetchAll()]);
     }
 

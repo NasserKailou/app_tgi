@@ -685,7 +685,18 @@ class PVController extends Controller {
     public function transferer(string $id): void {
         Auth::requireLogin();
         CSRF::check();
-        Auth::requireRole(['admin','procureur','substitut_procureur']);
+
+        // Greffier avec droit pv_transferer accordé OU rôles standards
+        $user2    = Auth::currentUser();
+        $role2    = $user2['role_code'] ?? '';
+        $uid2     = (int)($user2['id'] ?? 0);
+        $allowedTransfert = in_array($role2, ['admin','procureur','substitut_procureur'])
+            || ($role2 === 'greffier' && DroitsController::hasFuncAccess($uid2, 'pv_transferer'));
+        if (!$allowedTransfert) {
+            $this->flash('error', 'Vous n\'avez pas les droits pour transférer ce PV.');
+            $this->redirect('/pv/show/' . $id);
+            return;
+        }
 
         $stmtPV = $this->db->prepare("SELECT * FROM pv WHERE id=?");
         $stmtPV->execute([(int)$id]);
