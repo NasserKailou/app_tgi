@@ -10,6 +10,11 @@
  *   POST /pv/mise-en-cause/decision/{id}         → decision()
  *   GET  /api/mises-en-cause/search              → apiSearch()
  *   POST /pv/mise-en-cause/reconduire/{pvId}     → reconduire()
+ *
+ * Traçabilité (v2.11) :
+ *   Toutes les actions CRUD sont enregistrées dans `mec_historique`.
+ *   Le paramètre POST `_redirect_to` (ex: "dossier:4") permet de renvoyer
+ *   l'utilisateur vers le dossier d'origine plutôt que le PV.
  */
 class MiseEnCauseController extends Controller
 {
@@ -79,8 +84,12 @@ class MiseEnCauseController extends Controller
             $this->saveMECInfractions($mecId, $_POST['infractions_mec_substitut'] ?? [], 'substitut');
         }
 
+        // ── Traçabilité ──
+        $dossierId = $this->getDossierIdFromRedirect($_POST['_redirect_to'] ?? '');
+        $this->traceMEC($mecId, $pvId, $dossierId, 'create', null, null);
+
         $this->flash('success', 'Mise en cause enregistrée.');
-        $this->redirect('/pv/show/' . $pvId . '#mises-en-cause');
+        $this->redirectAfterMEC($pvId, $_POST['_redirect_to'] ?? '', '#mises-en-cause');
     }
 
     // ─── GET /pv/mise-en-cause/edit/{id} ──────────────────────────────────
@@ -90,11 +99,13 @@ class MiseEnCauseController extends Controller
         Auth::requireRole(['admin', 'greffier', 'procureur', 'substitut_procureur', 'president']);
         $mec  = $this->getMEC((int)$id);
         if (!$mec) { $this->redirect('/pv'); }
-        $user        = Auth::currentUser();
-        $flash       = $this->getFlash();
-        $infractions = $this->db->query("SELECT id, code, libelle, categorie FROM infractions ORDER BY libelle")->fetchAll();
+        $user           = Auth::currentUser();
+        $flash          = $this->getFlash();
+        $infractions    = $this->db->query("SELECT id, code, libelle, categorie FROM infractions ORDER BY libelle")->fetchAll();
         $mecInfractions = $this->getMECInfractions((int)$id);
-        $this->view('mises_en_cause/edit', compact('mec', 'flash', 'user', 'infractions', 'mecInfractions'));
+        // Passer le contexte de retour (dossier_id éventuel) à la vue
+        $redirectTo     = $_GET['redirect_to'] ?? '';
+        $this->view('mises_en_cause/edit', compact('mec', 'flash', 'user', 'infractions', 'mecInfractions', 'redirectTo'));
     }
 
     // ─── POST /pv/mise-en-cause/update/{id} ───────────────────────────────
@@ -106,6 +117,9 @@ class MiseEnCauseController extends Controller
 
         $mec = $this->getMEC((int)$id);
         if (!$mec) { $this->redirect('/pv'); }
+
+        // Snapshot avant modification (pour l'audit)
+        $dataAvant = json_encode($mec);
 
         $photoPath = $mec['photo'];
         if (!empty($_FILES['photo']['name'])) {
@@ -120,7 +134,8 @@ class MiseEnCauseController extends Controller
                 statut=:statut, statut_autre_detail=:sad,
                 photo=:photo,
                 personne_contacter_nom=:pcnom, personne_contacter_tel=:pctel, personne_contacter_lien=:pclien,
-                est_connu_archives=:archives, nb_affaires_precedentes=:nbprev, notes_antecedents=:notes
+                est_connu_archives=:archives, nb_affaires_precedentes=:nbprev, notes_antecedents=:notes,
+                updated_at=NOW()
              WHERE id=:id"
         )->execute([
             ':nom'     => strtoupper(trim($this->sanitize($_POST['nom'] ?? ''))),
@@ -148,14 +163,19 @@ class MiseEnCauseController extends Controller
 
         // Mise à jour des infractions
         $isSubstitut = Auth::hasRole(['substitut_procureur','procureur','admin']);
-        // Greffe peut modifier les infractions unité
         $this->saveMECInfractions((int)$id, $_POST['infractions_mec'] ?? [], 'unite', true);
         if ($isSubstitut) {
             $this->saveMECInfractions((int)$id, $_POST['infractions_mec_substitut'] ?? [], 'substitut', true);
         }
 
+        // ── Traçabilité ──
+        $mecApres  = $this->getMEC((int)$id);
+        $dataApres = json_encode($mecApres);
+        $dossierId = $this->getDossierIdFromRedirect($_POST['_redirect_to'] ?? '');
+        $this->traceMEC((int)$id, (int)$mec['pv_id'], $dossierId, 'update', $dataAvant, $dataApres);
+
         $this->flash('success', 'Mise en cause mise à jour.');
-        $this->redirect('/pv/show/' . $mec['pv_id'] . '#mises-en-cause');
+        $this->redirectAfterMEC((int)$mec['pv_id'], $_POST['_redirect_to'] ?? '', '#mises-en-cause');
     }
 
     // ─── POST /pv/mise-en-cause/delete/{id} ───────────────────────────────
@@ -166,7 +186,6 @@ class MiseEnCauseController extends Controller
 
         $user  = Auth::currentUser();
         $role  = $user['role_code'] ?? '';
-        $uid   = (int)($user['id'] ?? 0);
         $allowed = in_array($role, ['admin', 'greffier', 'procureur', 'substitut_procureur', 'president']);
         if (!$allowed) {
             $this->flash('error', 'Vous n\'avez pas les droits pour supprimer une mise en cause.');
@@ -177,11 +196,17 @@ class MiseEnCauseController extends Controller
         $mec = $this->getMEC((int)$id);
         if (!$mec) { $this->redirect('/pv'); }
 
-        $pvId = $mec['pv_id'];
+        $pvId      = (int)$mec['pv_id'];
+        $redirectTo= $_POST['_redirect_to'] ?? '';
+        $dossierId = $this->getDossierIdFromRedirect($redirectTo);
+
+        // ── Traçabilité avant suppression ──
+        $this->traceMEC((int)$id, $pvId, $dossierId, 'delete', json_encode($mec), null);
+
         $this->db->prepare("DELETE FROM mises_en_cause WHERE id=?")->execute([(int)$id]);
 
         $this->flash('success', 'Mise en cause supprimée.');
-        $this->redirect('/pv/show/' . $pvId . '#mises-en-cause');
+        $this->redirectAfterMEC($pvId, $redirectTo, '#mises-en-cause');
     }
 
     // ─── POST /pv/mise-en-cause/decision/{id} ─────────────────────────────
@@ -202,6 +227,8 @@ class MiseEnCauseController extends Controller
             $decision = 'en_attente';
         }
 
+        $dataAvant = json_encode($mec);
+
         $this->db->prepare(
             "UPDATE mises_en_cause SET
                 decision_substitut=:dec,
@@ -215,9 +242,14 @@ class MiseEnCauseController extends Controller
             ':id'    => (int)$id,
         ]);
 
+        // ── Traçabilité ──
+        $mecApres  = $this->getMEC((int)$id);
+        $dossierId = $this->getDossierIdFromRedirect($_POST['_redirect_to'] ?? '');
+        $this->traceMEC((int)$id, (int)$mec['pv_id'], $dossierId, 'update', $dataAvant, json_encode($mecApres));
+
         $label = ['poursuivi' => 'Poursuivi', 'non_poursuivi' => 'Non poursuivi', 'en_attente' => 'En attente'][$decision];
         $this->flash('success', "Décision enregistrée : {$label}.");
-        $this->redirect('/pv/show/' . $mec['pv_id'] . '#mises-en-cause');
+        $this->redirectAfterMEC((int)$mec['pv_id'], $_POST['_redirect_to'] ?? '', '#mises-en-cause');
     }
 
     // ─── POST /pv/mise-en-cause/reconduire/{pvId} ─────────────────────────
@@ -235,13 +267,13 @@ class MiseEnCauseController extends Controller
 
         if (!$mecId) {
             $this->flash('error', 'Veuillez sélectionner une mise en cause à reconduire.');
-            $this->redirect('/pv/show/' . $pvId . '#mises-en-cause');
+            $this->redirectAfterMEC($pvId, $_POST['_redirect_to'] ?? '', '#mises-en-cause');
         }
 
         $source = $this->getMEC($mecId);
         if (!$source) {
             $this->flash('error', 'Mise en cause source introuvable.');
-            $this->redirect('/pv/show/' . $pvId . '#mises-en-cause');
+            $this->redirectAfterMEC($pvId, $_POST['_redirect_to'] ?? '', '#mises-en-cause');
         }
 
         // Copier la mise en cause vers le nouveau PV
@@ -282,8 +314,16 @@ class MiseEnCauseController extends Controller
             ':by'     => Auth::userId(),
         ]);
 
+        $newMecId  = (int)$this->db->lastInsertId();
+        $dossierId = $this->getDossierIdFromRedirect($_POST['_redirect_to'] ?? '');
+
+        // ── Traçabilité ──
+        $this->traceMEC($newMecId, $pvId, $dossierId, 'reconduire',
+            json_encode(['source_mec_id' => $mecId, 'source_pv_id' => $source['pv_id']]),
+            null);
+
         $this->flash('success', "Mise en cause {$source['nom']} {$source['prenom']} reconduite (affaire #{$nbPrev}).");
-        $this->redirect('/pv/show/' . $pvId . '#mises-en-cause');
+        $this->redirectAfterMEC($pvId, $_POST['_redirect_to'] ?? '', '#mises-en-cause');
     }
 
     // ─── GET /api/mises-en-cause/search ───────────────────────────────────
@@ -321,6 +361,148 @@ class MiseEnCauseController extends Controller
         if ($pvId) { $params[':excl'] = $pvId; }
         $stmt->execute($params);
         $this->json(['success' => true, 'data' => $stmt->fetchAll()]);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ─── Helpers traçabilité ──────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Enregistre une entrée dans mec_historique.
+     * Crée la table à la volée si elle n'existe pas encore (idempotent).
+     */
+    private function traceMEC(
+        ?int $mecId,
+        int  $pvId,
+        ?int $dossierId,
+        string $action,
+        ?string $dataAvant,
+        ?string $dataApres
+    ): void {
+        try {
+            // Création de la table si absente (migration lazy)
+            $this->db->exec(
+                "CREATE TABLE IF NOT EXISTS `mec_historique` (
+                    `id`             INT(11)      NOT NULL AUTO_INCREMENT,
+                    `mec_id`         INT(11)      DEFAULT NULL,
+                    `pv_id`          INT(11)      NOT NULL,
+                    `dossier_id`     INT(11)      DEFAULT NULL,
+                    `user_id`        INT(11)      DEFAULT NULL,
+                    `action`         VARCHAR(20)  NOT NULL,
+                    `statut_dossier` VARCHAR(50)  DEFAULT NULL,
+                    `statut_pv`      VARCHAR(50)  DEFAULT NULL,
+                    `nom_mec`        VARCHAR(150) DEFAULT NULL,
+                    `prenom_mec`     VARCHAR(150) DEFAULT NULL,
+                    `data_avant`     TEXT         DEFAULT NULL,
+                    `data_apres`     TEXT         DEFAULT NULL,
+                    `ip_address`     VARCHAR(45)  DEFAULT NULL,
+                    `created_at`     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`id`),
+                    KEY `idx_mech_mec`     (`mec_id`),
+                    KEY `idx_mech_pv`      (`pv_id`),
+                    KEY `idx_mech_dossier` (`dossier_id`),
+                    KEY `idx_mech_user`    (`user_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+            );
+
+            // Récupérer les statuts courants
+            $statutPv      = null;
+            $statutDossier = null;
+            $nomMec        = null;
+            $prenomMec     = null;
+
+            $pvRow = $this->db->prepare("SELECT statut FROM pv WHERE id=?")->execute([$pvId])
+                     ? null : null;
+            try {
+                $s = $this->db->prepare("SELECT statut FROM pv WHERE id=?");
+                $s->execute([$pvId]);
+                $r = $s->fetch();
+                $statutPv = $r['statut'] ?? null;
+            } catch (\Exception $e) {}
+
+            if ($dossierId) {
+                try {
+                    $s = $this->db->prepare("SELECT statut FROM dossiers WHERE id=?");
+                    $s->execute([$dossierId]);
+                    $r = $s->fetch();
+                    $statutDossier = $r['statut'] ?? null;
+                } catch (\Exception $e) {}
+            }
+
+            // Snapshot nom/prénom (utile pour les suppressions où mecId sera null après)
+            if ($mecId) {
+                try {
+                    $s = $this->db->prepare("SELECT nom, prenom FROM mises_en_cause WHERE id=?");
+                    $s->execute([$mecId]);
+                    $r = $s->fetch();
+                    $nomMec    = $r['nom']    ?? null;
+                    $prenomMec = $r['prenom'] ?? null;
+                } catch (\Exception $e) {}
+            }
+            // Fallback : extraire depuis data_avant si suppression
+            if (!$nomMec && $dataAvant) {
+                $d = json_decode($dataAvant, true);
+                $nomMec    = $d['nom']    ?? null;
+                $prenomMec = $d['prenom'] ?? null;
+            }
+
+            $ip = $_SERVER['REMOTE_ADDR'] ?? null;
+
+            $stmt = $this->db->prepare(
+                "INSERT INTO mec_historique
+                    (mec_id, pv_id, dossier_id, user_id, action,
+                     statut_dossier, statut_pv, nom_mec, prenom_mec,
+                     data_avant, data_apres, ip_address)
+                 VALUES
+                    (:mec, :pv, :dos, :usr, :act,
+                     :sdos, :spv, :nom, :prenom,
+                     :avant, :apres, :ip)"
+            );
+            $stmt->execute([
+                ':mec'    => $mecId,
+                ':pv'     => $pvId,
+                ':dos'    => $dossierId,
+                ':usr'    => Auth::userId(),
+                ':act'    => $action,
+                ':sdos'   => $statutDossier,
+                ':spv'    => $statutPv,
+                ':nom'    => $nomMec,
+                ':prenom' => $prenomMec,
+                ':avant'  => $dataAvant,
+                ':apres'  => $dataApres,
+                ':ip'     => $ip,
+            ]);
+        } catch (\Exception $e) {
+            // Ne jamais bloquer l'opération principale pour un échec d'audit
+            error_log('traceMEC error: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Extrait le dossier_id depuis un token "_redirect_to" de la forme "dossier:4".
+     */
+    private function getDossierIdFromRedirect(string $token): ?int
+    {
+        if (str_starts_with($token, 'dossier:')) {
+            $id = (int)substr($token, 8);
+            return $id > 0 ? $id : null;
+        }
+        return null;
+    }
+
+    /**
+     * Redirige après une action MEC :
+     * - Si _redirect_to = "dossier:{id}" → /dossiers/show/{id}{anchor}
+     * - Sinon → /pv/show/{pvId}{anchor}
+     */
+    private function redirectAfterMEC(int $pvId, string $redirectTo, string $anchor = ''): void
+    {
+        $dossierId = $this->getDossierIdFromRedirect($redirectTo);
+        if ($dossierId) {
+            $this->redirect('/dossiers/show/' . $dossierId . $anchor);
+        } else {
+            $this->redirect('/pv/show/' . $pvId . $anchor);
+        }
     }
 
     // ─── Helpers infractions MEC ──────────────────────────────────────────

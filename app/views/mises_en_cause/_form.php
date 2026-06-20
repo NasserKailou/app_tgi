@@ -17,6 +17,9 @@ $mecInfrSubstitut = array_column($mecInfractions['substitut'] ?? [], 'id');
 ?>
 <form method="POST" action="<?= $formAction ?>" enctype="multipart/form-data" novalidate>
   <?= CSRF::field() ?>
+  <?php if (!empty($redirectTo)): ?>
+  <input type="hidden" name="_redirect_to" value="<?= htmlspecialchars($redirectTo) ?>">
+  <?php endif; ?>
 
   <!-- ── Section Identité ─────────────────────────────────────────────── -->
   <div class="card border-0 shadow-sm mb-3">
@@ -267,8 +270,15 @@ $mecInfrSubstitut = array_column($mecInfractions['substitut'] ?? [], 'id');
   <div class="<?= $_inModal ? 'sticky-bottom bg-white border-top p-3 mt-auto' : 'd-flex gap-2 justify-content-end mt-3' ?>">
     <div class="d-flex gap-2 justify-content-end flex-wrap">
       <?php if (!$_inModal): ?>
-      <a href="<?= BASE_URL ?>/pv/show/<?= htmlspecialchars($pvId ?? ($d['pv_id'] ?? '')) ?>#mises-en-cause"
-         class="btn btn-outline-secondary btn-sm">
+      <?php
+        // Retour intelligent : dossier si redirect_to, sinon PV
+        $cancelUrl = BASE_URL . '/pv/show/' . htmlspecialchars($pvId ?? ($d['pv_id'] ?? '')) . '#mises-en-cause';
+        if (!empty($redirectTo) && str_starts_with($redirectTo, 'dossier:')) {
+            $cancelDosId = (int)substr($redirectTo, 8);
+            if ($cancelDosId > 0) $cancelUrl = BASE_URL . '/dossiers/show/' . $cancelDosId . '#mises-en-cause';
+        }
+      ?>
+      <a href="<?= $cancelUrl ?>" class="btn btn-outline-secondary btn-sm">
         <i class="bi bi-x-lg me-1"></i>Annuler
       </a>
       <?php else: ?>

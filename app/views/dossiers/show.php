@@ -1,4 +1,30 @@
-<?php $pageTitle = 'Dossier — ' . $dossier['numero_rg']; ?>
+<?php
+$pageTitle = 'Dossier — ' . $dossier['numero_rg'];
+// ── Droits CRUD Mise en cause (tous statuts du dossier autorisés) ──
+$_mecUser       = Auth::currentUser();
+$_mecUserId     = (int)($_mecUser['id'] ?? 0);
+$_mecRole       = $_mecUser['role_code'] ?? '';
+$_mecDosStatut  = $dossier['statut'] ?? '';
+// Tous les statuts actifs autorisent le CRUD MEC :
+$_statuts_mec_ok = ['parquet','instruction','en_instruction','en_audience','juge','appel'];
+$_mecDosActif   = in_array($_mecDosStatut, $_statuts_mec_ok);
+// Créer / Reconduire
+$canCrudMEC = $_mecDosActif
+    && ($pvId ?? null)
+    && in_array($_mecRole, ['admin','procureur','substitut_procureur','greffier','president']);
+// Modifier
+$canEditMecD = $_mecDosActif
+    && in_array($_mecRole, ['admin','procureur','substitut_procureur','greffier','president'])
+    && (in_array($_mecRole, ['admin','procureur','substitut_procureur','president'])
+        || DroitsController::hasFuncAccess($_mecUserId, 'mec_modifier'));
+// Supprimer
+$canDeleteMecD = $_mecDosActif
+    && in_array($_mecRole, ['admin','procureur','substitut_procureur','greffier','president'])
+    && (in_array($_mecRole, ['admin','procureur','substitut_procureur','president'])
+        || DroitsController::hasFuncAccess($_mecUserId, 'mec_supprimer'));
+// Token de retour vers ce dossier (pour MiseEnCauseController)
+$_mecRedirectToken = 'dossier:' . (int)$dossier['id'];
+?>
 <div class="mb-4 mt-2">
     <nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="<?=BASE_URL?>/dossiers">Dossiers</a></li><li class="breadcrumb-item active"><?=htmlspecialchars($dossier['numero_rg'])?></li></ol></nav>
     <div class="d-flex justify-content-between align-items-start">
@@ -29,6 +55,11 @@
     <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabDetenus">Détenus (<?=count($detenus)?>)</a></li>
     <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabPieces"><i class="bi bi-paperclip"></i> Pièces jointes</a></li>
     <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabHistorique">Historique</a></li>
+    <li class="nav-item">
+        <a class="nav-link" data-bs-toggle="tab" href="#tabHistoriqueMEC">
+            <i class="bi bi-clock-history me-1 text-secondary"></i>Audit MEC
+        </a>
+    </li>
     <?php if (!empty($dossier['mode_poursuite']) && strtoupper($dossier['mode_poursuite']) === 'CRPC'): ?>
     <li class="nav-item">
         <a class="nav-link<?= !empty($crpcDossier) ? ' text-purple fw-semibold' : '' ?>" data-bs-toggle="tab" href="#tabCrpc"
@@ -147,7 +178,7 @@
         <!-- Header + boutons d'action -->
         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
             <h6 class="fw-bold mb-0"><i class="bi bi-people-fill me-2 text-warning"></i>Mises en cause liées au PV</h6>
-            <?php if ($pvId && Auth::hasRole(['admin','procureur','substitut_procureur','greffier','president'])): ?>
+            <?php if ($canCrudMEC): ?>
             <div class="d-flex gap-2">
                 <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#modalAddMECDossier">
                     <i class="bi bi-person-plus me-1"></i>Ajouter
@@ -197,7 +228,7 @@
             <?php
             $decBadge = ['poursuivi'=>'bg-success','non_poursuivi'=>'bg-danger','en_attente'=>'bg-secondary'];
             $decLabel = ['poursuivi'=>'Poursuivi','non_poursuivi'=>'Non poursuivi','en_attente'=>'En attente'];
-            $renderMecDList = function(array $list, string $tabId, bool $active = false) use ($decBadge, $decLabel, $pvId, $user): void { ?>
+            $renderMecDList = function(array $list, string $tabId, bool $active = false) use ($decBadge, $decLabel, $pvId, $user, $canEditMecD, $canDeleteMecD, $_mecRedirectToken): void { ?>
             <div class="tab-pane fade <?= $active ? 'show active' : '' ?>" id="<?= $tabId ?>">
                 <div class="row g-3">
                 <?php foreach ($list as $mec):
@@ -251,10 +282,18 @@
                                         onclick="voirMECDossier(<?=$mecJson2?>)">
                                     <i class="bi bi-eye me-1"></i>Voir
                                 </button>
+                                <?php if ($canEditMecD): ?>
                                 <a class="btn btn-xs btn-outline-secondary btn-sm py-0 px-2"
-                                   href="<?=BASE_URL?>/pv/mise-en-cause/edit/<?=$mec['id']?>">
+                                   href="<?=BASE_URL?>/pv/mise-en-cause/edit/<?=$mec['id']?>?redirect_to=<?=urlencode($_mecRedirectToken)?>">
                                     <i class="bi bi-pencil me-1"></i>Modifier
                                 </a>
+                                <?php endif; ?>
+                                <?php if ($canDeleteMecD): ?>
+                                <button class="btn btn-xs btn-outline-danger btn-sm py-0 px-2"
+                                        onclick="confirmerSuppMECD(<?=(int)$mec['id']?>, '<?=htmlspecialchars(addslashes($mec['nom'].' '.$mec['prenom']))?>')">
+                                    <i class="bi bi-trash me-1"></i>Supprimer
+                                </button>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
@@ -394,6 +433,89 @@
             </div>
         </div>
         <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+    </div>
+
+    <!-- Audit MEC -->
+    <div class="tab-pane fade" id="tabHistoriqueMEC">
+        <?php
+        // $mecHistorique est chargé par DossierController::show()
+        $_mecHistorique = $mecHistorique ?? [];
+        $actionLabels = [
+            'create'    => ['success', 'bi-person-plus-fill',    'Création'],
+            'update'    => ['primary', 'bi-pencil-fill',         'Modification'],
+            'delete'    => ['danger',  'bi-trash-fill',          'Suppression'],
+            'reconduire'=> ['warning', 'bi-arrow-repeat',        'Reconduction'],
+        ];
+        ?>
+        <?php if (empty($_mecHistorique)): ?>
+        <div class="text-center text-muted py-5">
+            <i class="bi bi-clock-history" style="font-size:2.5rem;opacity:.3;"></i>
+            <p class="mt-2 mb-0">Aucune action enregistrée sur les mises en cause de ce dossier.</p>
+        </div>
+        <?php else: ?>
+        <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle small">
+            <thead class="table-light">
+                <tr>
+                    <th style="width:140px">Date / Heure</th>
+                    <th style="width:110px">Action</th>
+                    <th>Mise en cause</th>
+                    <th>Statut dossier</th>
+                    <th>Utilisateur</th>
+                    <th style="width:50px"></th>
+                </tr>
+            </thead>
+            <tbody>
+            <?php foreach ($_mecHistorique as $h):
+                [$hColor, $hIcon, $hLabel] = $actionLabels[$h['action']] ?? ['secondary', 'bi-question-circle', $h['action']];
+                $hNom = trim(($h['nom_mec'] ?? '') . ' ' . ($h['prenom_mec'] ?? ''));
+            ?>
+            <tr>
+                <td class="text-muted"><?= date('d/m/Y H:i', strtotime($h['created_at'])) ?></td>
+                <td>
+                    <span class="badge bg-<?= $hColor ?>">
+                        <i class="bi <?= $hIcon ?> me-1"></i><?= $hLabel ?>
+                    </span>
+                </td>
+                <td>
+                    <?= $hNom ? '<strong>' . htmlspecialchars($hNom) . '</strong>' : '<em class="text-muted">—</em>' ?>
+                    <?php if ($h['mec_id']): ?>
+                    <span class="text-muted ms-1 small">#<?= $h['mec_id'] ?></span>
+                    <?php endif; ?>
+                </td>
+                <td>
+                    <?php if ($h['statut_dossier']): ?>
+                    <span class="badge bg-light text-dark border small"><?= htmlspecialchars($h['statut_dossier']) ?></span>
+                    <?php else: ?>—<?php endif; ?>
+                </td>
+                <td>
+                    <?php
+                    $hUser = trim(($h['user_prenom'] ?? '') . ' ' . ($h['user_nom'] ?? ''));
+                    echo $hUser ? htmlspecialchars($hUser) : '<em class="text-muted">Système</em>';
+                    ?>
+                </td>
+                <td class="text-center">
+                    <?php if ($h['data_avant'] || $h['data_apres']): ?>
+                    <button class="btn btn-xs btn-outline-secondary py-0 px-1 btn-sm"
+                            title="Voir détails"
+                            onclick="voirAuditMEC(<?= htmlspecialchars(json_encode([
+                                'action'     => $hLabel,
+                                'date'       => date('d/m/Y H:i', strtotime($h['created_at'])),
+                                'nom'        => $hNom,
+                                'avant'      => $h['data_avant'] ? json_decode($h['data_avant'], true) : null,
+                                'apres'      => $h['data_apres'] ? json_decode($h['data_apres'], true) : null,
+                                'statut_dos' => $h['statut_dossier'],
+                            ]), ENT_QUOTES) ?>)">
+                        <i class="bi bi-zoom-in"></i>
+                    </button>
+                    <?php endif; ?>
+                </td>
+            </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
         </div>
         <?php endif; ?>
     </div>
@@ -1304,13 +1426,15 @@
             </div>
             <div class="modal-body p-3 overflow-auto" style="flex:1 1 auto;">
                 <?php
-                $formAction = BASE_URL . '/pv/mise-en-cause/store/' . ($dossier['pv_id'] ?? '');
-                $pvId       = $dossier['pv_id'] ?? '';
-                $btnLabel   = 'Enregistrer la mise en cause';
-                $mec        = null;
-                $inModal    = true;
+                $formAction  = BASE_URL . '/pv/mise-en-cause/store/' . ($dossier['pv_id'] ?? '');
+                $pvId        = $dossier['pv_id'] ?? '';
+                $btnLabel    = 'Enregistrer la mise en cause';
+                $mec         = null;
+                $inModal     = true;
+                $redirectTo  = $_mecRedirectToken;
                 include __DIR__ . '/../mises_en_cause/_form.php';
-                $inModal = false;
+                $inModal    = false;
+                $redirectTo = '';
                 ?>
             </div>
         </div>
@@ -1327,6 +1451,7 @@
             </div>
             <form method="POST" action="<?=BASE_URL?>/pv/mise-en-cause/reconduire/<?=$dossier['pv_id']?>">
                 <?=CSRF::field()?>
+                <input type="hidden" name="_redirect_to" value="<?=htmlspecialchars($_mecRedirectToken)?>">
                 <div class="modal-body">
                     <div class="alert alert-info small mb-3">
                         <i class="bi bi-info-circle me-2"></i>
@@ -1375,6 +1500,35 @@
 </div>
 <?php endif; ?>
 
+<!-- ══ Modal Confirmation Suppression MEC ══ -->
+<div class="modal fade" id="modalSuppMECD" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bi bi-trash me-2"></i>Supprimer la mise en cause</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger mb-3 small">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Cette action est irréversible.</strong> La suppression sera tracée dans le journal d'audit.
+                </div>
+                <p>Confirmer la suppression de <strong id="suppMecNomD" class="text-danger"></strong> ?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <form id="formSuppMECD" method="POST" action="">
+                    <?=CSRF::field()?>
+                    <input type="hidden" name="_redirect_to" value="<?=htmlspecialchars($_mecRedirectToken)?>">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i>Oui, supprimer
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 function suggererCabinetInstr(){
     fetch('<?= BASE_URL ?>/api/cabinets/charge')
@@ -1392,6 +1546,14 @@ function suggererCabinetInstr(){
             }
         }
     }).catch(()=>{});
+}
+
+// ── Suppression MEC depuis dossier ────────────────────────────────────
+function confirmerSuppMECD(mecId, nomPrenom) {
+    document.getElementById('suppMecNomD').textContent = nomPrenom;
+    document.getElementById('formSuppMECD').action =
+        '<?= BASE_URL ?>/pv/mise-en-cause/delete/' + mecId;
+    new bootstrap.Modal(document.getElementById('modalSuppMECD')).show();
 }
 
 // ── Voir fiche MEC (dossier view) ─────────────────────────────────────
@@ -1566,4 +1728,58 @@ if (reconduireDModal) {
         searchMECD('');
     });
 }
+
+// ── Audit MEC — modal de détail ───────────────────────────────────────
+function voirAuditMEC(data) {
+    var fields = {
+        'nom':'Nom','prenom':'Prénom','alias':'Alias','date_naissance':'Naissance',
+        'lieu_naissance':'Lieu naiss.','nationalite':'Nationalité','sexe':'Sexe',
+        'profession':'Profession','adresse':'Adresse','telephone':'Téléphone',
+        'statut':'Statut','est_connu_archives':'Récidiviste','nb_affaires_precedentes':'Affaires préc.'
+    };
+    function buildTable(obj) {
+        if (!obj) return '<em class="text-muted">\u2014</em>';
+        var rows = '';
+        Object.keys(fields).forEach(function(k) {
+            var va = obj[k]; if (va === undefined || va === null || va === '') return;
+            rows += '<tr><td class="text-muted small pe-2">' + fields[k] + '</td>' +
+                    '<td class="small fw-semibold">' + escHtmlD(String(va)) + '</td></tr>';
+        });
+        return rows ? '<table class="table table-sm table-borderless mb-0">' + rows + '</table>'
+                    : '<em class="text-muted small">Aucun champ pertinent</em>';
+    }
+    var body = '<div class="mb-2"><span class="badge bg-secondary me-2">' + escHtmlD(data.date) + '</span>' +
+               '<span class="badge bg-primary">' + escHtmlD(data.action) + '</span>' +
+               (data.statut_dos ? ' <span class="badge bg-light text-dark border small ms-1">Dossier\u00a0: ' + escHtmlD(data.statut_dos) + '</span>' : '') +
+               '</div>';
+    if (data.avant || data.apres) {
+        body += '<div class="row g-2 mt-1">';
+        if (data.avant) {
+            body += '<div class="col-md-6"><h6 class="small text-muted fw-bold border-bottom pb-1 mb-2">Avant</h6>' + buildTable(data.avant) + '</div>';
+        }
+        if (data.apres) {
+            body += '<div class="col-md-6"><h6 class="small text-muted fw-bold border-bottom pb-1 mb-2">Apr\u00e8s</h6>' + buildTable(data.apres) + '</div>';
+        }
+        body += '</div>';
+    }
+    document.getElementById('auditMECBody').innerHTML = body;
+    document.getElementById('auditMECTitle').textContent = 'Audit\u00a0: ' + (data.nom || 'Mise en cause');
+    new bootstrap.Modal(document.getElementById('modalAuditMEC')).show();
+}
 </script>
+
+<!-- Modal Audit MEC détail -->
+<div class="modal fade" id="modalAuditMEC" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-secondary text-white">
+                <h5 class="modal-title" id="auditMECTitle"><i class="bi bi-clock-history me-2"></i>Détail audit</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="auditMECBody"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>

@@ -180,7 +180,28 @@ class DossierController extends Controller {
             }
         }
 
-        $this->view('dossiers/show', compact('dossier','parties','audiences','jugements','mouvements','detenus','misesEnCause','cabinets','salles','juges','greffiers','flash','user','crpcDossier','crpcPersonnes'));
+        // Historique MEC (audit trail des actions CRUD sur les mises en cause)
+        $mecHistorique = [];
+        try {
+            $mechStmt = $this->db->prepare(
+                "SELECT h.*, u.prenom AS user_prenom, u.nom AS user_nom, u.role_code
+                 FROM mec_historique h
+                 LEFT JOIN utilisateurs u ON u.id = h.user_id
+                 WHERE h.dossier_id = :dos
+                    OR h.pv_id = :pvid
+                 ORDER BY h.created_at DESC
+                 LIMIT 200"
+            );
+            $mechStmt->execute([
+                ':dos'  => (int)$id,
+                ':pvid' => (int)($dossier['pv_id'] ?? 0),
+            ]);
+            $mecHistorique = $mechStmt->fetchAll();
+        } catch (\Exception $e) {
+            $mecHistorique = [];
+        }
+
+        $this->view('dossiers/show', compact('dossier','parties','audiences','jugements','mouvements','detenus','misesEnCause','cabinets','salles','juges','greffiers','flash','user','crpcDossier','crpcPersonnes','mecHistorique'));
     }
 
     public function edit(string $id): void {

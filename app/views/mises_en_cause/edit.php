@@ -2,7 +2,12 @@
 <div class="mb-4 mt-2">
   <nav aria-label="breadcrumb"><ol class="breadcrumb">
     <li class="breadcrumb-item"><a href="<?= BASE_URL ?>/pv">PV</a></li>
+    <?php if (!empty($redirectTo) && str_starts_with($redirectTo, 'dossier:')): ?>
+    <?php $dosRetourId = (int)substr($redirectTo, 8); ?>
+    <li class="breadcrumb-item"><a href="<?= BASE_URL ?>/dossiers/show/<?= $dosRetourId ?>">Dossier</a></li>
+    <?php else: ?>
     <li class="breadcrumb-item"><a href="<?= BASE_URL ?>/pv/show/<?= $mec['pv_id'] ?>">PV #<?= htmlspecialchars($mec['numero_rg']) ?></a></li>
+    <?php endif; ?>
     <li class="breadcrumb-item active">Modifier mise en cause</li>
   </ol></nav>
   <h4 class="fw-bold"><i class="bi bi-person-exclamation me-2 text-warning"></i>
