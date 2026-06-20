@@ -1331,24 +1331,31 @@
                     <div class="alert alert-info small mb-3">
                         <i class="bi bi-info-circle me-2"></i>
                         Recherchez une personne déjà enregistrée dans un ancien PV pour la rattacher à ce dossier.
+                        Elle sera copiée avec ses informations et son compteur d'affaires sera incrémenté.
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Rechercher par nom / prénom / alias</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="bi bi-search"></i></span>
                             <input type="text" id="mecSearchInputD" class="form-control"
-                                   placeholder="Saisir au moins 2 caractères..."
+                                   placeholder="Cliquez ici ou saisissez un nom…"
                                    autocomplete="off"
-                                   oninput="searchMECD(this.value)">
+                                   oninput="searchMECD(this.value)"
+                                   onfocus="searchMECD(this.value)">
                             <button type="button" class="btn btn-outline-secondary" onclick="clearMecSearchD()">
                                 <i class="bi bi-x"></i>
                             </button>
                         </div>
+                        <div class="form-text text-muted">
+                            <i class="bi bi-lightning-fill text-warning me-1"></i>
+                            Les résultats s'affichent dès le clic — se rétrécissent au fur et à mesure que vous saisissez.
+                        </div>
                     </div>
-                    <div id="mecSearchResultsD" class="list-group mb-3"></div>
+                    <div id="mecSearchResultsD" class="list-group mb-3"
+                         style="max-height:280px;overflow-y:auto;border:1px solid #dee2e6;border-radius:0.375rem;"></div>
                     <input type="hidden" name="mec_source_id" id="mecSourceIdD">
-                    <div id="mecSelectedCardD" style="display:none" class="border rounded p-3 bg-light">
-                        <h6 class="fw-bold text-primary mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Sélectionnée</h6>
+                    <div id="mecSelectedCardD" style="display:none" class="border rounded p-3 bg-light mt-2">
+                        <h6 class="fw-bold text-primary mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Mise en cause sélectionnée</h6>
                         <div class="d-flex gap-3">
                             <div id="mecCardPhotoD" class="flex-shrink-0"></div>
                             <div class="flex-grow-1" id="mecCardDetailsD"></div>
@@ -1359,7 +1366,7 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
                     <button type="submit" class="btn btn-primary" id="btnReconduireD" disabled>
-                        <i class="bi bi-arrow-repeat me-1"></i>Reconduire
+                        <i class="bi bi-arrow-repeat me-1"></i>Reconduire cette personne
                     </button>
                 </div>
             </form>
@@ -1438,35 +1445,79 @@ function voirMECDossier(m) {
     new bootstrap.Modal(document.getElementById('modalVoirMECDossier')).show();
 }
 
-// ── Recherche MEC pour reconduction (dossier) ──────────────────────
-var mecSearchTimerD = null;
+// ── Recherche MEC pour reconduction (dossier) — live search instantané ──
+var mecSearchTimerD  = null;
+var mecSearchCacheD  = {};
+var mecCurrentDossPvId = <?= (int)($dossier['pv_id'] ?? 0) ?>;
+
 function searchMECD(q) {
     clearTimeout(mecSearchTimerD);
+    var div   = document.getElementById('mecSearchResultsD');
+    var qTrim = (q||'[EMPTY]').trim().replace('[EMPTY]','');
+    qTrim = (q||'').trim();
+    div.innerHTML = '<div class="list-group-item text-muted text-center py-2 small">' +
+        '<span class="spinner-border spinner-border-sm me-1"></span>Chargement…</div>';
+    var delay = qTrim.length === 0 ? 100 : 250;
+    mecSearchTimerD = setTimeout(function() {
+        if (mecSearchCacheD[qTrim] !== undefined) {
+            renderMecResultsD(mecSearchCacheD[qTrim]); return;
+        }
+        var url = '<?= BASE_URL ?>/api/mises-en-cause/search?exclude_pv=' + mecCurrentDossPvId +
+                  '&limit=50&q=' + encodeURIComponent(qTrim);
+        fetch(url)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            mecSearchCacheD[qTrim] = data.success ? data.data : [];
+            renderMecResultsD(mecSearchCacheD[qTrim]);
+        })
+        .catch(function() {
+            div.innerHTML = '<div class="list-group-item text-danger text-center py-2 small">' +
+                '<i class="bi bi-wifi-off me-1"></i>Erreur de connexion</div>';
+        });
+    }, delay);
+}
+
+function renderMecResultsD(items) {
     var div = document.getElementById('mecSearchResultsD');
-    if (q.length < 2) { div.innerHTML=''; return; }
-    mecSearchTimerD = setTimeout(function(){
-        fetch('<?= BASE_URL ?>/api/mises-en-cause/search?q=' + encodeURIComponent(q))
-        .then(r=>r.json())
-        .then(data=>{
-            var html = '';
-            if (data.success && data.data.length) {
-                data.data.forEach(function(m){
-                    html += '<a href="#" class="list-group-item list-group-item-action" ' +
-                        "onclick='selectMECD(" + m.id + ", " + JSON.stringify(m).replace(/'/g,"&#39;") + "); return false;'>" +
-                        '<div class="d-flex justify-content-between align-items-center">' +
-                        '<div><strong class="text-uppercase">' + (m.nom||'') + '</strong> ' + (m.prenom||'') +
-                        (m.alias ? ' <em class="text-muted small">(' + m.alias + ')</em>' : '') +
-                        (m.est_connu_archives ? ' <span class="badge bg-danger ms-1 small">Récidiviste</span>' : '') +
-                        '<br><small class="text-muted">' + (m.profession||'') + (m.lieu_naissance ? ' — '+m.lieu_naissance : '') + '</small></div>' +
-                        '<span class="badge bg-light text-dark border small">PV ' + (m.numero_rg||'?') + '</span>' +
-                        '</div></a>';
-                });
-            } else {
-                html = '<div class="list-group-item text-muted text-center py-2 small">Aucun résultat</div>';
-            }
-            div.innerHTML = html;
-        }).catch(()=>{});
-    }, 300);
+    if (!items || items.length === 0) {
+        div.innerHTML = '<div class="list-group-item text-muted text-center py-3 small">' +
+            '<i class="bi bi-person-slash fs-4 d-block mb-1 opacity-50"></i>Aucune mise en cause trouvée</div>';
+        return;
+    }
+    window._mecResultsDataD = items;
+    var baseUrl = '<?= BASE_URL ?>';
+    var html = '';
+    items.forEach(function(m, idx) {
+        html += '<a href="#" class="list-group-item list-group-item-action py-2" ' +
+            'onclick="selectMECD(' + m.id + ', window._mecResultsDataD[' + idx + ']); return false;">' +
+            '<div class="d-flex justify-content-between align-items-center gap-2">' +
+            '<div class="d-flex align-items-center gap-2">';
+        if (m.photo) {
+            html += '<img src="' + baseUrl + '/' + escHtmlD(m.photo) + '" class="rounded flex-shrink-0" ' +
+                    'style="width:32px;height:40px;object-fit:cover;" alt="">';
+        } else {
+            html += '<div class="bg-light rounded d-flex align-items-center justify-content-center flex-shrink-0" ' +
+                    'style="width:32px;height:40px;"><i class="bi bi-person-fill text-muted"></i></div>';
+        }
+        html += '<div>' +
+            '<div class="fw-semibold text-uppercase lh-1">' + escHtmlD(m.nom||'') +
+            ' <span class="fw-normal text-capitalize">' + escHtmlD(m.prenom||'') + '</span>' +
+            (m.alias ? ' <em class="text-muted small fw-normal">(' + escHtmlD(m.alias) + ')</em>' : '') +
+            (parseInt(m.est_connu_archives) ? ' <span class="badge bg-danger ms-1" style="font-size:.65rem">Récidiviste</span>' : '') +
+            '</div><div class="text-muted small">' +
+            (m.profession ? escHtmlD(m.profession) : '') +
+            (m.lieu_naissance ? (m.profession ? ' — ' : '') + escHtmlD(m.lieu_naissance) : '') +
+            '</div></div></div>' +
+            '<div class="text-end flex-shrink-0">' +
+            '<span class="badge bg-light text-dark border small d-block mb-1">PV ' + escHtmlD(m.numero_rg||'?') + '</span>' +
+            (parseInt(m.nb_affaires_precedentes) > 0 ? '<span class="badge bg-secondary small">' + m.nb_affaires_precedentes + ' aff. préc.</span>' : '') +
+            '</div></div></a>';
+    });
+    div.innerHTML = html;
+}
+
+function escHtmlD(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 function selectMECD(id, m) {
@@ -1476,19 +1527,24 @@ function selectMECD(id, m) {
     document.getElementById('btnReconduireD').disabled = false;
     var baseUrl = '<?= BASE_URL ?>';
     var photoHtml = m.photo
-        ? '<img src="' + baseUrl + '/' + m.photo + '" class="rounded" style="width:70px;height:88px;object-fit:cover;">'
+        ? '<img src="' + baseUrl + '/' + escHtmlD(m.photo) + '" class="rounded" style="width:70px;height:88px;object-fit:cover;">' 
         : '<div class="bg-secondary rounded d-flex align-items-center justify-content-center text-white" style="width:70px;height:88px;"><i class="bi bi-person-fill fs-3"></i></div>';
     document.getElementById('mecCardPhotoD').innerHTML = photoHtml;
     var sl = {'mise_en_cause':'Mise en cause','prevenu':'Prévenu','temoin':'Témoin','autre':'Autre'};
     document.getElementById('mecCardDetailsD').innerHTML =
-        '<p class="mb-1"><strong class="text-uppercase">' + (m.nom||'') + '</strong> ' + (m.prenom||'') +
-        (m.alias ? ' <em class="text-muted">(' + m.alias + ')</em>' : '') + '</p>' +
-        (m.date_naissance ? '<p class="mb-1 small"><i class="bi bi-calendar me-1 text-muted"></i>' + new Date(m.date_naissance).toLocaleDateString('fr-FR') + (m.lieu_naissance ? ' — '+m.lieu_naissance : '') + '</p>' : '') +
-        (m.profession ? '<p class="mb-1 small"><i class="bi bi-briefcase me-1 text-muted"></i>' + m.profession + '</p>' : '') +
-        '<p class="mb-0"><span class="badge bg-warning text-dark">' + (sl[m.statut]||m.statut||'—') + '</span>' +
-        (m.est_connu_archives ? ' <span class="badge bg-danger ms-1">Récidiviste</span>' : '') + '</p>';
+        '<p class="mb-1"><strong class="text-uppercase fs-6">' + escHtmlD(m.nom||'') + '</strong> ' + escHtmlD(m.prenom||'') +
+        (m.alias ? ' <em class="text-muted">(' + escHtmlD(m.alias) + ')</em>' : '') + '</p>' +
+        (m.date_naissance ? '<p class="mb-1 small"><i class="bi bi-calendar me-1 text-muted"></i>' +
+            new Date(m.date_naissance).toLocaleDateString('fr-FR') +
+            (m.lieu_naissance ? ' — ' + escHtmlD(m.lieu_naissance) : '') + '</p>' : '') +
+        (m.profession ? '<p class="mb-1 small"><i class="bi bi-briefcase me-1 text-muted"></i>' + escHtmlD(m.profession) + '</p>' : '') +
+        (m.nationalite ? '<p class="mb-1 small"><i class="bi bi-flag me-1 text-muted"></i>' + escHtmlD(m.nationalite) + '</p>' : '') +
+        '<p class="mb-0"><span class="badge bg-warning text-dark">' + escHtmlD(sl[m.statut]||m.statut||'—') + '</span>' +
+        (parseInt(m.est_connu_archives) ? ' <span class="badge bg-danger ms-1">Récidiviste</span>' : '') +
+        (parseInt(m.nb_affaires_precedentes) > 0 ? ' <span class="badge bg-secondary ms-1">' + m.nb_affaires_precedentes + ' affaire(s) préc.</span>' : '') + '</p>';
     document.getElementById('mecCardPVD').innerHTML =
-        '<i class="bi bi-file-text me-1"></i>PV n° <strong>' + (m.numero_rg||'?') + '</strong>';
+        '<i class="bi bi-file-text me-1"></i>Issu du PV n° <strong>' + escHtmlD(m.numero_rg||'?') + '</strong>' +
+        (m.date_reception ? ' — reçu le ' + new Date(m.date_reception).toLocaleDateString('fr-FR') : '');
     document.getElementById('mecSelectedCardD').style.display = 'block';
 }
 
@@ -1498,7 +1554,16 @@ function clearMecSearchD() {
     document.getElementById('mecSourceIdD').value = '';
     document.getElementById('mecSelectedCardD').style.display = 'none';
     document.getElementById('btnReconduireD').disabled = true;
+    window._mecResultsDataD = [];
+    mecSearchCacheD = {};
 }
 var reconduireDModal = document.getElementById('modalReconduireDossier');
-if (reconduireDModal) reconduireDModal.addEventListener('hidden.bs.modal', clearMecSearchD);
+if (reconduireDModal) {
+    reconduireDModal.addEventListener('hidden.bs.modal', clearMecSearchD);
+    reconduireDModal.addEventListener('shown.bs.modal', function() {
+        var input = document.getElementById('mecSearchInputD');
+        input.focus();
+        searchMECD('');
+    });
+}
 </script>
