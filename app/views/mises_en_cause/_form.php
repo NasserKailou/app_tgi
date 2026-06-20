@@ -99,7 +99,8 @@ $mecInfrSubstitut = array_column($mecInfractions['substitut'] ?? [], 'id');
           <select name="statut" class="form-select form-select-sm" id="statutMEC" required
                   onchange="toggleStatutAutre(this.value)">
             <option value="mise_en_cause" <?= ($d['statut'] ?? 'mise_en_cause') === 'mise_en_cause' ? 'selected' : '' ?>>Mise en cause</option>
-            <option value="prevenu"       <?= ($d['statut'] ?? '') === 'prevenu'       ? 'selected' : '' ?>>Prévenu</option>
+            <option value="Victime"       <?= ($d['statut'] ?? '') === 'Victime'       ? 'selected' : '' ?>>Victime</option>
+
             <option value="temoin"        <?= ($d['statut'] ?? '') === 'temoin'        ? 'selected' : '' ?>>Témoin</option>
             <option value="autre"         <?= ($d['statut'] ?? '') === 'autre'         ? 'selected' : '' ?>>Autre (à préciser)</option>
           </select>
