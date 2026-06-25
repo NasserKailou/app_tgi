@@ -721,6 +721,33 @@ class PVController extends Controller {
             default => $modePoursuite,
         };
 
+        // ── Mapping type_affaire : pv → dossiers ─────────────────────────────
+        // pv.type_affaire ENUM : droit_commun_mineur, droit_commun_majeur,
+        //   pole_antiterro_mineur, pole_antiterro_majeur, pole_economique,
+        //   civile, penale, commerciale
+        // dossiers.type_affaire ENUM : civile, penale, commerciale
+        $pvTypeAffaire = $pvData['type_affaire'] ?? 'penale';
+        $typeAffaireForDossier = match(true) {
+            in_array($pvTypeAffaire, ['civile'])                                                      => 'civile',
+            in_array($pvTypeAffaire, ['commerciale', 'pole_economique'])                             => 'commerciale',
+            in_array($pvTypeAffaire, ['penale', 'droit_commun_mineur', 'droit_commun_majeur',
+                                       'pole_antiterro_mineur', 'pole_antiterro_majeur'])             => 'penale',
+            default                                                                                   => 'penale',
+        };
+
+        // ── Dériver nature depuis type_affaire ────────────────────────────────
+        // dossiers.nature ENUM : correctionnel, instructionnel, civil, commercial, criminel
+        // Logique : antiterro→criminel, droit_commun_majeur→correctionnel,
+        //           droit_commun_mineur→correctionnel, civile→civil,
+        //           commerciale|pole_economique→commercial
+        $natureForDossier = match(true) {
+            in_array($pvTypeAffaire, ['pole_antiterro_mineur', 'pole_antiterro_majeur']) => 'criminel',
+            in_array($pvTypeAffaire, ['civile'])                                         => 'civil',
+            in_array($pvTypeAffaire, ['commerciale', 'pole_economique'])                 => 'commercial',
+            $modePoursuite === 'RI'                                                      => 'instructionnel',
+            default                                                                      => 'correctionnel',
+        };
+
         $destination = ($modePoursuite === 'RI') ? 'instruction' : 'audience';
 
         $numeroRP = $pvData['numero_rp'] ?? null;
@@ -772,17 +799,18 @@ class PVController extends Controller {
         }
 
         $ins = $this->db->prepare(
-            "INSERT INTO dossiers (pv_id, numero_rg, numero_rp, numero_ri, type_affaire,
+            "INSERT INTO dossiers (pv_id, numero_rg, numero_rp, numero_ri, type_affaire, nature,
              date_enregistrement, intitule, objet, statut, substitut_id, cabinet_id, mode_poursuite,
              date_limite_traitement, date_instruction_debut, created_by)
-             VALUES (:pvid, :rg, :rp, :ri, :type, CURDATE(), :intitule, :objet, :statut, :sub, :cab, :mp, :dlim, :dinst, :by)"
+             VALUES (:pvid, :rg, :rp, :ri, :type, :nature, CURDATE(), :intitule, :objet, :statut, :sub, :cab, :mp, :dlim, :dinst, :by)"
         );
         $ins->execute([
             ':pvid'     => (int)$id,
             ':rg'       => $numeroRG,
             ':rp'       => $numeroRP,
             ':ri'       => $numeroRI,
-            ':type'     => $pvData['type_affaire'],
+            ':type'     => $typeAffaireForDossier,   // mappé : droit_commun_* → penale, etc.
+            ':nature'   => $natureForDossier,         // dérivé : antiterro → criminel, etc.
             ':intitule' => $intitule,
             ':objet'    => $this->sanitize($_POST['objet'] ?? $pvData['description_faits'] ?? 'À compléter'),
             ':statut'   => $statut,
