@@ -60,7 +60,7 @@ $_mecRedirectToken = 'dossier:' . (int)$dossier['id'];
             <i class="bi bi-clock-history me-1 text-secondary"></i>Audit MEC
         </a>
     </li>
-    <?php if (!empty($dossier['mode_poursuite']) && strtoupper($dossier['mode_poursuite']) === 'CRPC'): ?>
+    <?php if (!empty($dossier['mode_poursuite']) && in_array(strtoupper($dossier['mode_poursuite']), ['CRPC','CRCP'])): ?>
     <li class="nav-item">
         <a class="nav-link<?= !empty($crpcDossier) ? ' text-purple fw-semibold' : '' ?>" data-bs-toggle="tab" href="#tabCrpc"
            style="<?= !empty($crpcDossier) ? 'color:#6f42c1;' : '' ?>">
@@ -89,10 +89,11 @@ $_mecRedirectToken = 'dossier:' . (int)$dossier['id'];
                             <div class="col-md-6"><small class="text-muted">Substitut</small><br><strong><?=htmlspecialchars(($dossier['substitut_prenom']??'').($dossier['substitut_nom']?' '.$dossier['substitut_nom']:'—'))?></strong></div>
                             <div class="col-md-6"><small class="text-muted">Cabinet d'instruction</small><br><strong><?=htmlspecialchars($dossier['cabinet_num']?($dossier['cabinet_num'].' — '.$dossier['cabinet_lib']):'—')?></strong></div>
                             <?php if(!empty($dossier['mode_poursuite']) && $dossier['mode_poursuite'] !== 'aucun'): ?>
-                            <?php $mpLabels=['CD'=>'Citation Directe','FD'=>'Flagrant Délit','CRCP'=>'CRCP','RI'=>'Réquisitoire Introductif']; ?>
+                            <?php $mpLabels=['CD'=>'Citation Directe','FD'=>'Flagrant Délit','CRCP'=>'CRPC','CRPC'=>'CRPC','RI'=>'Réquisitoire Introductif']; ?>
                             <div class="col-md-6"><small class="text-muted">Mode de poursuite</small><br>
-                                <span class="badge bg-info text-dark fs-6"><?=htmlspecialchars($dossier['mode_poursuite'])?></span>
-                                <small class="text-muted ms-1"><?=htmlspecialchars($mpLabels[$dossier['mode_poursuite']]??'')?></small>
+                                <?php $mpDisplay = strtoupper($dossier['mode_poursuite']) === 'CRCP' ? 'CRPC' : $dossier['mode_poursuite']; ?>
+                                <span class="badge bg-info text-dark fs-6"><?=htmlspecialchars($mpDisplay)?></span>
+                                <small class="text-muted ms-1"><?=htmlspecialchars($mpLabels[$dossier['mode_poursuite']]??$mpLabels[strtoupper($dossier['mode_poursuite'])]??'')?></small>
                             </div>
                             <?php endif; ?>
                             <?php if($dossier['date_instruction_debut']): ?>
@@ -521,7 +522,7 @@ $_mecRedirectToken = 'dossier:' . (int)$dossier['id'];
     </div>
 
     <!-- CRPC -->
-    <?php if (!empty($dossier['mode_poursuite']) && strtoupper($dossier['mode_poursuite']) === 'CRPC'): ?>
+    <?php if (!empty($dossier['mode_poursuite']) && in_array(strtoupper($dossier['mode_poursuite']), ['CRPC','CRCP'])): ?>
     <div class="tab-pane fade" id="tabCrpc">
         <?php if (empty($crpcDossier)): ?>
         <div class="alert alert-warning d-flex align-items-center gap-2">
