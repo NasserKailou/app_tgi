@@ -711,6 +711,16 @@ class PVController extends Controller {
             $modePoursuite = 'RI';
         }
 
+        // mode_poursuite dans la table `dossiers` utilise 'CRCP' (pas 'CRPC')
+        // La table `pv` utilise 'CRPC' correctement
+        // On mappe : CRPC → CRCP pour l'INSERT dans dossiers
+        // 'autre' n'existe pas dans l'ENUM dossiers.mode_poursuite, on utilise 'aucun'
+        $modePoursuiteForDossier = match($modePoursuite) {
+            'CRPC'  => 'CRCP',
+            'autre' => 'aucun',
+            default => $modePoursuite,
+        };
+
         $destination = ($modePoursuite === 'RI') ? 'instruction' : 'audience';
 
         $numeroRP = $pvData['numero_rp'] ?? null;
@@ -743,26 +753,45 @@ class PVController extends Controller {
             ? date('Y-m-d', strtotime('+' . DELAI_INSTRUCTION_MOIS . ' months'))
             : date('Y-m-d', strtotime('+30 days'));
 
+        // Construire l'intitulé du dossier (champ NOT NULL en production)
+        $nomsMEC = [];
+        try {
+            $stmtMec = $this->db->prepare(
+                "SELECT nom, prenom FROM mises_en_cause WHERE pv_id=? ORDER BY nom LIMIT 3"
+            );
+            $stmtMec->execute([(int)$id]);
+            foreach ($stmtMec->fetchAll() as $m) {
+                $nomsMEC[] = trim($m['nom'] . ' ' . $m['prenom']);
+            }
+        } catch (\Exception $e) {}
+        if (!empty($nomsMEC)) {
+            $intitule = implode(', ', $nomsMEC);
+            if (count($nomsMEC) === 3) $intitule .= ' et al.';
+        } else {
+            $intitule = 'Affaire PV ' . ($pvData['numero_rg'] ?? $id);
+        }
+
         $ins = $this->db->prepare(
             "INSERT INTO dossiers (pv_id, numero_rg, numero_rp, numero_ri, type_affaire,
-             date_enregistrement, objet, statut, substitut_id, cabinet_id, mode_poursuite,
+             date_enregistrement, intitule, objet, statut, substitut_id, cabinet_id, mode_poursuite,
              date_limite_traitement, date_instruction_debut, created_by)
-             VALUES (:pvid, :rg, :rp, :ri, :type, CURDATE(), :objet, :statut, :sub, :cab, :mp, :dlim, :dinst, :by)"
+             VALUES (:pvid, :rg, :rp, :ri, :type, CURDATE(), :intitule, :objet, :statut, :sub, :cab, :mp, :dlim, :dinst, :by)"
         );
         $ins->execute([
-            'pvid'  => (int)$id,
-            'rg'    => $numeroRG,
-            'rp'    => $numeroRP,
-            'ri'    => $numeroRI,
-            'type'  => $pvData['type_affaire'],
-            'objet' => $this->sanitize($_POST['objet'] ?? $pvData['description_faits'] ?? 'À compléter'),
-            'statut'=> $statut,
-            'sub'   => $pvData['substitut_id'],
-            'cab'   => $cabinetId,
-            'mp'    => $modePoursuite,
-            'dlim'  => $dateLimite,
-            'dinst' => $dateInstDeb,
-            'by'    => Auth::userId(),
+            ':pvid'     => (int)$id,
+            ':rg'       => $numeroRG,
+            ':rp'       => $numeroRP,
+            ':ri'       => $numeroRI,
+            ':type'     => $pvData['type_affaire'],
+            ':intitule' => $intitule,
+            ':objet'    => $this->sanitize($_POST['objet'] ?? $pvData['description_faits'] ?? 'À compléter'),
+            ':statut'   => $statut,
+            ':sub'      => $pvData['substitut_id'],
+            ':cab'      => $cabinetId,
+            ':mp'       => $modePoursuiteForDossier,
+            ':dlim'     => $dateLimite,
+            ':dinst'    => $dateInstDeb,
+            ':by'       => Auth::userId(),
         ]);
         $dossierId = (int)$this->db->lastInsertId();
 
@@ -776,6 +805,7 @@ class PVController extends Controller {
             'CD'    => 'Citation Directe (→ Audience directe)',
             'FD'    => 'Flagrant Délit (→ Audience directe)',
             'CRPC'  => 'CRPC (→ Audience directe)',
+            'CRCP'  => 'CRPC (→ Audience directe)',
             'autre' => 'Autre',
         ];
         $histDesc = "Dossier créé depuis PV {$pvData['numero_rg']} — Mode : " . ($mpLabels[$modePoursuite] ?? $modePoursuite);

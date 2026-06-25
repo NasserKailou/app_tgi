@@ -150,10 +150,13 @@ class DossierController extends Controller {
         $juges     = $jugesStmt->fetchAll();
         $greffiers = $this->db->query("SELECT u.* FROM users u JOIN roles r ON u.role_id=r.id WHERE r.code='greffier' AND u.actif=1")->fetchAll();
 
-        // Fiche CRPC liée à ce dossier (si mode_poursuite = CRPC)
+        // Fiche CRPC liée à ce dossier (si mode_poursuite = CRPC ou CRCP)
+        // Note : la table dossiers.mode_poursuite utilise 'CRCP' en production
+        // et la table pv.mode_poursuite utilise 'CRPC' — on accepte les deux
         $crpcDossier  = null;
         $crpcPersonnes = [];
-        if (!empty($dossier['mode_poursuite']) && strtoupper($dossier['mode_poursuite']) === 'CRPC') {
+        $mpUpper = strtoupper($dossier['mode_poursuite'] ?? '');
+        if (!empty($dossier['mode_poursuite']) && in_array($mpUpper, ['CRPC', 'CRCP'])) {
             try {
                 $crpcStmt = $this->db->prepare(
                     "SELECT cd.*,
