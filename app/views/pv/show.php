@@ -391,7 +391,8 @@
                     Mises en cause
                     <span class="badge bg-warning text-dark ms-2"><?= count($misesEnCause) ?></span>
                 </span>
-                <?php if (in_array($pv['statut'], ['recu','en_traitement']) && DroitsController::hasFuncAccess((int)($user['id']??0), 'mec_creer')): ?>
+
+                <?php if (DroitsController::hasFuncAccess((int)($user['id']??0), 'mec_creer')): ?>
                 <div class="d-flex gap-2">
                     <!-- Reconduire -->
                     <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalReconduire">
