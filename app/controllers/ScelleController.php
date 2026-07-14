@@ -127,8 +127,8 @@ class ScelleController extends Controller
         Auth::requireRole(['admin', 'greffier', 'president', 'juge_instruction']);
         CSRF::check();
         $this->db->prepare(
-            "UPDATE scelles SET statut='restitue', date_restitution=CURDATE(), beneficiaire_restitution=:ben WHERE id=?"
-        )->execute([$_POST['beneficiaire'] ?? 'Non précisé', (int)$id]);
+            "UPDATE scelles SET statut='restitue', date_restitution=CURDATE(), beneficiaire_restitution=:ben WHERE id=:id"
+        )->execute([':ben' => $_POST['beneficiaire'] ?? 'Non précisé', ':id' => (int)$id]);
         $this->flash('success', 'Scellé restitué.');
         $this->redirect('/scelles/show/' . $id);
     }

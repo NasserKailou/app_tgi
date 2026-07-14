@@ -35,8 +35,6 @@ class AvocatController extends Controller
         }
         $whereSQL = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 
-        $total = (int)$this->db->prepare("SELECT COUNT(*) FROM avocats a $whereSQL")
-                     ->execute($params) ? 0 : 0;
         $stmtCount = $this->db->prepare("SELECT COUNT(*) FROM avocats a $whereSQL");
         $stmtCount->execute($params);
         $total = (int)$stmtCount->fetchColumn();
@@ -237,7 +235,7 @@ class AvocatController extends Controller
     {
         Auth::requireLogin();
         $q = trim($_GET['q'] ?? '');
-        if (strlen($q) < 2) { $this->json(['success'=>true,'data']=[]); return; }
+        if (strlen($q) < 2) { $this->json(['success' => true, 'data' => []]); return; }
         $stmt = $this->db->prepare(
             "SELECT id, matricule, nom, prenom, barreau, numero_ordre, statut
              FROM avocats

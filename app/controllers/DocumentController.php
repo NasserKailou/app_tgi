@@ -231,8 +231,8 @@ class DocumentController extends Controller
         }
 
         // Normaliser les colonnes (compatibilité migration 001 vs 005)
-        $doc['nom_original'] = $doc['nom_original'] ?? $doc['nom_fichier'] ?? $doc['nom_stockage'] ?? 'document';
-        $doc['mime_type']    = $doc['mime_type']    ?? $doc['type_mime']  ?? 'application/octet-stream';
+        $doc['nom_original'] = $doc['nom_original'] ?? ($doc['nom_fichier'] ?? ($doc['nom_stockage'] ?? 'document'));
+        $doc['mime_type']    = $doc['mime_type']    ?? ($doc['type_mime']  ?? 'application/octet-stream');
 
         // Construire le chemin absolu — chemin_fichier stocké en relatif (ex: uploads/documents/dossier_1/xxx.pdf)
         $cheminRelatif = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $doc['chemin_fichier']);
@@ -291,17 +291,24 @@ class DocumentController extends Controller
             $this->json(['success' => false, 'message' => 'Dossier invalide.'], 400);
         }
 
+        // Déterminer les colonnes disponibles pour compatibilité multi-version
+        $cols = $this->db->query("SHOW COLUMNS FROM documents")->fetchAll(\PDO::FETCH_COLUMN);
+        $nomCol  = in_array('nom_original', $cols) ? 'd.nom_original'
+                 : (in_array('nom_fichier', $cols) ? 'd.nom_fichier' : 'd.nom_stockage');
+        $mimeCol = in_array('mime_type', $cols) ? 'd.mime_type'
+                 : (in_array('type_mime', $cols) ? 'd.type_mime' : "'application/octet-stream'");
+
         $stmt = $this->db->prepare(
-            'SELECT d.id,
-                    COALESCE(d.nom_original, d.nom_fichier, d.nom_stockage) AS nom_original,
-                    COALESCE(d.mime_type, d.type_mime, \'application/octet-stream\') AS mime_type,
+            "SELECT d.id,
+                    {$nomCol} AS nom_original,
+                    {$mimeCol} AS mime_type,
                     d.taille_octets, d.description, d.created_at,
-                    CONCAT(u.prenom, \' \', u.nom) AS uploaded_by_nom
+                    CONCAT(u.prenom, ' ', u.nom) AS uploaded_by_nom
              FROM documents d
              LEFT JOIN users u ON u.id = d.uploaded_by
              WHERE d.dossier_id = :dossier_id
-               AND d.type_document = \'piece_jointe\'
-             ORDER BY d.created_at DESC'
+               AND d.type_document = 'piece_jointe'
+             ORDER BY d.created_at DESC"
         );
         $stmt->execute([':dossier_id' => $dossierId]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
