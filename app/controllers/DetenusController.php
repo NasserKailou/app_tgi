@@ -64,20 +64,40 @@ class DetenusController extends Controller {
             }
         }
 
+        // Vérifier si la colonne jugement_id existe dans la table detenus
+        $hasJugementId = false;
+        try {
+            $cols = $this->db->query("SHOW COLUMNS FROM detenus LIKE 'jugement_id'")->fetchAll();
+            $hasJugementId = !empty($cols);
+        } catch (\Exception $e) {
+            $hasJugementId = false;
+        }
+        if (!$hasJugementId) {
+            // Ajouter la colonne si absente (migration automatique)
+            try {
+                $this->db->exec("ALTER TABLE detenus ADD COLUMN jugement_id INT(11) DEFAULT NULL AFTER dossier_id");
+                $hasJugementId = true;
+            } catch (\Exception $e) {
+                // Ignorer si déjà existante ou erreur
+            }
+        }
+
+        $jugementIdCol  = $hasJugementId ? 'jugement_id,' : '';
+        $jugementIdVal  = $hasJugementId ? ':jugement_id,' : '';
         $this->db->prepare(
-            "INSERT INTO detenus (dossier_id, jugement_id, nom, prenom, surnom_alias, nom_mere,
+            "INSERT INTO detenus (dossier_id, {$jugementIdCol} nom, prenom, surnom_alias, nom_mere,
              statut_matrimonial, nombre_enfants, sexe, date_naissance, lieu_naissance,
              nationalite, profession, numero_ecrou, type_detention, date_incarceration,
              date_liberation_prevue, statut, cellule, etablissement, maison_arret_id,
              photo_identite, notes)
-             VALUES (:dossier_id, :jugement_id, :nom, :prenom, :surnom_alias, :nom_mere,
+             VALUES (:dossier_id, {$jugementIdVal} :nom, :prenom, :surnom_alias, :nom_mere,
              :statut_matrimonial, :nombre_enfants, :sexe, :date_naissance, :lieu_naissance,
              :nationalite, :profession, :numero_ecrou, :type_detention, :date_incarceration,
              :date_liberation_prevue, 'incarcere', :cellule, :etablissement, :maison_arret_id,
              :photo_identite, :notes)"
-        )->execute([
+        )->execute(array_filter([
             ':dossier_id'         => $_POST['dossier_id'] ?: null,
-            ':jugement_id'        => $_POST['jugement_id'] ?? null ?: null,
+            ':jugement_id'        => $hasJugementId ? ($_POST['jugement_id'] ?? null ?: null) : null,
             ':nom'                => $this->sanitize($_POST['nom']),
             ':prenom'             => $this->sanitize($_POST['prenom']),
             ':surnom_alias'       => $this->sanitize($_POST['surnom_alias'] ?? '') ?: null,
@@ -98,7 +118,7 @@ class DetenusController extends Controller {
             ':maison_arret_id'    => $_POST['maison_arret_id'] ?: null,
             ':photo_identite'     => $photoPath,
             ':notes'              => $this->sanitize($_POST['notes'] ?? ''),
-        ]);
+        ], fn($v, $k) => !(!$hasJugementId && $k === ':jugement_id'), ARRAY_FILTER_USE_BOTH));
         $newId = (int)$this->db->lastInsertId();
         $this->flash('success',"Détenu enregistré — Écrou : $ecrou");
         $this->redirect('/detenus/etat/' . $newId);

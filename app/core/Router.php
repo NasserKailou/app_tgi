@@ -35,7 +35,7 @@ class Router {
                 $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
                 [$controllerName, $action] = explode('@', $handler);
                 $controller = new $controllerName();
-                call_user_func_array([$controller, $action], $params);
+                call_user_func_array([$controller, $action], array_values($params));
                 return;
             }
         }

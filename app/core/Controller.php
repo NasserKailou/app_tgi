@@ -52,8 +52,31 @@ abstract class Controller {
         return $_POST[$key] ?? $_GET[$key] ?? $default;
     }
 
+    /**
+     * Nettoie une valeur de saisie pour l'affichage HTML (XSS).
+     * Pour les requêtes DB, utiliser PDO avec paramètres liés (déjà le cas partout).
+     */
     protected function sanitize(string $value): string {
-        return htmlspecialchars(trim($value), ENT_QUOTES, 'UTF-8');
+        return htmlspecialchars(trim($value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    }
+
+    /**
+     * Validation d'un entier (protection injection)
+     */
+    protected function intInput(string $key, int $default = 0): int {
+        $val = $_POST[$key] ?? $_GET[$key] ?? $default;
+        return filter_var($val, FILTER_VALIDATE_INT) !== false ? (int)$val : $default;
+    }
+
+    /**
+     * Validation d'une date (format YYYY-MM-DD)
+     */
+    protected function dateInput(string $key, ?string $default = null): ?string {
+        $val = $_POST[$key] ?? $_GET[$key] ?? $default;
+        if ($val && preg_match('/^\d{4}-\d{2}-\d{2}$/', $val)) {
+            return $val;
+        }
+        return $default;
     }
 
     protected function isPost(): bool {

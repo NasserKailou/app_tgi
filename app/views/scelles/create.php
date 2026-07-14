@@ -17,7 +17,8 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-semibold">Catégorie <span class="text-danger">*</span></label>
-                    <select name="categorie" class="form-select" required>
+                    <select name="categorie" class="form-select" required id="categorieScelle"
+                            onchange="toggleCategorieAutre(this.value)">
                         <option value="">—</option>
                         <option value="arme">Arme</option>
                         <option value="drogue">Drogue / Stupéfiant</option>
@@ -25,8 +26,13 @@
                         <option value="argent">Argent / Valeur</option>
                         <option value="electronique">Appareil électronique</option>
                         <option value="vehicule">Véhicule</option>
-                        <option value="autre">Autre</option>
+                        <option value="autre">Autre (à préciser)</option>
                     </select>
+                </div>
+                <div class="col-md-6" id="rowCategorieAutre" style="display:none">
+                    <label class="form-label fw-semibold">Préciser la catégorie <span class="text-danger">*</span></label>
+                    <input type="text" name="categorie_autre_detail" class="form-control"
+                           placeholder="Ex: Bijoux, Produits chimiques, Munitions...">
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-semibold">Date de dépôt <span class="text-danger">*</span></label>
@@ -52,3 +58,9 @@
         </form>
     </div>
 </div>
+<script>
+function toggleCategorieAutre(val) {
+    var el = document.getElementById('rowCategorieAutre');
+    if (el) el.style.display = (val === 'autre') ? 'block' : 'none';
+}
+</script>

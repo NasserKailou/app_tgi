@@ -3,11 +3,13 @@
 /** @var int   $page */
 /** @var int   $totalPages */
 $catLabels = [
-    'criminelle'        => ['label' => 'Criminelle',         'class' => 'danger'],
-    'correctionnelle'   => ['label' => 'Correctionnelle',    'class' => 'warning'],
-    'contraventionnelle'=> ['label' => 'Contraventionnelle', 'class' => 'info'],
+    'criminelle'         => ['label' => 'Criminelle',         'class' => 'danger'],
+    'correctionnelle'    => ['label' => 'Correctionnelle',    'class' => 'warning'],
+    'contraventionnelle' => ['label' => 'Contraventionnelle', 'class' => 'info'],
+    'autres'             => ['label' => 'Autres',             'class' => 'secondary'],
 ];
 ?>
+
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h2 class="mb-0"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Infractions</h2>

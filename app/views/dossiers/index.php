@@ -185,7 +185,8 @@
         aucun: '—',
         CD:    'Citation Directe',
         FD:    'Flagrant Délit',
-        CRCP:  'CRCP',
+        CRCP:  'CRPC',
+        CRPC:  'CRPC',
         RI:    'Réquisitoire Introductif'
     };
 

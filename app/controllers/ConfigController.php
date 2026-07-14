@@ -6,6 +6,14 @@
  */
 class ConfigController extends Controller
 {
+    /** Catégories autorisées pour la table infractions */
+    private const INFRACTION_CATEGORIES = [
+        'criminelle',
+        'correctionnelle',
+        'contraventionnelle',
+        'autres',
+    ];
+
     // ─── Vérification d'accès centralisée ────────────────────────────────────
     private function requireConfig(): void
     {
@@ -411,46 +419,96 @@ class ConfigController extends Controller
         $this->view('config/infractions', compact('flash','user','infractions','page','totalPages','pageTitle'));
     }
 
-    public function infractionStore(): void
-    {
-        $this->requireConfig();
-        CSRF::check();
+   public function infractionStore(): void
+{
+    $this->requireConfig();
+    CSRF::check();
 
-        $this->db->prepare(
-            "INSERT INTO infractions (code, libelle, categorie, peine_min_mois, peine_max_mois)
-             VALUES (:code, :libelle, :categorie, :peine_min, :peine_max)"
-        )->execute([
-            ':code'      => strtoupper(trim($_POST['code'] ?? '')),
-            ':libelle'   => trim($_POST['libelle'] ?? ''),
-            ':categorie' => $_POST['categorie'] ?? 'correctionnelle',
-            ':peine_min' => !empty($_POST['peine_min_mois']) ? (int)$_POST['peine_min_mois'] : null,
-            ':peine_max' => !empty($_POST['peine_max_mois']) ? (int)$_POST['peine_max_mois'] : null,
-        ]);
-
-        $this->flash('success', 'Infraction créée.');
+    $categorie = $_POST['categorie'] ?? 'correctionnelle';
+    if (!in_array($categorie, self::INFRACTION_CATEGORIES, true)) {
+        $this->flash('error', 'Catégorie d\'infraction invalide.');
         $this->redirect('/config/infractions');
     }
 
-    public function infractionUpdate(string $id): void
-    {
-        $this->requireConfig();
-        CSRF::check();
+    $code    = strtoupper(trim($_POST['code']    ?? ''));
+    $libelle = trim($_POST['libelle'] ?? '');
 
-        $this->db->prepare(
-            "UPDATE infractions SET code=:code, libelle=:libelle, categorie=:categorie,
-             peine_min_mois=:peine_min, peine_max_mois=:peine_max WHERE id=:id"
-        )->execute([
-            ':code'      => strtoupper(trim($_POST['code'] ?? '')),
-            ':libelle'   => trim($_POST['libelle'] ?? ''),
-            ':categorie' => $_POST['categorie'] ?? 'correctionnelle',
-            ':peine_min' => !empty($_POST['peine_min_mois']) ? (int)$_POST['peine_min_mois'] : null,
-            ':peine_max' => !empty($_POST['peine_max_mois']) ? (int)$_POST['peine_max_mois'] : null,
-            ':id'        => (int)$id,
-        ]);
-
-        $this->flash('success', 'Infraction mise à jour.');
+    if ($code === '' || $libelle === '') {
+        $this->flash('error', 'Le code et le libellé sont obligatoires.');
         $this->redirect('/config/infractions');
     }
+
+    // Empêcher les doublons de code
+    $check = $this->db->prepare("SELECT id FROM infractions WHERE code = :code LIMIT 1");
+    $check->execute([':code' => $code]);
+    if ($check->fetch()) {
+        $this->flash('error', 'Ce code d\'infraction existe déjà.');
+        $this->redirect('/config/infractions');
+    }
+
+    $this->db->prepare(
+        "INSERT INTO infractions (code, libelle, categorie, peine_min_mois, peine_max_mois)
+         VALUES (:code, :libelle, :categorie, :peine_min, :peine_max)"
+    )->execute([
+        ':code'      => $code,
+        ':libelle'   => $libelle,
+        ':categorie' => $categorie,
+        ':peine_min' => $_POST['peine_min_mois'] !== '' && isset($_POST['peine_min_mois']) ? (int)$_POST['peine_min_mois'] : null,
+        ':peine_max' => $_POST['peine_max_mois'] !== '' && isset($_POST['peine_max_mois']) ? (int)$_POST['peine_max_mois'] : null,
+    ]);
+
+    $this->flash('success', 'Infraction créée.');
+    $this->redirect('/config/infractions');
+}
+
+public function infractionUpdate(string $id): void
+{
+    $this->requireConfig();
+    CSRF::check();
+
+    $categorie = $_POST['categorie'] ?? 'correctionnelle';
+    if (!in_array($categorie, self::INFRACTION_CATEGORIES, true)) {
+        $this->flash('error', 'Catégorie d\'infraction invalide.');
+        $this->redirect('/config/infractions');
+    }
+
+    $code    = strtoupper(trim($_POST['code']    ?? ''));
+    $libelle = trim($_POST['libelle'] ?? '');
+
+    if ($code === '' || $libelle === '') {
+        $this->flash('error', 'Le code et le libellé sont obligatoires.');
+        $this->redirect('/config/infractions');
+    }
+
+    // Doublon de code (sauf sur la ligne en cours)
+    $check = $this->db->prepare("SELECT id FROM infractions WHERE code = :code AND id <> :id LIMIT 1");
+    $check->execute([':code' => $code, ':id' => (int)$id]);
+    if ($check->fetch()) {
+        $this->flash('error', 'Ce code d\'infraction est déjà utilisé par une autre entrée.');
+        $this->redirect('/config/infractions');
+    }
+
+    $this->db->prepare(
+        "UPDATE infractions
+            SET code = :code,
+                libelle = :libelle,
+                categorie = :categorie,
+                peine_min_mois = :peine_min,
+                peine_max_mois = :peine_max
+          WHERE id = :id"
+    )->execute([
+        ':code'      => $code,
+        ':libelle'   => $libelle,
+        ':categorie' => $categorie,
+        ':peine_min' => $_POST['peine_min_mois'] !== '' && isset($_POST['peine_min_mois']) ? (int)$_POST['peine_min_mois'] : null,
+        ':peine_max' => $_POST['peine_max_mois'] !== '' && isset($_POST['peine_max_mois']) ? (int)$_POST['peine_max_mois'] : null,
+        ':id'        => (int)$id,
+    ]);
+
+    $this->flash('success', 'Infraction mise à jour.');
+    $this->redirect('/config/infractions');
+}
+
 
     public function infractionDelete(string $id): void
     {
@@ -460,6 +518,69 @@ class ConfigController extends Controller
         $this->db->prepare("DELETE FROM infractions WHERE id=:id")->execute([':id' => (int)$id]);
         $this->flash('success', 'Infraction supprimée.');
         $this->redirect('/config/infractions');
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // API AJAX — Création d'infraction depuis PV/create (tous rôles connectés)
+    // POST /api/infractions/store → JSON
+    // ═══════════════════════════════════════════════════════════════════════════
+    public function apiInfractionStore(): void
+    {
+        Auth::requireLogin();
+        // CSRF : accepte le champ _csrf envoyé en FormData
+        CSRF::check();
+
+        header('Content-Type: application/json; charset=utf-8');
+
+        $categorie = $_POST['categorie'] ?? 'correctionnelle';
+        if (!in_array($categorie, self::INFRACTION_CATEGORIES, true)) {
+            echo json_encode(['success' => false, 'error' => 'Catégorie invalide.']);
+            return;
+        }
+
+        $code    = strtoupper(trim($_POST['code']    ?? ''));
+        $libelle = trim($_POST['libelle'] ?? '');
+
+        if ($code === '' || $libelle === '') {
+            echo json_encode(['success' => false, 'error' => 'Le code et le libellé sont obligatoires.']);
+            return;
+        }
+
+        // Doublon de code
+        $check = $this->db->prepare("SELECT id FROM infractions WHERE code = :code LIMIT 1");
+        $check->execute([':code' => $code]);
+        if ($check->fetch()) {
+            echo json_encode(['success' => false, 'error' => "Le code « {$code} » existe déjà."]);
+            return;
+        }
+
+        $peineMin = (isset($_POST['peine_min_mois']) && $_POST['peine_min_mois'] !== '')
+            ? (int)$_POST['peine_min_mois'] : null;
+        $peineMax = (isset($_POST['peine_max_mois']) && $_POST['peine_max_mois'] !== '')
+            ? (int)$_POST['peine_max_mois'] : null;
+
+        $this->db->prepare(
+            "INSERT INTO infractions (code, libelle, categorie, peine_min_mois, peine_max_mois)
+             VALUES (:code, :libelle, :categorie, :peine_min, :peine_max)"
+        )->execute([
+            ':code'      => $code,
+            ':libelle'   => $libelle,
+            ':categorie' => $categorie,
+            ':peine_min' => $peineMin,
+            ':peine_max' => $peineMax,
+        ]);
+
+        $newId = (int)$this->db->lastInsertId();
+
+        echo json_encode([
+            'success'    => true,
+            'infraction' => [
+                'id'        => $newId,
+                'code'      => $code,
+                'libelle'   => $libelle,
+                'categorie' => $categorie,
+            ],
+        ]);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -820,11 +941,13 @@ class ConfigController extends Controller
         $substituts = $this->db->query(
             "SELECT u.id, u.nom, u.prenom,
                     (SELECT COUNT(*) FROM dossiers d WHERE d.substitut_id=u.id AND d.statut NOT IN ('juge','classe')) AS nb_dossiers,
-                    (SELECT COUNT(*) FROM pv p WHERE p.substitut_id=u.id AND p.statut='en_traitement') AS nb_pvs
+                    (SELECT COUNT(*) FROM pv p WHERE p.substitut_id=u.id AND p.statut IN ('en_traitement','recu')) AS nb_pvs,
+                    (SELECT COUNT(*) FROM dossiers d2 WHERE d2.substitut_id=u.id AND d2.statut NOT IN ('juge','classe')) +
+                    (SELECT COUNT(*) FROM pv p2 WHERE p2.substitut_id=u.id AND p2.statut IN ('en_traitement','recu')) AS charge_totale
              FROM users u
              JOIN roles r ON u.role_id=r.id
              WHERE r.code='substitut_procureur' AND u.actif=1
-             ORDER BY nb_dossiers ASC, nb_pvs ASC"
+             ORDER BY charge_totale ASC, nb_pvs ASC"
         )->fetchAll();
         $this->json(['success' => true, 'data' => $substituts]);
     }

@@ -127,13 +127,84 @@ class DossierController extends Controller {
         $detStmt->execute([(int)$id]);
         $detenus = $detStmt->fetchAll();
 
+        // Mises en cause liées au PV du dossier
+        $misesEnCause = [];
+        if (!empty($dossier['pv_id'])) {
+            try {
+                $mecStmt = $this->db->prepare(
+                    "SELECT m.*, p.numero_rg FROM mises_en_cause m
+                     JOIN pv p ON p.id = m.pv_id
+                     WHERE m.pv_id = ?
+                     ORDER BY m.nom, m.prenom"
+                );
+                $mecStmt->execute([$dossier['pv_id']]);
+                $misesEnCause = $mecStmt->fetchAll();
+            } catch (\Exception $e) {
+                $misesEnCause = [];
+            }
+        }
+
         $cabinets  = $this->db->query("SELECT * FROM cabinets_instruction WHERE actif=1")->fetchAll();
         $salles    = $this->db->query("SELECT * FROM salles_audience WHERE actif=1")->fetchAll();
         $jugesStmt = $this->db->query("SELECT u.* FROM users u JOIN roles r ON u.role_id=r.id WHERE r.code IN ('president','juge_siege','vice_president') AND u.actif=1");
         $juges     = $jugesStmt->fetchAll();
         $greffiers = $this->db->query("SELECT u.* FROM users u JOIN roles r ON u.role_id=r.id WHERE r.code='greffier' AND u.actif=1")->fetchAll();
 
-        $this->view('dossiers/show', compact('dossier','parties','audiences','jugements','mouvements','detenus','cabinets','salles','juges','greffiers','flash','user'));
+        // Fiche CRPC liée à ce dossier (si mode_poursuite = CRPC ou CRCP)
+        // Note : la table dossiers.mode_poursuite utilise 'CRCP' en production
+        // et la table pv.mode_poursuite utilise 'CRPC' — on accepte les deux
+        $crpcDossier  = null;
+        $crpcPersonnes = [];
+        $mpUpper = strtoupper($dossier['mode_poursuite'] ?? '');
+        if (!empty($dossier['mode_poursuite']) && in_array($mpUpper, ['CRPC', 'CRCP'])) {
+            try {
+                $crpcStmt = $this->db->prepare(
+                    "SELECT cd.*,
+                            us.nom AS sub_nom, us.prenom AS sub_prenom
+                     FROM crpc_dossiers cd
+                     LEFT JOIN users us ON cd.substitut_id = us.id
+                     WHERE cd.dossier_id = ?
+                     ORDER BY cd.id DESC
+                     LIMIT 1"
+                );
+                $crpcStmt->execute([(int)$id]);
+                $crpcDossier = $crpcStmt->fetch() ?: null;
+
+                if ($crpcDossier) {
+                    $persStmt = $this->db->prepare(
+                        "SELECT * FROM crpc_personnes WHERE crpc_id = ? ORDER BY numero_ordre, id"
+                    );
+                    $persStmt->execute([$crpcDossier['id']]);
+                    $crpcPersonnes = $persStmt->fetchAll();
+                }
+            } catch (\Exception $e) {
+                $crpcDossier  = null;
+                $crpcPersonnes = [];
+            }
+        }
+
+        // Historique MEC (audit trail des actions CRUD sur les mises en cause)
+        $mecHistorique = [];
+        try {
+            $mechStmt = $this->db->prepare(
+                "SELECT h.*, u.prenom AS user_prenom, u.nom AS user_nom, u.role_code
+                 FROM mec_historique h
+                 LEFT JOIN utilisateurs u ON u.id = h.user_id
+                 WHERE h.dossier_id = :dos
+                    OR h.pv_id = :pvid
+                 ORDER BY h.created_at DESC
+                 LIMIT 200"
+            );
+            $mechStmt->execute([
+                ':dos'  => (int)$id,
+                ':pvid' => (int)($dossier['pv_id'] ?? 0),
+            ]);
+            $mecHistorique = $mechStmt->fetchAll();
+        } catch (\Exception $e) {
+            $mecHistorique = [];
+        }
+
+        $this->view('dossiers/show', compact('dossier','parties','audiences','jugements','mouvements','detenus','misesEnCause','cabinets','salles','juges','greffiers','flash','user','crpcDossier','crpcPersonnes','mecHistorique'));
     }
 
     public function edit(string $id): void {

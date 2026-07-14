@@ -1,9 +1,18 @@
 Options -Indexes
 RewriteEngine On
 
-# Si la requête est déjà dans /public, ne pas rediriger
-RewriteCond %{REQUEST_URI} !^/([^/]+/)?public/
-RewriteCond %{REQUEST_URI} !^/([^/]+/)?index\.php$
+# ── Forcer HTTPS (optionnel, décommentez si certificat SSL actif) ──
+# RewriteCond %{HTTPS} off
+# RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
 
-# Rediriger tout vers public/login
-RewriteRule ^(.*)$ public/login [R=302,L]
+# ── Ne pas réécrire les fichiers et dossiers qui existent réellement ──
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# ── Ne pas réécrire si déjà dans /public ──
+RewriteCond %{REQUEST_URI} !^/public/
+
+# ── Tout rediriger vers public/index.php ──
+RewriteRule ^(.*)$ public/index.php [L]
+
+Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://code.highcharts.com; script-src-elem 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://code.highcharts.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; img-src 'self' data: https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org; font-src 'self' data: https://cdn.jsdelivr.net; connect-src 'self';"

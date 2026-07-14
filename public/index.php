@@ -1,4 +1,20 @@
 <?php
+// ─── En-têtes de sécurité ─────────────────────────────────────────────────
+// Empêcher le clickjacking
+header('X-Frame-Options: SAMEORIGIN');
+// Empêcher la détection MIME sniffing
+header('X-Content-Type-Options: nosniff');
+// Protection XSS (anciens navigateurs)
+header('X-XSS-Protection: 1; mode=block');
+// Content Security Policy — permissif mais protège les injections CSS/JS externes
+header("Content-Security-Policy: default-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://code.highcharts.com 'unsafe-inline'; img-src 'self' data: https://*.cartocdn.com https://*.openstreetmap.org https://unpkg.com; font-src 'self' https://cdn.jsdelivr.net; frame-src 'self'; connect-src 'self' https://unpkg.com https://*.cartocdn.com");
+// Strict Transport Security (si HTTPS)
+if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+    header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+}
+// Referrer Policy
+header('Referrer-Policy: strict-origin-when-cross-origin');
+
 // Buffer de sortie global — protège les réponses JSON des notices PHP
 ob_start();
 
@@ -6,6 +22,14 @@ ob_start();
 if (!defined('ROOT_PATH')) {
     define('ROOT_PATH', dirname(__DIR__));
 }
+
+// Chargement optionnel de app_config.php (surcharge de APP_BASE_URL pour déploiement production)
+// Ce fichier ne doit pas être versionné — voir app_config.php.example
+$_appConfigPath = ROOT_PATH . '/app_config.php';
+if (file_exists($_appConfigPath)) {
+    require_once $_appConfigPath;
+}
+unset($_appConfigPath);
 
 require_once ROOT_PATH . '/app/config/config.php';
 require_once ROOT_PATH . '/app/config/database.php';
@@ -50,8 +74,10 @@ $router->get('/logout',   'AuthController@logout');
 
 // Dashboard
 $router->get('/',          'DashboardController@index');
-$router->get('/dashboard', 'DashboardController@index');
-$router->get('/api/dashboard-stats', 'DashboardController@apiStats');
+$router->get('/dashboard',               'DashboardController@index');
+$router->get('/api/dashboard-stats',    'DashboardController@apiStats');
+$router->post('/dashboard/rapport',     'DashboardController@genererRapport');
+$router->get('/dashboard/rapport/{id}', 'DashboardController@voirRapport');
 
 // PV
 $router->get('/pv',                    'PVController@index');
@@ -63,8 +89,52 @@ $router->post('/pv/update/{id}',       'PVController@update');
 $router->post('/pv/affecter/{id}',     'PVController@affecter');
 $router->post('/pv/classer/{id}',      'PVController@classer');
 $router->post('/pv/transferer/{id}',   'PVController@transferer');
-$router->get('/api/departements/{region_id}', 'PVController@apiDepartements');
+$router->post('/pv/declasser/{id}',    'PVController@declasser');
+$router->get('/api/departements/{region_id}',  'PVController@apiDepartements');
 $router->get('/api/communes/{departement_id}', 'PVController@apiCommunes');
+// PV — pièces jointes (substitut uniquement)
+$router->post('/pv/upload/{pvId}',             'PVController@uploadDocument');
+$router->get('/api/pv/documents/{pvId}',       'PVController@listDocuments');
+// PV — suppression pièce jointe
+$router->post('/pv/document/delete/{id}',      'PVController@deleteDocument');
+// PV — suppression définitive du PV (admin uniquement)
+$router->post('/pv/delete/{id}',               'PVController@delete');
+// PV — fusion multi-PV + recherche RP
+$router->post('/pv/fusionner/{id}',            'PVController@fusionner');
+$router->get('/api/pv/search-rp',              'PVController@apiSearchRP');
+
+// CRPC — édition d'une fiche CRPC existante
+$router->get('/crpc/edit/{id}',                'PVController@editCrpc');
+$router->post('/crpc/update/{id}',             'PVController@updateCrpc');
+
+// Situation périodique des PVs
+$router->get('/situation/pv',                  'SituationController@index');
+$router->get('/situation/pv/export',           'SituationController@export');
+$router->get('/situation/crpc',                'SituationController@crpc');
+
+// Tableau de bord analytique avancé
+$router->get('/analytics',                     'AnalyticsController@index');
+$router->get('/api/analytics/data',            'AnalyticsController@apiData');
+
+// Mises en cause
+$router->post('/pv/mise-en-cause/store/{pvId}',      'MiseEnCauseController@store');
+$router->get('/pv/mise-en-cause/edit/{id}',          'MiseEnCauseController@edit');
+$router->post('/pv/mise-en-cause/update/{id}',       'MiseEnCauseController@update');
+$router->post('/pv/mise-en-cause/delete/{id}',       'MiseEnCauseController@delete');
+$router->post('/pv/mise-en-cause/decision/{id}',     'MiseEnCauseController@decision');
+$router->post('/pv/mise-en-cause/reconduire/{pvId}', 'MiseEnCauseController@reconduire');
+$router->get('/api/mises-en-cause/search',           'MiseEnCauseController@apiSearch');
+
+// Plaintes
+$router->get('/plaintes',                  'PlainteController@index');
+$router->get('/plaintes/create',           'PlainteController@create');
+$router->post('/plaintes/store',           'PlainteController@store');
+$router->get('/plaintes/show/{id}',        'PlainteController@show');
+$router->get('/plaintes/edit/{id}',        'PlainteController@edit');
+$router->post('/plaintes/update/{id}',     'PlainteController@update');
+$router->post('/plaintes/traiter/{id}',    'PlainteController@traiter');
+$router->post('/plaintes/classer/{id}',    'PlainteController@classer');
+$router->post('/plaintes/creer-pv/{id}',   'PlainteController@creerPV');
 
 // Dossiers
 $router->get('/dossiers',                        'DossierController@index');
@@ -85,6 +155,12 @@ $router->post('/dossiers/declasser/{id}',       'DossierController@declasserDoss
 $router->get('/mandats',                      'MandatController@index');
 $router->get('/mandats/create',               'MandatController@create');
 $router->post('/mandats/store',               'MandatController@store');
+// ─── Nouvelles routes : modification et suppression ─────────────
+$router->get ('/mandats/edit/{id}',   'MandatController@edit');
+$router->post('/mandats/update/{id}', 'MandatController@update');
+$router->post('/mandats/delete/{id}', 'MandatController@delete');
+
+// ─────────────────────────────────────────────────────────────────
 $router->get('/mandats/show/{id}',            'MandatController@show');
 $router->get('/mandats/print/{id}',           'MandatController@printMandat');
 $router->post('/mandats/update-statut/{id}',  'MandatController@updateStatut');
@@ -177,6 +253,8 @@ $router->get('/config/infractions',                      'ConfigController@infra
 $router->post('/config/infractions/store',               'ConfigController@infractionStore');
 $router->post('/config/infractions/update/{id}',         'ConfigController@infractionUpdate');
 $router->post('/config/infractions/delete/{id}',         'ConfigController@infractionDelete');
+// API AJAX — création infraction depuis PV/create (accessible à tous les rôles connectés)
+$router->post('/api/infractions/store',                  'ConfigController@apiInfractionStore');
 
 $router->get('/config/maisons-arret',                    'ConfigController@maisonsArret');
 $router->post('/config/maisons-arret/store',             'ConfigController@maisonArretStore');
@@ -275,6 +353,10 @@ $router->get( '/scelles/edit/{id}',          'ScelleController@edit');
 $router->post('/scelles/update/{id}',        'ScelleController@update');
 $router->post('/scelles/restituer/{id}',     'ScelleController@restituer');
 $router->post('/scelles/detruire/{id}',      'ScelleController@detruire');
+
+// ─── Rapports ─────────────────────────────────────────────────────────────────
+$router->post('/rapports/generer',           'RapportController@generer');
+$router->get( '/rapports',                   'RapportController@index');
 
 // ─── Casier judiciaire ────────────────────────────────────────────────────────
 $router->get( '/casier-judiciaire',          'CasierJudiciairController@index');

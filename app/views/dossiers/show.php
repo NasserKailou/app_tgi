@@ -1,4 +1,30 @@
-<?php $pageTitle = 'Dossier — ' . $dossier['numero_rg']; ?>
+<?php
+$pageTitle = 'Dossier — ' . $dossier['numero_rg'];
+// ── Droits CRUD Mise en cause (tous statuts du dossier autorisés) ──
+$_mecUser       = Auth::currentUser();
+$_mecUserId     = (int)($_mecUser['id'] ?? 0);
+$_mecRole       = $_mecUser['role_code'] ?? '';
+$_mecDosStatut  = $dossier['statut'] ?? '';
+// Tous les statuts actifs autorisent le CRUD MEC :
+$_statuts_mec_ok = ['parquet','instruction','en_instruction','en_audience','juge','appel'];
+$_mecDosActif   = in_array($_mecDosStatut, $_statuts_mec_ok);
+// Créer / Reconduire
+$canCrudMEC = $_mecDosActif
+    && ($pvId ?? null)
+    && in_array($_mecRole, ['admin','procureur','substitut_procureur','greffier','president']);
+// Modifier
+$canEditMecD = $_mecDosActif
+    && in_array($_mecRole, ['admin','procureur','substitut_procureur','greffier','president'])
+    && (in_array($_mecRole, ['admin','procureur','substitut_procureur','president'])
+        || DroitsController::hasFuncAccess($_mecUserId, 'mec_modifier'));
+// Supprimer
+$canDeleteMecD = $_mecDosActif
+    && in_array($_mecRole, ['admin','procureur','substitut_procureur','greffier','president'])
+    && (in_array($_mecRole, ['admin','procureur','substitut_procureur','president'])
+        || DroitsController::hasFuncAccess($_mecUserId, 'mec_supprimer'));
+// Token de retour vers ce dossier (pour MiseEnCauseController)
+$_mecRedirectToken = 'dossier:' . (int)$dossier['id'];
+?>
 <div class="mb-4 mt-2">
     <nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="<?=BASE_URL?>/dossiers">Dossiers</a></li><li class="breadcrumb-item active"><?=htmlspecialchars($dossier['numero_rg'])?></li></ol></nav>
     <div class="d-flex justify-content-between align-items-start">
@@ -20,12 +46,33 @@
 
 <ul class="nav nav-tabs mb-4" id="dossierTabs">
     <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabInfos">Informations</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabMEC">
+        <i class="bi bi-people-fill me-1 text-warning"></i>Mises en cause (<?=count($misesEnCause ?? [])?>)
+    </a></li>
     <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabParties">Parties (<?=count($parties)?>)</a></li>
     <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabAudiences">Audiences (<?=count($audiences)?>)</a></li>
     <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabJugements">Jugements (<?=count($jugements)?>)</a></li>
     <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabDetenus">Détenus (<?=count($detenus)?>)</a></li>
     <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabPieces"><i class="bi bi-paperclip"></i> Pièces jointes</a></li>
     <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabHistorique">Historique</a></li>
+    <li class="nav-item">
+        <a class="nav-link" data-bs-toggle="tab" href="#tabHistoriqueMEC">
+            <i class="bi bi-clock-history me-1 text-secondary"></i>Audit MEC
+        </a>
+    </li>
+    <?php if (!empty($dossier['mode_poursuite']) && in_array(strtoupper($dossier['mode_poursuite']), ['CRPC','CRCP'])): ?>
+    <li class="nav-item">
+        <a class="nav-link<?= !empty($crpcDossier) ? ' text-purple fw-semibold' : '' ?>" data-bs-toggle="tab" href="#tabCrpc"
+           style="<?= !empty($crpcDossier) ? 'color:#6f42c1;' : '' ?>">
+            <i class="bi bi-file-earmark-text me-1" style="color:#6f42c1;"></i>CRPC
+            <?php if (!empty($crpcDossier)): ?>
+            <span class="badge ms-1" style="background:#6f42c1;font-size:.7rem;">
+                <?= $crpcDossier['statut'] === 'homologuee' ? '✓' : ($crpcDossier['statut'] === 'refusee' ? '✗' : '…') ?>
+            </span>
+            <?php endif; ?>
+        </a>
+    </li>
+    <?php endif; ?>
 </ul>
 
 <div class="tab-content">
@@ -42,10 +89,11 @@
                             <div class="col-md-6"><small class="text-muted">Substitut</small><br><strong><?=htmlspecialchars(($dossier['substitut_prenom']??'').($dossier['substitut_nom']?' '.$dossier['substitut_nom']:'—'))?></strong></div>
                             <div class="col-md-6"><small class="text-muted">Cabinet d'instruction</small><br><strong><?=htmlspecialchars($dossier['cabinet_num']?($dossier['cabinet_num'].' — '.$dossier['cabinet_lib']):'—')?></strong></div>
                             <?php if(!empty($dossier['mode_poursuite']) && $dossier['mode_poursuite'] !== 'aucun'): ?>
-                            <?php $mpLabels=['CD'=>'Citation Directe','FD'=>'Flagrant Délit','CRCP'=>'CRCP','RI'=>'Réquisitoire Introductif']; ?>
+                            <?php $mpLabels=['CD'=>'Citation Directe','FD'=>'Flagrant Délit','CRCP'=>'CRPC','CRPC'=>'CRPC','RI'=>'Réquisitoire Introductif']; ?>
                             <div class="col-md-6"><small class="text-muted">Mode de poursuite</small><br>
-                                <span class="badge bg-info text-dark fs-6"><?=htmlspecialchars($dossier['mode_poursuite'])?></span>
-                                <small class="text-muted ms-1"><?=htmlspecialchars($mpLabels[$dossier['mode_poursuite']]??'')?></small>
+                                <?php $mpDisplay = strtoupper($dossier['mode_poursuite']) === 'CRCP' ? 'CRPC' : $dossier['mode_poursuite']; ?>
+                                <span class="badge bg-info text-dark fs-6"><?=htmlspecialchars($mpDisplay)?></span>
+                                <small class="text-muted ms-1"><?=htmlspecialchars($mpLabels[$dossier['mode_poursuite']]??$mpLabels[strtoupper($dossier['mode_poursuite'])]??'')?></small>
                             </div>
                             <?php endif; ?>
                             <?php if($dossier['date_instruction_debut']): ?>
@@ -117,6 +165,152 @@
                 <?php endif; ?>
             </div>
         </div>
+    </div>
+
+    <!-- Mises en cause -->
+    <div class="tab-pane fade" id="tabMEC">
+        <?php
+        $misesEnCause = $misesEnCause ?? [];
+        $pvId = $dossier['pv_id'] ?? null;
+        $mec_poursuivi    = array_filter($misesEnCause, fn($m) => $m['decision_substitut'] === 'poursuivi');
+        $mec_non_poursuivi= array_filter($misesEnCause, fn($m) => $m['decision_substitut'] === 'non_poursuivi');
+        $mec_attente      = array_filter($misesEnCause, fn($m) => $m['decision_substitut'] === 'en_attente');
+        ?>
+        <!-- Header + boutons d'action -->
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <h6 class="fw-bold mb-0"><i class="bi bi-people-fill me-2 text-warning"></i>Mises en cause liées au PV</h6>
+            <?php if ($canCrudMEC): ?>
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#modalAddMECDossier">
+                    <i class="bi bi-person-plus me-1"></i>Ajouter
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalReconduireDossier">
+                    <i class="bi bi-arrow-repeat me-1"></i>Reconduire
+                </button>
+            </div>
+            <?php endif; ?>
+        </div>
+
+        <?php if (empty($misesEnCause)): ?>
+        <div class="alert alert-light border text-center py-4">
+            <i class="bi bi-people text-muted" style="font-size:2.5rem;"></i>
+            <p class="mt-2 mb-0 text-muted">Aucune mise en cause enregistrée pour ce dossier.</p>
+            <?php if ($pvId): ?>
+            <a class="btn btn-sm btn-warning mt-2" href="<?=BASE_URL?>/pv/show/<?=$pvId?>#mises-en-cause">
+                <i class="bi bi-arrow-right me-1"></i>Gérer depuis le PV
+            </a>
+            <?php endif; ?>
+        </div>
+        <?php else: ?>
+        <!-- Onglets Poursuivi / Non poursuivi / En attente -->
+        <ul class="nav nav-pills mb-3 gap-1" id="mecDossierTabs">
+            <li class="nav-item">
+                <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#mecDAll">
+                    <i class="bi bi-list me-1"></i>Tous (<?=count($misesEnCause)?>)
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link text-success" data-bs-toggle="pill" data-bs-target="#mecDPoursuivi">
+                    <i class="bi bi-check-circle me-1"></i>Poursuivi(s) (<?=count($mec_poursuivi)?>)
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link text-danger" data-bs-toggle="pill" data-bs-target="#mecDNonPoursuivi">
+                    <i class="bi bi-x-circle me-1"></i>Non poursuivi(s) (<?=count($mec_non_poursuivi)?>)
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link text-secondary" data-bs-toggle="pill" data-bs-target="#mecDAttente">
+                    <i class="bi bi-hourglass me-1"></i>En attente (<?=count($mec_attente)?>)
+                </button>
+            </li>
+        </ul>
+        <div class="tab-content">
+            <?php
+            $decBadge = ['poursuivi'=>'bg-success','non_poursuivi'=>'bg-danger','en_attente'=>'bg-secondary'];
+            $decLabel = ['poursuivi'=>'Poursuivi','non_poursuivi'=>'Non poursuivi','en_attente'=>'En attente'];
+            $renderMecDList = function(array $list, string $tabId, bool $active = false) use ($decBadge, $decLabel, $pvId, $user, $canEditMecD, $canDeleteMecD, $_mecRedirectToken): void { ?>
+            <div class="tab-pane fade <?= $active ? 'show active' : '' ?>" id="<?= $tabId ?>">
+                <div class="row g-3">
+                <?php foreach ($list as $mec):
+                    $db2 = $decBadge[$mec['decision_substitut']] ?? 'bg-secondary';
+                    $dl2 = $decLabel[$mec['decision_substitut']] ?? '—';
+                    $mecJson2 = htmlspecialchars(json_encode([
+                        'id'=>$mec['id'],'nom'=>$mec['nom']??'','prenom'=>$mec['prenom']??'','alias'=>$mec['alias']??'',
+                        'nom_mere'=>$mec['nom_mere']??'','date_naissance'=>$mec['date_naissance']??'',
+                        'lieu_naissance'=>$mec['lieu_naissance']??'','nationalite'=>$mec['nationalite']??'',
+                        'sexe'=>$mec['sexe']??'','profession'=>$mec['profession']??'','adresse'=>$mec['adresse']??'',
+                        'telephone'=>$mec['telephone']??'','statut'=>$mec['statut']??'',
+                        'statut_autre_detail'=>$mec['statut_autre_detail']??'','photo'=>$mec['photo']??'',
+                        'personne_contacter_nom'=>$mec['personne_contacter_nom']??'',
+                        'personne_contacter_tel'=>$mec['personne_contacter_tel']??'',
+                        'personne_contacter_lien'=>$mec['personne_contacter_lien']??'',
+                        'est_connu_archives'=>$mec['est_connu_archives']??0,
+                        'nb_affaires_precedentes'=>$mec['nb_affaires_precedentes']??0,
+                        'notes_antecedents'=>$mec['notes_antecedents']??'',
+                        'decision_substitut'=>$mec['decision_substitut']??'',
+                        'numero_rg'=>$mec['numero_rg']??'',
+                    ]), ENT_QUOTES); ?>
+                <div class="col-md-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body d-flex gap-3 align-items-start p-3">
+                        <?php if ($mec['photo']): ?>
+                        <img src="<?=BASE_URL?>/<?=htmlspecialchars($mec['photo'])?>" class="rounded"
+                             style="width:56px;height:70px;object-fit:cover;flex-shrink:0;cursor:pointer;"
+                             onclick="voirMECDossier(<?=$mecJson2?>)" title="Agrandir la photo">
+                        <?php else: ?>
+                        <div class="bg-light border rounded d-flex align-items-center justify-content-center flex-shrink-0"
+                             style="width:56px;height:70px;cursor:pointer;" onclick="voirMECDossier(<?=$mecJson2?>)">
+                            <i class="bi bi-person-fill text-muted fs-3"></i>
+                        </div>
+                        <?php endif; ?>
+                        <div class="flex-grow-1 min-w-0">
+                            <div class="d-flex justify-content-between align-items-start mb-1">
+                                <span class="fw-bold text-uppercase small"><?=htmlspecialchars($mec['nom'])?></span>
+                                <span class="badge <?=$db2?> ms-1"><?=$dl2?></span>
+                            </div>
+                            <div class="small text-muted"><?=htmlspecialchars($mec['prenom']??'')?></div>
+                            <?php if ($mec['alias']): ?><div class="small text-muted fst-italic">(<?=htmlspecialchars($mec['alias'])?>)</div><?php endif; ?>
+                            <div class="small text-muted">
+                                <?php if ($mec['date_naissance']): ?><i class="bi bi-calendar2 me-1"></i><?=date('d/m/Y', strtotime($mec['date_naissance']))?><?php endif; ?>
+                                <?php if ($mec['lieu_naissance']): ?> — <?=htmlspecialchars($mec['lieu_naissance'])?><?php endif; ?>
+                            </div>
+                            <?php if ($mec['est_connu_archives']): ?>
+                            <span class="badge bg-danger mt-1 small"><i class="bi bi-exclamation-triangle-fill me-1"></i>Récidiviste</span>
+                            <?php endif; ?>
+                            <div class="mt-2 d-flex gap-1 flex-wrap">
+                                <button class="btn btn-xs btn-outline-info btn-sm py-0 px-2"
+                                        onclick="voirMECDossier(<?=$mecJson2?>)">
+                                    <i class="bi bi-eye me-1"></i>Voir
+                                </button>
+                                <?php if ($canEditMecD): ?>
+                                <a class="btn btn-xs btn-outline-secondary btn-sm py-0 px-2"
+                                   href="<?=BASE_URL?>/pv/mise-en-cause/edit/<?=$mec['id']?>?redirect_to=<?=urlencode($_mecRedirectToken)?>">
+                                    <i class="bi bi-pencil me-1"></i>Modifier
+                                </a>
+                                <?php endif; ?>
+                                <?php if ($canDeleteMecD): ?>
+                                <button class="btn btn-xs btn-outline-danger btn-sm py-0 px-2"
+                                        onclick="confirmerSuppMECD(<?=(int)$mec['id']?>, '<?=htmlspecialchars(addslashes($mec['nom'].' '.$mec['prenom']))?>')">
+                                    <i class="bi bi-trash me-1"></i>Supprimer
+                                </button>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                </div>
+                <?php endforeach; ?>
+                </div>
+            </div>
+            <?php };
+            $renderMecDList($misesEnCause, 'mecDAll', true);
+            $renderMecDList($mec_poursuivi, 'mecDPoursuivi');
+            $renderMecDList($mec_non_poursuivi, 'mecDNonPoursuivi');
+            $renderMecDList($mec_attente, 'mecDAttente');
+            ?>
+        </div>
+        <?php endif; ?>
     </div>
 
     <!-- Parties -->
@@ -243,6 +437,360 @@
         </div>
         <?php endif; ?>
     </div>
+
+    <!-- Audit MEC -->
+    <div class="tab-pane fade" id="tabHistoriqueMEC">
+        <?php
+        // $mecHistorique est chargé par DossierController::show()
+        $_mecHistorique = $mecHistorique ?? [];
+        $actionLabels = [
+            'create'    => ['success', 'bi-person-plus-fill',    'Création'],
+            'update'    => ['primary', 'bi-pencil-fill',         'Modification'],
+            'delete'    => ['danger',  'bi-trash-fill',          'Suppression'],
+            'reconduire'=> ['warning', 'bi-arrow-repeat',        'Reconduction'],
+        ];
+        ?>
+        <?php if (empty($_mecHistorique)): ?>
+        <div class="text-center text-muted py-5">
+            <i class="bi bi-clock-history" style="font-size:2.5rem;opacity:.3;"></i>
+            <p class="mt-2 mb-0">Aucune action enregistrée sur les mises en cause de ce dossier.</p>
+        </div>
+        <?php else: ?>
+        <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle small">
+            <thead class="table-light">
+                <tr>
+                    <th style="width:140px">Date / Heure</th>
+                    <th style="width:110px">Action</th>
+                    <th>Mise en cause</th>
+                    <th>Statut dossier</th>
+                    <th>Utilisateur</th>
+                    <th style="width:50px"></th>
+                </tr>
+            </thead>
+            <tbody>
+            <?php foreach ($_mecHistorique as $h):
+                [$hColor, $hIcon, $hLabel] = $actionLabels[$h['action']] ?? ['secondary', 'bi-question-circle', $h['action']];
+                $hNom = trim(($h['nom_mec'] ?? '') . ' ' . ($h['prenom_mec'] ?? ''));
+            ?>
+            <tr>
+                <td class="text-muted"><?= date('d/m/Y H:i', strtotime($h['created_at'])) ?></td>
+                <td>
+                    <span class="badge bg-<?= $hColor ?>">
+                        <i class="bi <?= $hIcon ?> me-1"></i><?= $hLabel ?>
+                    </span>
+                </td>
+                <td>
+                    <?= $hNom ? '<strong>' . htmlspecialchars($hNom) . '</strong>' : '<em class="text-muted">—</em>' ?>
+                    <?php if ($h['mec_id']): ?>
+                    <span class="text-muted ms-1 small">#<?= $h['mec_id'] ?></span>
+                    <?php endif; ?>
+                </td>
+                <td>
+                    <?php if ($h['statut_dossier']): ?>
+                    <span class="badge bg-light text-dark border small"><?= htmlspecialchars($h['statut_dossier']) ?></span>
+                    <?php else: ?>—<?php endif; ?>
+                </td>
+                <td>
+                    <?php
+                    $hUser = trim(($h['user_prenom'] ?? '') . ' ' . ($h['user_nom'] ?? ''));
+                    echo $hUser ? htmlspecialchars($hUser) : '<em class="text-muted">Système</em>';
+                    ?>
+                </td>
+                <td class="text-center">
+                    <?php if ($h['data_avant'] || $h['data_apres']): ?>
+                    <button class="btn btn-xs btn-outline-secondary py-0 px-1 btn-sm"
+                            title="Voir détails"
+                            onclick="voirAuditMEC(<?= htmlspecialchars(json_encode([
+                                'action'     => $hLabel,
+                                'date'       => date('d/m/Y H:i', strtotime($h['created_at'])),
+                                'nom'        => $hNom,
+                                'avant'      => $h['data_avant'] ? json_decode($h['data_avant'], true) : null,
+                                'apres'      => $h['data_apres'] ? json_decode($h['data_apres'], true) : null,
+                                'statut_dos' => $h['statut_dossier'],
+                            ]), ENT_QUOTES) ?>)">
+                        <i class="bi bi-zoom-in"></i>
+                    </button>
+                    <?php endif; ?>
+                </td>
+            </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+        </div>
+        <?php endif; ?>
+    </div>
+
+    <!-- CRPC -->
+    <?php if (!empty($dossier['mode_poursuite']) && in_array(strtoupper($dossier['mode_poursuite']), ['CRPC','CRCP'])): ?>
+    <div class="tab-pane fade" id="tabCrpc">
+        <?php if (empty($crpcDossier)): ?>
+        <div class="alert alert-warning d-flex align-items-center gap-2">
+            <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+            <div>Aucune fiche CRPC enregistrée pour ce dossier.
+                <?php if (!empty($dossier['pv_id']) && Auth::hasRole(['admin','procureur','substitut_procureur'])): ?>
+                <a href="<?= BASE_URL ?>/pv/show/<?= $dossier['pv_id'] ?>" class="alert-link ms-1">
+                    Aller au PV pour créer la fiche CRPC
+                </a>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php else: ?>
+
+        <!-- En-tête CRPC avec actions -->
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div>
+                <h5 class="fw-bold mb-1" style="color:#6f42c1;">
+                    <i class="bi bi-file-earmark-text me-2"></i>Fiche CRPC — Comparution sur Reconnaissance Préalable de Culpabilité
+                </h5>
+                <div class="d-flex gap-2 flex-wrap mt-1">
+                    <?php
+                    $statutCrpcLabels = ['en_cours'=>['secondary','En cours'],'homologuee'=>['success','Homologuée'],'refusee'=>['danger','Refusée'],'abandonnee'=>['dark','Abandonnée']];
+                    [$scc,$scl] = $statutCrpcLabels[$crpcDossier['statut']??'en_cours'] ?? ['secondary','En cours'];
+                    ?>
+                    <span class="badge bg-<?= $scc ?> fs-6"><?= $scl ?></span>
+                    <?php if (!empty($crpcDossier['date_mise_en_oeuvre'])): ?>
+                    <span class="badge bg-light text-dark border">
+                        <i class="bi bi-calendar me-1"></i>
+                        <?= date('d/m/Y', strtotime($crpcDossier['date_mise_en_oeuvre'])) ?>
+                    </span>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php if (Auth::hasRole(['admin','procureur','substitut_procureur','cabinet'])): ?>
+            <a href="<?= BASE_URL ?>/crpc/edit/<?= $crpcDossier['id'] ?>" class="btn btn-sm fw-semibold text-white" style="background:#6f42c1;">
+                <i class="bi bi-pencil-square me-1"></i>Modifier la fiche CRPC
+            </a>
+            <?php endif; ?>
+        </div>
+
+        <!-- Section I : Identification -->
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header fw-bold text-white small" style="background:#6f42c1;">
+                <i class="bi bi-i-circle me-1"></i>I. Identification du dossier
+            </div>
+            <div class="card-body">
+                <div class="row g-3 small">
+                    <div class="col-md-4">
+                        <span class="text-muted">Date de mise en œuvre</span><br>
+                        <strong><?= !empty($crpcDossier['date_mise_en_oeuvre']) ? date('d/m/Y', strtotime($crpcDossier['date_mise_en_oeuvre'])) : '—' ?></strong>
+                    </div>
+                    <div class="col-md-4">
+                        <span class="text-muted">Substitut ayant conduit la procédure</span><br>
+                        <strong><?= htmlspecialchars(trim(($crpcDossier['sub_prenom'] ?? '') . ' ' . ($crpcDossier['sub_nom'] ?? '')) ?: '—') ?></strong>
+                    </div>
+                    <div class="col-md-4">
+                        <span class="text-muted">Statut</span><br>
+                        <span class="badge bg-<?= $scc ?>"><?= $scl ?></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section II : Personnes poursuivies -->
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header fw-bold text-white small" style="background:#6f42c1;">
+                <i class="bi bi-people me-1"></i>II. Identification des personnes poursuivies
+            </div>
+            <div class="card-body p-0">
+                <?php if (!empty($crpcPersonnes)): ?>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0 small">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Nom et Prénom</th>
+                                <th>Sexe</th>
+                                <th>Âge</th>
+                                <th>Nationalité</th>
+                                <th>Profession</th>
+                                <th>Quartier/Adresse</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <?php foreach ($crpcPersonnes as $ci => $pers): ?>
+                            <tr>
+                                <td><?= $ci + 1 ?></td>
+                                <td><strong class="text-uppercase"><?= htmlspecialchars($pers['nom_prenom'] ?? '—') ?></strong></td>
+                                <td><?= htmlspecialchars($pers['sexe'] ?? '—') ?></td>
+                                <td><?= htmlspecialchars($pers['age'] ?? '—') ?></td>
+                                <td><?= htmlspecialchars($pers['nationalite'] ?? '—') ?></td>
+                                <td><?= htmlspecialchars($pers['profession'] ?? '—') ?></td>
+                                <td><?= htmlspecialchars($pers['quartier'] ?? '—') ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <?php else: ?>
+                <div class="text-muted p-3 small">Aucune personne enregistrée.</div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <!-- Section III : Infractions -->
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header fw-bold text-white small" style="background:#6f42c1;">
+                <i class="bi bi-gavel me-1"></i>III. Infraction(s) poursuivie(s)
+            </div>
+            <div class="card-body">
+                <div class="row g-3 small">
+                    <div class="col-md-6">
+                        <span class="text-muted">Qualification des faits</span><br>
+                        <strong><?= htmlspecialchars($crpcDossier['qualification_faits'] ?? '—') ?></strong>
+                    </div>
+                    <div class="col-md-3">
+                        <span class="text-muted">Date des faits</span><br>
+                        <strong><?= !empty($crpcDossier['date_faits']) ? date('d/m/Y', strtotime($crpcDossier['date_faits'])) : '—' ?></strong>
+                    </div>
+                    <div class="col-md-3">
+                        <span class="text-muted">Texte applicable</span><br>
+                        <strong><?= htmlspecialchars($crpcDossier['texte_applicable'] ?? '—') ?></strong>
+                    </div>
+                    <?php if (!empty($crpcDossier['peine_prevue'])): ?>
+                    <div class="col-12">
+                        <span class="text-muted">Peine prévue par les textes</span><br>
+                        <?= nl2br(htmlspecialchars($crpcDossier['peine_prevue'])) ?>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section IV : Choix du conseil -->
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header fw-bold text-white small" style="background:#6f42c1;">
+                <i class="bi bi-briefcase me-1"></i>IV. Choix du conseil
+            </div>
+            <div class="card-body">
+                <div class="row g-3 small">
+                    <div class="col-md-6">
+                        <span class="text-muted">Assistance d'un avocat</span><br>
+                        <?php if (!empty($crpcDossier['assistance_avocat'])): ?>
+                        <span class="badge bg-success"><i class="bi bi-check-lg me-1"></i>Oui</span>
+                        <?php if (!empty($crpcDossier['nom_avocat'])): ?>
+                        — <strong>Maître <?= htmlspecialchars($crpcDossier['nom_avocat']) ?></strong>
+                        <?php endif; ?>
+                        <?php else: ?>
+                        <span class="badge bg-secondary">Non</span>
+                        <?php endif; ?>
+                    </div>
+                    <div class="col-md-6">
+                        <span class="text-muted">Renonciation expresse à un avocat</span><br>
+                        <?php if (!empty($crpcDossier['renonciation_avocat'])): ?>
+                        <span class="badge bg-warning text-dark"><i class="bi bi-check-lg me-1"></i>Oui</span>
+                        <?php else: ?>
+                        <span class="badge bg-secondary">Non</span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section V : Peine proposée -->
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header fw-bold text-white small" style="background:#6f42c1;">
+                <i class="bi bi-balance-scale me-1"></i>V. Peine proposée par le substitut
+            </div>
+            <div class="card-body">
+                <div class="row g-3 small">
+                    <div class="col-md-5">
+                        <span class="text-muted">Peine d'emprisonnement proposée</span><br>
+                        <strong><?= htmlspecialchars($crpcDossier['peine_emprisonnement'] ?? '—') ?></strong>
+                    </div>
+                    <div class="col-md-3">
+                        <span class="text-muted">Sursis proposé</span><br>
+                        <?php if (isset($crpcDossier['sursis_substitut'])): ?>
+                        <span class="badge <?= $crpcDossier['sursis_substitut'] ? 'bg-info text-dark' : 'bg-secondary' ?>">
+                            <?= $crpcDossier['sursis_substitut'] ? 'Oui' : 'Non' ?>
+                        </span>
+                        <?php else: ?>—<?php endif; ?>
+                    </div>
+                    <div class="col-md-4">
+                        <span class="text-muted">Amende proposée</span><br>
+                        <strong><?= (isset($crpcDossier['amende_proposee']) && $crpcDossier['amende_proposee'] !== null) ? number_format((float)$crpcDossier['amende_proposee'], 0, ',', ' ') . ' FCFA' : '—' ?></strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section VI : Homologation -->
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header fw-bold text-white small" style="background:#6f42c1;">
+                <i class="bi bi-check2-square me-1"></i>VI. Homologation du Président du Tribunal
+            </div>
+            <div class="card-body">
+                <div class="row g-3 small">
+                    <div class="col-md-4">
+                        <span class="text-muted">Date d'audience d'homologation</span><br>
+                        <strong><?= !empty($crpcDossier['date_audience_homologation']) ? date('d/m/Y', strtotime($crpcDossier['date_audience_homologation'])) : '—' ?></strong>
+                    </div>
+                    <div class="col-md-4">
+                        <span class="text-muted">Décision d'homologation</span><br>
+                        <?php
+                        if (isset($crpcDossier['homologation']) && $crpcDossier['homologation'] !== null && $crpcDossier['homologation'] !== '') {
+                            if ((string)$crpcDossier['homologation'] === '1') {
+                                echo '<span class="badge bg-success fs-6"><i class="bi bi-check-circle me-1"></i>Homologuée</span>';
+                            } else {
+                                echo '<span class="badge bg-danger fs-6"><i class="bi bi-x-circle me-1"></i>Refusée</span>';
+                            }
+                        } else {
+                            echo '<span class="badge bg-secondary">En attente</span>';
+                        }
+                        ?>
+                    </div>
+                    <?php if (isset($crpcDossier['homologation']) && (string)$crpcDossier['homologation'] === '1'): ?>
+                    <div class="col-md-4">
+                        <span class="text-muted">Peine homologuée</span><br>
+                        <strong><?= htmlspecialchars($crpcDossier['peine_emprisonnement_homo'] ?? '—') ?></strong>
+                        <?php if (isset($crpcDossier['sursis_homologue'])): ?>
+                        <span class="badge ms-1 <?= $crpcDossier['sursis_homologue'] ? 'bg-info text-dark' : 'bg-secondary' ?> small">
+                            Sursis: <?= $crpcDossier['sursis_homologue'] ? 'Oui' : 'Non' ?>
+                        </span>
+                        <?php endif; ?>
+                    </div>
+                    <?php if (isset($crpcDossier['amende_homologuee']) && $crpcDossier['amende_homologuee'] !== null): ?>
+                    <div class="col-md-4">
+                        <span class="text-muted">Amende homologuée</span><br>
+                        <strong><?= number_format((float)$crpcDossier['amende_homologuee'], 0, ',', ' ') ?> FCFA</strong>
+                    </div>
+                    <?php endif; ?>
+                    <?php elseif (isset($crpcDossier['homologation']) && (string)$crpcDossier['homologation'] === '0' && !empty($crpcDossier['motif_refus_homologation'])): ?>
+                    <div class="col-12">
+                        <span class="text-muted text-danger">Motif du refus</span><br>
+                        <div class="border border-danger rounded p-2 bg-light small">
+                            <?= nl2br(htmlspecialchars($crpcDossier['motif_refus_homologation'])) ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+
+        <?php if (!empty($crpcDossier['notes'])): ?>
+        <!-- Notes -->
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header fw-bold text-white small" style="background:#6f42c1;">
+                <i class="bi bi-sticky me-1"></i>Notes complémentaires
+            </div>
+            <div class="card-body small">
+                <?= nl2br(htmlspecialchars($crpcDossier['notes'])) ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- Bouton Modifier (bas) -->
+        <?php if (Auth::hasRole(['admin','procureur','substitut_procureur','cabinet'])): ?>
+        <div class="d-flex justify-content-end mt-3">
+            <a href="<?= BASE_URL ?>/crpc/edit/<?= $crpcDossier['id'] ?>" class="btn fw-semibold text-white" style="background:#6f42c1;">
+                <i class="bi bi-pencil-square me-1"></i>Modifier la fiche CRPC
+            </a>
+        </div>
+        <?php endif; ?>
+
+        <?php endif; /* crpcDossier */ ?>
+    </div>
+    <?php endif; /* mode_poursuite === CRPC */ ?>
 </div>
 
 <!-- Modal instruction -->
@@ -852,6 +1400,136 @@
     </div></div>
 </div>
 
+<!-- ══ Modal Voir MEC (Dossier) ══ -->
+<div class="modal fade" id="modalVoirMECDossier" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-person-badge me-2"></i>Détails — Mise en cause</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="voirMecDossierBody"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<?php if (!empty($dossier['pv_id'])): ?>
+<!-- ══ Modal Ajouter MEC depuis dossier ══ -->
+<div class="modal fade" id="modalAddMECDossier" tabindex="-1">
+    <div class="modal-dialog modal-fullscreen modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>Ajouter une mise en cause</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-3 overflow-auto" style="flex:1 1 auto;">
+                <?php
+                $formAction  = BASE_URL . '/pv/mise-en-cause/store/' . ($dossier['pv_id'] ?? '');
+                $pvId        = $dossier['pv_id'] ?? '';
+                $btnLabel    = 'Enregistrer la mise en cause';
+                $mec         = null;
+                $inModal     = true;
+                $redirectTo  = $_mecRedirectToken;
+                include __DIR__ . '/../mises_en_cause/_form.php';
+                $inModal    = false;
+                $redirectTo = '';
+                ?>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══ Modal Reconduire MEC depuis dossier ══ -->
+<div class="modal fade" id="modalReconduireDossier" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-secondary text-white">
+                <h5 class="modal-title"><i class="bi bi-arrow-repeat me-2"></i>Reconduire une mise en cause</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="<?=BASE_URL?>/pv/mise-en-cause/reconduire/<?=$dossier['pv_id']?>">
+                <?=CSRF::field()?>
+                <input type="hidden" name="_redirect_to" value="<?=htmlspecialchars($_mecRedirectToken)?>">
+                <div class="modal-body">
+                    <div class="alert alert-info small mb-3">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Recherchez une personne déjà enregistrée dans un ancien PV pour la rattacher à ce dossier.
+                        Elle sera copiée avec ses informations et son compteur d'affaires sera incrémenté.
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Rechercher par nom / prénom / alias</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" id="mecSearchInputD" class="form-control"
+                                   placeholder="Cliquez ici ou saisissez un nom…"
+                                   autocomplete="off"
+                                   oninput="searchMECD(this.value)"
+                                   onfocus="searchMECD(this.value)">
+                            <button type="button" class="btn btn-outline-secondary" onclick="clearMecSearchD()">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </div>
+                        <div class="form-text text-muted">
+                            <i class="bi bi-lightning-fill text-warning me-1"></i>
+                            Les résultats s'affichent dès le clic — se rétrécissent au fur et à mesure que vous saisissez.
+                        </div>
+                    </div>
+                    <div id="mecSearchResultsD" class="list-group mb-3"
+                         style="max-height:280px;overflow-y:auto;border:1px solid #dee2e6;border-radius:0.375rem;"></div>
+                    <input type="hidden" name="mec_source_id" id="mecSourceIdD">
+                    <div id="mecSelectedCardD" style="display:none" class="border rounded p-3 bg-light mt-2">
+                        <h6 class="fw-bold text-primary mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Mise en cause sélectionnée</h6>
+                        <div class="d-flex gap-3">
+                            <div id="mecCardPhotoD" class="flex-shrink-0"></div>
+                            <div class="flex-grow-1" id="mecCardDetailsD"></div>
+                        </div>
+                        <div class="mt-2 pt-2 border-top"><small class="text-muted" id="mecCardPVD"></small></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary" id="btnReconduireD" disabled>
+                        <i class="bi bi-arrow-repeat me-1"></i>Reconduire cette personne
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
+<!-- ══ Modal Confirmation Suppression MEC ══ -->
+<div class="modal fade" id="modalSuppMECD" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bi bi-trash me-2"></i>Supprimer la mise en cause</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger mb-3 small">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Cette action est irréversible.</strong> La suppression sera tracée dans le journal d'audit.
+                </div>
+                <p>Confirmer la suppression de <strong id="suppMecNomD" class="text-danger"></strong> ?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <form id="formSuppMECD" method="POST" action="">
+                    <?=CSRF::field()?>
+                    <input type="hidden" name="_redirect_to" value="<?=htmlspecialchars($_mecRedirectToken)?>">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i>Oui, supprimer
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 function suggererCabinetInstr(){
     fetch('<?= BASE_URL ?>/api/cabinets/charge')
@@ -870,4 +1548,239 @@ function suggererCabinetInstr(){
         }
     }).catch(()=>{});
 }
+
+// ── Suppression MEC depuis dossier ────────────────────────────────────
+function confirmerSuppMECD(mecId, nomPrenom) {
+    document.getElementById('suppMecNomD').textContent = nomPrenom;
+    document.getElementById('formSuppMECD').action =
+        '<?= BASE_URL ?>/pv/mise-en-cause/delete/' + mecId;
+    new bootstrap.Modal(document.getElementById('modalSuppMECD')).show();
+}
+
+// ── Voir fiche MEC (dossier view) ─────────────────────────────────────
+function voirMECDossier(m) {
+    var baseUrl = '<?= BASE_URL ?>';
+    var photoHtml = m.photo
+        ? '<img src="' + baseUrl + '/' + m.photo + '" alt="Photo" class="img-thumbnail" style="width:130px;height:160px;object-fit:cover;">'
+        : '<div class="bg-light border rounded d-flex align-items-center justify-content-center" style="width:130px;height:160px;"><i class="bi bi-person-fill text-muted" style="font-size:3.5rem;"></i></div>';
+    var statutLabels = {'mise_en_cause':'Mise en cause','prevenu':'Prévenu','temoin':'Témoin','autre':'Autre'};
+    var decLabels = {
+        'poursuivi':'<span class="badge bg-success">Poursuivi</span>',
+        'non_poursuivi':'<span class="badge bg-danger">Non poursuivi</span>',
+        'en_attente':'<span class="badge bg-secondary">En attente</span>'
+    };
+    var rows = [
+        ['Nom', '<strong class="text-uppercase fs-6">' + (m.nom||'—') + '</strong>'],
+        ['Prénom', m.prenom||'—'],
+        ['Alias', m.alias||'—'],
+        ['Nom de la mère', m.nom_mere||'—'],
+        ['Date de naissance', m.date_naissance ? new Date(m.date_naissance).toLocaleDateString('fr-FR') : '—'],
+        ['Lieu de naissance', m.lieu_naissance||'—'],
+        ['Nationalité', m.nationalite||'—'],
+        ['Sexe', m.sexe==='F'?'Féminin':(m.sexe==='M'?'Masculin':'—')],
+        ['Profession', m.profession||'—'],
+        ['Adresse', m.adresse||'—'],
+        ['Téléphone', m.telephone||'—'],
+        ['Statut', statutLabels[m.statut]||m.statut||'—'],
+        ['Décision substitut', decLabels[m.decision_substitut]||'—'],
+        ['Connu archives', m.est_connu_archives
+            ? '<span class="badge bg-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i>Récidiviste</span>'
+            : '<span class="badge bg-success">Non</span>'],
+        ["Affaires précédentes", m.nb_affaires_precedentes||'0'],
+    ];
+    if (m.personne_contacter_nom) {
+        rows.push(['Personne à contacter', m.personne_contacter_nom +
+            (m.personne_contacter_tel ? ' — ' + m.personne_contacter_tel : '') +
+            (m.personne_contacter_lien ? ' (' + m.personne_contacter_lien + ')' : '')]);
+    }
+    if (m.notes_antecedents) {
+        rows.push(['Antécédents', '<em class="text-muted">' + m.notes_antecedents + '</em>']);
+    }
+    var tableHtml = '<table class="table table-sm table-bordered mb-0 small">';
+    rows.forEach(function(r){
+        tableHtml += '<tr><th class="table-secondary" style="width:38%">' + r[0] + '</th><td>' + r[1] + '</td></tr>';
+    });
+    tableHtml += '</table>';
+    document.getElementById('voirMecDossierBody').innerHTML =
+        '<div class="d-flex gap-4 align-items-start flex-wrap">' +
+        '<div class="flex-shrink-0 text-center">' + photoHtml + '</div>' +
+        '<div class="flex-grow-1">' + tableHtml + '</div></div>';
+    new bootstrap.Modal(document.getElementById('modalVoirMECDossier')).show();
+}
+
+// ── Recherche MEC pour reconduction (dossier) — live search instantané ──
+var mecSearchTimerD  = null;
+var mecSearchCacheD  = {};
+var mecCurrentDossPvId = <?= (int)($dossier['pv_id'] ?? 0) ?>;
+
+function searchMECD(q) {
+    clearTimeout(mecSearchTimerD);
+    var div   = document.getElementById('mecSearchResultsD');
+    var qTrim = (q||'[EMPTY]').trim().replace('[EMPTY]','');
+    qTrim = (q||'').trim();
+    div.innerHTML = '<div class="list-group-item text-muted text-center py-2 small">' +
+        '<span class="spinner-border spinner-border-sm me-1"></span>Chargement…</div>';
+    var delay = qTrim.length === 0 ? 100 : 250;
+    mecSearchTimerD = setTimeout(function() {
+        if (mecSearchCacheD[qTrim] !== undefined) {
+            renderMecResultsD(mecSearchCacheD[qTrim]); return;
+        }
+        var url = '<?= BASE_URL ?>/api/mises-en-cause/search?exclude_pv=' + mecCurrentDossPvId +
+                  '&limit=50&q=' + encodeURIComponent(qTrim);
+        fetch(url)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            mecSearchCacheD[qTrim] = data.success ? data.data : [];
+            renderMecResultsD(mecSearchCacheD[qTrim]);
+        })
+        .catch(function() {
+            div.innerHTML = '<div class="list-group-item text-danger text-center py-2 small">' +
+                '<i class="bi bi-wifi-off me-1"></i>Erreur de connexion</div>';
+        });
+    }, delay);
+}
+
+function renderMecResultsD(items) {
+    var div = document.getElementById('mecSearchResultsD');
+    if (!items || items.length === 0) {
+        div.innerHTML = '<div class="list-group-item text-muted text-center py-3 small">' +
+            '<i class="bi bi-person-slash fs-4 d-block mb-1 opacity-50"></i>Aucune mise en cause trouvée</div>';
+        return;
+    }
+    window._mecResultsDataD = items;
+    var baseUrl = '<?= BASE_URL ?>';
+    var html = '';
+    items.forEach(function(m, idx) {
+        html += '<a href="#" class="list-group-item list-group-item-action py-2" ' +
+            'onclick="selectMECD(' + m.id + ', window._mecResultsDataD[' + idx + ']); return false;">' +
+            '<div class="d-flex justify-content-between align-items-center gap-2">' +
+            '<div class="d-flex align-items-center gap-2">';
+        if (m.photo) {
+            html += '<img src="' + baseUrl + '/' + escHtmlD(m.photo) + '" class="rounded flex-shrink-0" ' +
+                    'style="width:32px;height:40px;object-fit:cover;" alt="">';
+        } else {
+            html += '<div class="bg-light rounded d-flex align-items-center justify-content-center flex-shrink-0" ' +
+                    'style="width:32px;height:40px;"><i class="bi bi-person-fill text-muted"></i></div>';
+        }
+        html += '<div>' +
+            '<div class="fw-semibold text-uppercase lh-1">' + escHtmlD(m.nom||'') +
+            ' <span class="fw-normal text-capitalize">' + escHtmlD(m.prenom||'') + '</span>' +
+            (m.alias ? ' <em class="text-muted small fw-normal">(' + escHtmlD(m.alias) + ')</em>' : '') +
+            (parseInt(m.est_connu_archives) ? ' <span class="badge bg-danger ms-1" style="font-size:.65rem">Récidiviste</span>' : '') +
+            '</div><div class="text-muted small">' +
+            (m.profession ? escHtmlD(m.profession) : '') +
+            (m.lieu_naissance ? (m.profession ? ' — ' : '') + escHtmlD(m.lieu_naissance) : '') +
+            '</div></div></div>' +
+            '<div class="text-end flex-shrink-0">' +
+            '<span class="badge bg-light text-dark border small d-block mb-1">PV ' + escHtmlD(m.numero_rg||'?') + '</span>' +
+            (parseInt(m.nb_affaires_precedentes) > 0 ? '<span class="badge bg-secondary small">' + m.nb_affaires_precedentes + ' aff. préc.</span>' : '') +
+            '</div></div></a>';
+    });
+    div.innerHTML = html;
+}
+
+function escHtmlD(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function selectMECD(id, m) {
+    document.getElementById('mecSourceIdD').value = id;
+    document.getElementById('mecSearchResultsD').innerHTML = '';
+    document.getElementById('mecSearchInputD').value = (m.nom||'') + ' ' + (m.prenom||'');
+    document.getElementById('btnReconduireD').disabled = false;
+    var baseUrl = '<?= BASE_URL ?>';
+    var photoHtml = m.photo
+        ? '<img src="' + baseUrl + '/' + escHtmlD(m.photo) + '" class="rounded" style="width:70px;height:88px;object-fit:cover;">' 
+        : '<div class="bg-secondary rounded d-flex align-items-center justify-content-center text-white" style="width:70px;height:88px;"><i class="bi bi-person-fill fs-3"></i></div>';
+    document.getElementById('mecCardPhotoD').innerHTML = photoHtml;
+    var sl = {'mise_en_cause':'Mise en cause','prevenu':'Prévenu','temoin':'Témoin','autre':'Autre'};
+    document.getElementById('mecCardDetailsD').innerHTML =
+        '<p class="mb-1"><strong class="text-uppercase fs-6">' + escHtmlD(m.nom||'') + '</strong> ' + escHtmlD(m.prenom||'') +
+        (m.alias ? ' <em class="text-muted">(' + escHtmlD(m.alias) + ')</em>' : '') + '</p>' +
+        (m.date_naissance ? '<p class="mb-1 small"><i class="bi bi-calendar me-1 text-muted"></i>' +
+            new Date(m.date_naissance).toLocaleDateString('fr-FR') +
+            (m.lieu_naissance ? ' — ' + escHtmlD(m.lieu_naissance) : '') + '</p>' : '') +
+        (m.profession ? '<p class="mb-1 small"><i class="bi bi-briefcase me-1 text-muted"></i>' + escHtmlD(m.profession) + '</p>' : '') +
+        (m.nationalite ? '<p class="mb-1 small"><i class="bi bi-flag me-1 text-muted"></i>' + escHtmlD(m.nationalite) + '</p>' : '') +
+        '<p class="mb-0"><span class="badge bg-warning text-dark">' + escHtmlD(sl[m.statut]||m.statut||'—') + '</span>' +
+        (parseInt(m.est_connu_archives) ? ' <span class="badge bg-danger ms-1">Récidiviste</span>' : '') +
+        (parseInt(m.nb_affaires_precedentes) > 0 ? ' <span class="badge bg-secondary ms-1">' + m.nb_affaires_precedentes + ' affaire(s) préc.</span>' : '') + '</p>';
+    document.getElementById('mecCardPVD').innerHTML =
+        '<i class="bi bi-file-text me-1"></i>Issu du PV n° <strong>' + escHtmlD(m.numero_rg||'?') + '</strong>' +
+        (m.date_reception ? ' — reçu le ' + new Date(m.date_reception).toLocaleDateString('fr-FR') : '');
+    document.getElementById('mecSelectedCardD').style.display = 'block';
+}
+
+function clearMecSearchD() {
+    document.getElementById('mecSearchInputD').value = '';
+    document.getElementById('mecSearchResultsD').innerHTML = '';
+    document.getElementById('mecSourceIdD').value = '';
+    document.getElementById('mecSelectedCardD').style.display = 'none';
+    document.getElementById('btnReconduireD').disabled = true;
+    window._mecResultsDataD = [];
+    mecSearchCacheD = {};
+}
+var reconduireDModal = document.getElementById('modalReconduireDossier');
+if (reconduireDModal) {
+    reconduireDModal.addEventListener('hidden.bs.modal', clearMecSearchD);
+    reconduireDModal.addEventListener('shown.bs.modal', function() {
+        var input = document.getElementById('mecSearchInputD');
+        input.focus();
+        searchMECD('');
+    });
+}
+
+// ── Audit MEC — modal de détail ───────────────────────────────────────
+function voirAuditMEC(data) {
+    var fields = {
+        'nom':'Nom','prenom':'Prénom','alias':'Alias','date_naissance':'Naissance',
+        'lieu_naissance':'Lieu naiss.','nationalite':'Nationalité','sexe':'Sexe',
+        'profession':'Profession','adresse':'Adresse','telephone':'Téléphone',
+        'statut':'Statut','est_connu_archives':'Récidiviste','nb_affaires_precedentes':'Affaires préc.'
+    };
+    function buildTable(obj) {
+        if (!obj) return '<em class="text-muted">\u2014</em>';
+        var rows = '';
+        Object.keys(fields).forEach(function(k) {
+            var va = obj[k]; if (va === undefined || va === null || va === '') return;
+            rows += '<tr><td class="text-muted small pe-2">' + fields[k] + '</td>' +
+                    '<td class="small fw-semibold">' + escHtmlD(String(va)) + '</td></tr>';
+        });
+        return rows ? '<table class="table table-sm table-borderless mb-0">' + rows + '</table>'
+                    : '<em class="text-muted small">Aucun champ pertinent</em>';
+    }
+    var body = '<div class="mb-2"><span class="badge bg-secondary me-2">' + escHtmlD(data.date) + '</span>' +
+               '<span class="badge bg-primary">' + escHtmlD(data.action) + '</span>' +
+               (data.statut_dos ? ' <span class="badge bg-light text-dark border small ms-1">Dossier\u00a0: ' + escHtmlD(data.statut_dos) + '</span>' : '') +
+               '</div>';
+    if (data.avant || data.apres) {
+        body += '<div class="row g-2 mt-1">';
+        if (data.avant) {
+            body += '<div class="col-md-6"><h6 class="small text-muted fw-bold border-bottom pb-1 mb-2">Avant</h6>' + buildTable(data.avant) + '</div>';
+        }
+        if (data.apres) {
+            body += '<div class="col-md-6"><h6 class="small text-muted fw-bold border-bottom pb-1 mb-2">Apr\u00e8s</h6>' + buildTable(data.apres) + '</div>';
+        }
+        body += '</div>';
+    }
+    document.getElementById('auditMECBody').innerHTML = body;
+    document.getElementById('auditMECTitle').textContent = 'Audit\u00a0: ' + (data.nom || 'Mise en cause');
+    new bootstrap.Modal(document.getElementById('modalAuditMEC')).show();
+}
 </script>
+
+<!-- Modal Audit MEC détail -->
+<div class="modal fade" id="modalAuditMEC" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-secondary text-white">
+                <h5 class="modal-title" id="auditMECTitle"><i class="bi bi-clock-history me-2"></i>Détail audit</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="auditMECBody"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>

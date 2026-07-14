@@ -5,7 +5,7 @@ class Database {
 
     private function __construct() {
         $host   = getenv('DB_HOST') ?: 'localhost';
-        $dbname = getenv('DB_NAME') ?: 'tribunal_tgi_ny_maj';
+        $dbname = getenv('DB_NAME') ?: 'app_tgi20260622';
         $user   = getenv('DB_USER') ?: 'root';
         $pass   = getenv('DB_PASS') ?: '';
         $port   = getenv('DB_PORT') ?: '3306';
@@ -16,6 +16,14 @@ class Database {
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_EMULATE_PREPARES   => false,
         ]);
+        // Désactiver le mode strict MySQL pour compatibilité prod/dev
+        // (évite "Field doesn't have a default value" sur colonnes NOT NULL sans DEFAULT)
+        $this->pdo->exec("SET SESSION sql_mode = (
+            SELECT REPLACE(REPLACE(REPLACE(@@SESSION.sql_mode,
+                'STRICT_TRANS_TABLES',''),
+                'STRICT_ALL_TABLES',''),
+                ',,',',')
+        )");
     }
 
     public static function getInstance(): self {

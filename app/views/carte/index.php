@@ -282,7 +282,7 @@
     </div>
 </div>
 
-<!-- Leaflet + Highcharts -->
+<!-- Leaflet + Highcharts — HTTPS uniquement (évite les erreurs de contenu mixte) -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://code.highcharts.com/highcharts.js"></script>
